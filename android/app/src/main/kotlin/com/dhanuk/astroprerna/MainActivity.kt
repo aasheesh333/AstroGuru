@@ -1,4 +1,4 @@
-package com.dhanuk.astroguruai
+package com.dhanuk.astroprerna
 
 import io.flutter.embedding.android.FlutterActivity
 

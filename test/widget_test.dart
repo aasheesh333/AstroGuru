@@ -13,7 +13,7 @@ import 'package:astroguru/screens/splash_screen.dart';
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const AstroGuruApp());
+    await tester.pumpWidget(const AstroPrernaApp());
 
     // Verify that the splash screen shows up initially
     expect(find.byType(SplashScreen), findsOneWidget);

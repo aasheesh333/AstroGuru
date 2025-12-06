@@ -11,7 +11,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AstroGuru'),
+        title: const Text('AstroPrerna'),
         leading: const Padding(
           padding: EdgeInsets.all(8.0),
           child: BabaAvatar(size: 32),

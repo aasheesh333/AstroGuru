@@ -24,7 +24,7 @@ class LoginScreen extends StatelessWidget {
                 const Center(child: BabaAvatar(size: 120)),
                 const SizedBox(height: 32),
                 Text(
-                  'Welcome to AstroGuru',
+                  'Welcome to AstroPrerna',
                   style: Theme.of(context).textTheme.displayMedium,
                   textAlign: TextAlign.center,
                 ),
