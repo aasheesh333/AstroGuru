@@ -12,12 +12,22 @@ class BabaAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine border radius based on size.
+    // > 50 (e.g. 120, 150) -> 16
+    // <= 50 (e.g. 32, 40) -> 10
+    final double radius = size > 50 ? 16 : 10;
+
     return Container(
       width: size,
       height: size,
-      child: Image.asset(
-        'assets/images/logo.png',
-        fit: BoxFit.contain,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

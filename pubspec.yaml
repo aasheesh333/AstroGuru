@@ -22,6 +22,8 @@ flutter_icons:
   android: true
   ios: false
   image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#05060A"
+  adaptive_icon_foreground: "assets/images/logo.png"
 
 flutter:
   uses-material-design: true
