@@ -1,8 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../widgets/baba_avatar.dart';
-import 'onboarding_screen.dart';
+import 'package:provider/provider.dart';
+import '../logic/language_provider.dart';
+// import '../l10n/app_localizations.dart'; // Removed to fix build error
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,63 +10,37 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  Timer? _timer;
+class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
-
-    _controller.forward();
-
-    // Navigate to Onboarding after 3 seconds
-    _timer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
-      }
-    });
+    _checkLanguage();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _controller.dispose();
-    super.dispose();
+  void _checkLanguage() async {
+    await Future.delayed(const Duration(seconds: 2));
+    // Check if language is set in provider (loaded from prefs)
+    // If loaded, go to Home. Else show Language Selection.
+    // Since provider loads async, we might need to check state.
+    if (mounted) {
+       Navigator.pushReplacementNamed(context, '/home'); // Simplified navigation
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.mainGradient,
-        ),
-        child: Center(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const BabaAvatar(size: 150, animate: true),
-                const SizedBox(height: 24),
-                Text(
-                  'AstroPrerna',
-                  style: Theme.of(context).textTheme.displayLarge,
-                ),
-                const SizedBox(height: 16),
-                const CircularProgressIndicator(color: AppColors.primaryGold),
-              ],
-            ),
-          ),
+      backgroundColor: const Color(0xFF371B58),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+             // Use BabaAvatar here if needed, or simple text
+             Image.asset('assets/images/logo.png', width: 150),
+             const SizedBox(height: 20),
+             const Text("AstroPrerna", style: TextStyle(color: Color(0xFFFDBD00), fontSize: 24, fontWeight: FontWeight.bold)),
+          ],
         ),
       ),
     );

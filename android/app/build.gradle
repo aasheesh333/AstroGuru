@@ -12,14 +12,20 @@ if (localPropertiesFile.exists()) {
     }
 }
 
+// Read env variables from project properties (passed via command line or CI)
+def appPackageName = project.hasProperty('APP_PACKAGE_NAME') ? project.property('APP_PACKAGE_NAME') : "com.dhanuk.astroprerna"
+def appVersionCode = project.hasProperty('APP_VERSION_CODE') ? project.property('APP_VERSION_CODE').toInteger() : 1
+def appVersionName = project.hasProperty('APP_VERSION_NAME') ? project.property('APP_VERSION_NAME') : "1.0.0"
+
+// Allow local.properties overrides for Flutter specific checks
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-if (flutterVersionCode == null) {
-    flutterVersionCode = '1'
+if (flutterVersionCode != null) {
+    appVersionCode = flutterVersionCode.toInteger()
 }
 
 def flutterVersionName = localProperties.getProperty('flutter.versionName')
-if (flutterVersionName == null) {
-    flutterVersionName = '1.0'
+if (flutterVersionName != null) {
+    appVersionName = flutterVersionName
 }
 
 def keystoreProperties = new Properties()
@@ -29,7 +35,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.dhanuk.astroprerna"
+    namespace appPackageName
     compileSdkVersion flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
@@ -47,14 +53,17 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.dhanuk.astroprerna"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        applicationId appPackageName
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion flutter.targetSdkVersion
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
+        versionCode appVersionCode
+        versionName appVersionName
+
+        // Inject keys into Manifest/BuildConfig
+        def admobAppId = project.hasProperty('APP_ADMOB_APP_ID') ? project.property('APP_ADMOB_APP_ID') : "ca-app-pub-3940256099942544~3347511713" // Test ID default
+
+        // Merge placeholders carefully
+        manifestPlaceholders += [ADMOB_APP_ID: admobAppId]
     }
 
     signingConfigs {
@@ -69,6 +78,9 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }
