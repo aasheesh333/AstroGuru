@@ -29,46 +29,40 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
-    - name: Decode Keystore
-      # Instructions:
-      # 1. Generate keystore: keytool -genkey -v -keystore upload-keystore.jks -alias upload ...
-      # 2. Base64 encode it: openssl base64 -in upload-keystore.jks -out upload-keystore.b64
-      # 3. Add to Secrets: ANDROID_KEYSTORE_BASE64 (content of .b64 file)
-      # 4. Add to Secrets: KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
-      # If secrets are missing, this step will skip, and build might fail if looking for file.
-      # We will create a dummy keystore if secrets are missing for PR checks,
-      # but for real release builds, secrets must be present.
+    - name: Configure Keystore
+      # The keystore is committed to the repo, so we just need to ensure key.properties is set up correctly.
+      # Prioritize secrets if they exist, otherwise rely on the committed files.
       env:
         ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      run: |
-        if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
-        else
-          echo "Warning: Keystore secret not found. Using debug/local keystore or failing if release config requires it."
-        fi
-
-    - name: Create key.properties
-      env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: |
+        if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+          echo "Decoding keystore from secrets..."
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+        else
+          echo "Using committed keystore (if present)..."
+        fi
+
         if [ -n "$KEYSTORE_PASSWORD" ]; then
+          echo "Creating key.properties from secrets..."
           echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
           echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
           echo "keyAlias=$KEY_ALIAS" >> android/key.properties
           echo "storeFile=../upload-keystore.jks" >> android/key.properties
         else
-          echo "Warning: Signing secrets missing. Creating dummy key.properties."
-          echo "storePassword=password" > android/key.properties
-          echo "keyPassword=password" >> android/key.properties
-          echo "keyAlias=upload" >> android/key.properties
-          echo "storeFile=../upload-keystore.jks" >> android/key.properties
+          echo "Using committed key.properties (if present)..."
+        fi
 
-          # Generate dummy keystore if the real one wasn't decoded
-          if [ ! -f android/upload-keystore.jks ]; then
-             keytool -genkey -v -keystore android/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload -storepass password -keypass password -dname "CN=CI User, OU=CI, O=CI, L=CI, S=CI, C=CI"
-          fi
+        # Validation
+        if [ ! -f android/upload-keystore.jks ]; then
+          echo "Error: android/upload-keystore.jks not found!"
+          exit 1
+        fi
+        if [ ! -f android/key.properties ]; then
+          echo "Error: android/key.properties not found!"
+          exit 1
         fi
 
     - name: Build APK
