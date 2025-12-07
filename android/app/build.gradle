@@ -13,9 +13,9 @@ if (localPropertiesFile.exists()) {
 }
 
 // Read env variables from project properties (passed via command line or CI)
-def appPackageName = project.hasProperty('APP_PACKAGE_NAME') ? project.property('APP_PACKAGE_NAME') : "com.dhanuk.astroprerna"
-def appVersionCode = project.hasProperty('APP_VERSION_CODE') ? project.property('APP_VERSION_CODE').toInteger() : 1
-def appVersionName = project.hasProperty('APP_VERSION_NAME') ? project.property('APP_VERSION_NAME') : "1.0.0"
+def appPackageName = project.hasProperty('APP_PACKAGE_NAME') ? project.property('APP_PACKAGE_NAME') : (project.hasProperty('PACKAGE_NAME') ? project.property('PACKAGE_NAME') : "com.dhanuk.astroprerna")
+def appVersionCode = project.hasProperty('APP_VERSION_CODE') ? project.property('APP_VERSION_CODE').toInteger() : (project.hasProperty('VERSION_CODE') ? project.property('VERSION_CODE').toInteger() : 1)
+def appVersionName = project.hasProperty('APP_VERSION_NAME') ? project.property('APP_VERSION_NAME') : (project.hasProperty('VERSION_NAME') ? project.property('VERSION_NAME') : "1.0.0")
 
 // Allow local.properties overrides for Flutter specific checks
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
@@ -60,7 +60,7 @@ android {
         versionName appVersionName
 
         // Inject keys into Manifest/BuildConfig
-        def admobAppId = project.hasProperty('APP_ADMOB_APP_ID') ? project.property('APP_ADMOB_APP_ID') : "ca-app-pub-3940256099942544~3347511713" // Test ID default
+        def admobAppId = project.hasProperty('APP_ADMOB_APP_ID') ? project.property('APP_ADMOB_APP_ID') : (project.hasProperty('ADMOB_APP_ID') ? project.property('ADMOB_APP_ID') : "ca-app-pub-3940256099942544~3347511713") // Test ID default
 
         // Merge placeholders carefully
         manifestPlaceholders += [ADMOB_APP_ID: admobAppId]

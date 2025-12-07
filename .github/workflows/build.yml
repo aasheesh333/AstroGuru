@@ -65,11 +65,29 @@ jobs:
           exit 1
         fi
 
+    - name: Generate Env
+      env:
+        ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      run: |
+        chmod +x scripts/create_env.sh
+        ./scripts/create_env.sh
+
     - name: Build APK
-      run: flutter build apk --release
+      env:
+        PACKAGE_NAME: ${{ secrets.PACKAGE_NAME }}
+        VERSION_CODE: ${{ secrets.VERSION_CODE }}
+        VERSION_NAME: ${{ secrets.VERSION_NAME }}
+        ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+      run: flutter build apk --release -PPACKAGE_NAME=$PACKAGE_NAME -PVERSION_CODE=$VERSION_CODE -PVERSION_NAME=$VERSION_NAME -PADMOB_APP_ID=$ADMOB_APP_ID
 
     - name: Build App Bundle
-      run: flutter build appbundle --release
+      env:
+        PACKAGE_NAME: ${{ secrets.PACKAGE_NAME }}
+        VERSION_CODE: ${{ secrets.VERSION_CODE }}
+        VERSION_NAME: ${{ secrets.VERSION_NAME }}
+        ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+      run: flutter build appbundle --release -PPACKAGE_NAME=$PACKAGE_NAME -PVERSION_CODE=$VERSION_CODE -PVERSION_NAME=$VERSION_NAME -PADMOB_APP_ID=$ADMOB_APP_ID
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
