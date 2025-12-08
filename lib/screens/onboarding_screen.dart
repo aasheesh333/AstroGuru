@@ -112,10 +112,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       text: _currentPage == _slides.length - 1 ? 'Get Started' : 'Next',
                       onPressed: () {
                         if (_currentPage == _slides.length - 1) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                          );
+                          Navigator.pushReplacementNamed(context, '/login');
                         } else {
                           _pageController.nextPage(
                             duration: const Duration(milliseconds: 300),

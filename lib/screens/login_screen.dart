@@ -41,19 +41,13 @@ class LoginScreen extends StatelessWidget {
                   text: 'Continue with Phone Number',
                   onPressed: () {
                     // Navigate to MainScreen directly (UI Only)
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                    );
+                    Navigator.pushReplacementNamed(context, '/main');
                   },
                 ),
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                    );
+                    Navigator.pushReplacementNamed(context, '/main');
                   },
                   child: Text(
                     'Skip for Now',

@@ -20,12 +20,11 @@ class AIService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'model': 'llama3-70b-8192', // Recommended model
+          'model': 'llama3-70b-8192',
           'messages': [
-            {'role': 'system', 'content': systemPrompt},
+            {'role': 'system', 'content': 'You are an astrology expert.'},
             {'role': 'user', 'content': userPrompt}
-          ],
-          'temperature': 0.7,
+          ]
         }),
       );
 

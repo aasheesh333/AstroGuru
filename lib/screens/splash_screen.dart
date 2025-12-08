@@ -24,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
     // If loaded, go to Home. Else show Language Selection.
     // Since provider loads async, we might need to check state.
     if (mounted) {
-       Navigator.pushReplacementNamed(context, '/home'); // Simplified navigation
+       Navigator.pushReplacementNamed(context, '/onboarding'); // Simplified navigation
     }
   }
 

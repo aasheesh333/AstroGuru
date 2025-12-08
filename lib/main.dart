@@ -8,6 +8,9 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'logic/language_provider.dart';
 import 'logic/kundli_service.dart';
 import 'screens/splash_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/main_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/kundli_screen.dart';
 import 'screens/chat_screen.dart';
@@ -73,6 +76,9 @@ class AstroPrernaApp extends StatelessWidget {
           initialRoute: '/',
           routes: {
             '/': (context) => const SplashScreen(),
+            '/onboarding': (context) => const OnboardingScreen(),
+            '/login': (context) => const LoginScreen(),
+            '/main': (context) => const MainScreen(),
             '/home': (context) => const HomeScreen(),
             '/kundli': (context) => const KundliScreen(),
             '/chat': (context) => const ChatScreen(),
