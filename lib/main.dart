@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'logic/language_provider.dart';
@@ -23,6 +24,9 @@ void main() async {
 
   // Load Env
   await dotenv.load(fileName: "assets/.env");
+
+  // Initialize Firebase
+  await Firebase.initializeApp();
 
   // Initialize Services
   await KundliService.initialize();

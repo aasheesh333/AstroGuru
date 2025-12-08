@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../logic/language_provider.dart';
 import '../theme/app_colors.dart';
@@ -12,6 +13,7 @@ class ProfileScreen extends StatelessWidget {
   Future<void> _logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool("user_logged_in", false);
+    await FirebaseAuth.instance.signOut();
     if (context.mounted) {
        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     }
