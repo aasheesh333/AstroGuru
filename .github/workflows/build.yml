@@ -41,6 +41,7 @@ jobs:
         PACKAGE_NAME: ${{ secrets.PACKAGE_NAME }}
         VERSION_CODE: ${{ github.run_number }}
         VERSION_NAME: "1.0.${{ github.run_number }}"
+        FIREBASE_JSON_BASE64: ${{ secrets.FIREBASE_JSON_BASE64 }}
       run: |
         chmod +x scripts/create_env.sh
         ./scripts/create_env.sh
