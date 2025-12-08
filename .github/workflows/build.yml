@@ -41,18 +41,20 @@ jobs:
         if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
           echo "Decoding keystore from secrets..."
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+
+          # Only overwrite key.properties if we are using a custom keystore from secrets.
+          # This avoids mismatching a secret password with the committed test keystore.
+          if [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "Creating key.properties from secrets..."
+            echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
+            echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
+            echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+            echo "storeFile=../upload-keystore.jks" >> android/key.properties
+          fi
         else
           echo "Using committed keystore (if present)..."
-        fi
-
-        if [ -n "$KEYSTORE_PASSWORD" ]; then
-          echo "Creating key.properties from secrets..."
-          echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
-          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
-          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
-          echo "storeFile=../upload-keystore.jks" >> android/key.properties
-        else
-          echo "Using committed key.properties (if present)..."
+          # We assume the committed key.properties corresponds to the committed keystore.
+          # We do NOT overwrite it with secrets here to avoid password mismatch errors.
         fi
 
         # Validation
