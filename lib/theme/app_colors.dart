@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   static const Color scaffoldBackgroundColor = Color(0xFF05060A);
+  // Alias for backward compatibility if needed, though usually used directly
+  static const Color background = scaffoldBackgroundColor;
   static const Color surfaceColor = Color(0xFF0E1016);
 
   static const Color primaryGold = Color(0xFFF5C65C);

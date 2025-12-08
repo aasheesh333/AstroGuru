@@ -9,6 +9,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'logic/language_provider.dart';
 import 'logic/kundli_service.dart';
 import 'screens/splash_screen.dart';
+import 'screens/language_selection_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
@@ -73,6 +74,7 @@ class AstroPrernaApp extends StatelessWidget {
           initialRoute: '/',
           routes: {
             '/': (context) => const SplashScreen(),
+            '/language': (context) => const LanguageSelectionScreen(),
             '/onboarding': (context) => const OnboardingScreen(),
             '/login': (context) => const LoginScreen(),
             '/home': (context) => const MainScreen(),
