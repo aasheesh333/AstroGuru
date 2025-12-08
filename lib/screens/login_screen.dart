@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   void _verifyPhoneNumber() async {
+    // Verified Firebase implementation with detailed logging
     String phone = _phoneController.text.trim();
     if (phone.isEmpty || phone.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Enter a valid phone number")));
@@ -32,19 +33,23 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
+    debugPrint("Initiating phone verification for: $phone");
 
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: phone,
         verificationCompleted: (PhoneAuthCredential credential) async {
+          debugPrint("Verification completed automatically.");
           // Auto-resolution (Instant verification)
           await _signInWithCredential(credential);
         },
         verificationFailed: (FirebaseAuthException e) {
           setState(() => _isLoading = false);
+          debugPrint("Verification failed: ${e.code} - ${e.message}");
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Verification Failed: ${e.message}")));
         },
         codeSent: (String verificationId, int? resendToken) {
+          debugPrint("Code sent. Verification ID: $verificationId");
           setState(() {
             _verificationId = verificationId;
             _codeSent = true;
@@ -52,11 +57,13 @@ class _LoginScreenState extends State<LoginScreen> {
           });
         },
         codeAutoRetrievalTimeout: (String verificationId) {
+          debugPrint("Auto retrieval timeout. Verification ID: $verificationId");
           _verificationId = verificationId;
         },
       );
     } catch (e) {
       setState(() => _isLoading = false);
+      debugPrint("Exception during verifyPhoneNumber: $e");
       // If Firebase is not initialized (no google-services.json), this will catch
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e. Make sure google-services.json is added.")));
     }
@@ -65,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
     try {
       await FirebaseAuth.instance.signInWithCredential(credential);
+      debugPrint("Sign in successful.");
       // Success
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool("user_logged_in", true);
@@ -74,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
+      debugPrint("Sign in failed: $e");
       if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login Failed: $e")));
       }
@@ -88,6 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
+    debugPrint("Verifying OTP...");
 
     PhoneAuthCredential credential = PhoneAuthProvider.credential(verificationId: _verificationId!, smsCode: otp);
     await _signInWithCredential(credential);

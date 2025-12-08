@@ -2,11 +2,15 @@
 
 # Decode google-services.json from base64 environment variable
 if [ -n "$FIREBASE_JSON_BASE64" ]; then
-    echo "Creating google-services.json..."
+    echo "Creating google-services.json from FIREBASE_JSON_BASE64..."
     echo "$FIREBASE_JSON_BASE64" | base64 -d > android/app/google-services.json
     echo "google-services.json created."
+elif [ -n "$APP_FIREBASE_JSON_BASE64" ]; then
+    echo "Creating google-services.json from APP_FIREBASE_JSON_BASE64..."
+    echo "$APP_FIREBASE_JSON_BASE64" | base64 -d > android/app/google-services.json
+    echo "google-services.json created."
 else
-    echo "FIREBASE_JSON_BASE64 not found, skipping google-services.json creation."
+    echo "FIREBASE_JSON_BASE64 or APP_FIREBASE_JSON_BASE64 not found, skipping google-services.json creation."
 fi
 
 echo "Creating assets/.env file..."
