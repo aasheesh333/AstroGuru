@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'logic/language_provider.dart';
 import 'logic/kundli_service.dart';
 import 'screens/splash_screen.dart';
@@ -63,13 +64,9 @@ class AstroPrernaApp extends StatelessWidget {
              GlobalMaterialLocalizations.delegate,
              GlobalWidgetsLocalizations.delegate,
              GlobalCupertinoLocalizations.delegate,
-             // AppLocalizations.delegate, // Generated delegate
+             AppLocalizations.delegate,
           ],
-          supportedLocales: const [
-            Locale('en'),
-            Locale('hi'),
-            // Add others
-          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           initialRoute: '/',
           routes: {
             '/': (context) => const SplashScreen(),

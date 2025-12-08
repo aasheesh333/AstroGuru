@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../logic/language_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import 'login_screen.dart';
@@ -109,13 +112,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     const SizedBox(height: 32),
                     GradientButton(
-                      text: _currentPage == _slides.length - 1 ? 'Get Started' : 'Next',
+                      text: _currentPage == _slides.length - 1 ? (AppLocalizations.of(context)?.getStarted ?? 'Get Started') : 'Next',
                       onPressed: () {
                         if (_currentPage == _slides.length - 1) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                          );
+                          _showLanguageDialog();
                         } else {
                           _pageController.nextPage(
                             duration: const Duration(milliseconds: 300),
@@ -141,5 +141,39 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 2: return Icons.auto_awesome;
       default: return Icons.star;
     }
+  }
+
+  void _showLanguageDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceColor,
+        title: Text(AppLocalizations.of(context)?.selectLanguage ?? 'Select Language', style: const TextStyle(color: AppColors.primaryGold)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: LanguageProvider.supportedLanguages.length,
+            itemBuilder: (context, index) {
+              final lang = LanguageProvider.supportedLanguages[index];
+              return ListTile(
+                title: Text(lang['name'], style: const TextStyle(color: Colors.white)),
+                subtitle: Text(lang['nativeName'], style: const TextStyle(color: Colors.grey)),
+                onTap: () {
+                  Provider.of<LanguageProvider>(context, listen: false)
+                      .setLocale(Locale(lang['code']));
+                  Navigator.pop(context); // Close dialog
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }
