@@ -69,7 +69,7 @@ jobs:
           if [ -n "$KEY_ALIAS" ]; then
              echo "keyAlias=$KEY_ALIAS" >> android/key.properties
           else
-             echo "keyAlias=upload" >> android/key.properties
+             echo "keyAlias=mykey" >> android/key.properties
           fi
 
           echo "storeFile=../upload-keystore.jks" >> android/key.properties
