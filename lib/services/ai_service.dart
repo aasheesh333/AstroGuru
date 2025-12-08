@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -26,7 +27,7 @@ class AIService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          "model": "llama3-70b-8192",
+          "model": "llama-3.3-70b-versatile",
           "messages": [
             {"role": "system", "content": systemPrompt},
             {"role": "user", "content": userPrompt}
@@ -38,10 +39,13 @@ class AIService {
         final data = jsonDecode(response.body);
         return data['choices'][0]['message']['content'];
       } else {
-        return "Error: AI Service Unavailable (${response.statusCode}) - ${response.body}";
+        // Log error internally if needed, but show friendly message to user
+        debugPrint("AI Service Error: ${response.statusCode} - ${response.body}");
+        return "Service temporarily busy. Please try again.";
       }
     } catch (e) {
-      return "Error: Connection failed ($e)";
+      debugPrint("AI Connection Error: $e");
+      return "Service temporarily busy. Please try again.";
     }
   }
 

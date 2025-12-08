@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/baba_avatar.dart';
@@ -39,21 +40,25 @@ class LoginScreen extends StatelessWidget {
                 const Spacer(),
                 GradientButton(
                   text: 'Continue with Phone Number',
-                  onPressed: () {
+                  onPressed: () async {
                     // Navigate to MainScreen directly (UI Only)
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                    );
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('user_logged_in', true);
+
+                    if (context.mounted) {
+                      Navigator.pushReplacementNamed(context, '/home');
+                    }
                   },
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                    );
+                  onPressed: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('user_logged_in', true);
+
+                    if (context.mounted) {
+                      Navigator.pushReplacementNamed(context, '/home');
+                    }
                   },
                   child: Text(
                     'Skip for Now',

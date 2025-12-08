@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../logic/language_provider.dart';
@@ -160,14 +161,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               return ListTile(
                 title: Text(lang['name'], style: const TextStyle(color: Colors.white)),
                 subtitle: Text(lang['nativeName'], style: const TextStyle(color: Colors.grey)),
-                onTap: () {
+                onTap: () async {
                   Provider.of<LanguageProvider>(context, listen: false)
                       .setLocale(Locale(lang['code']));
                   Navigator.pop(context); // Close dialog
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
+
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('onboarding_seen', true);
+
+                  if (mounted) {
+                    Navigator.pushReplacementNamed(context, '/login');
+                  }
                 },
               );
             },
