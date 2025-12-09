@@ -6,14 +6,29 @@ import '../widgets/gradient_button.dart';
 import 'kundli_result_screen.dart';
 import 'login_screen.dart';
 
-class KundliInputScreen extends StatefulWidget {
+class KundliInputScreen extends StatelessWidget {
   const KundliInputScreen({super.key});
 
   @override
-  State<KundliInputScreen> createState() => _KundliInputScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Generate Kundli'),
+        automaticallyImplyLeading: false,
+      ),
+      body: const KundliInputContent(),
+    );
+  }
 }
 
-class _KundliInputScreenState extends State<KundliInputScreen> {
+class KundliInputContent extends StatefulWidget {
+  const KundliInputContent({super.key});
+
+  @override
+  State<KundliInputContent> createState() => _KundliInputContentState();
+}
+
+class _KundliInputContentState extends State<KundliInputContent> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _nameController = TextEditingController();
@@ -89,54 +104,48 @@ class _KundliInputScreenState extends State<KundliInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Generate Kundli'),
-        automaticallyImplyLeading: false,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter Birth Details',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Accurate details ensure precise predictions.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 32),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter Birth Details',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Accurate details ensure precise predictions.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 32),
 
-              _buildTextField('Full Name', Icons.person_outline, controller: _nameController),
-              const SizedBox(height: 16),
-              _buildTextField(
-                'Date of Birth',
-                Icons.calendar_today_outlined,
-                isDate: true,
-                controller: _dateController
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                'Time of Birth',
-                Icons.access_time_outlined,
-                isTime: true,
-                controller: _timeController
-              ),
-              const SizedBox(height: 16),
-              _buildTextField('Place of Birth', Icons.location_on_outlined, controller: _placeController),
+            _buildTextField('Full Name', Icons.person_outline, controller: _nameController),
+            const SizedBox(height: 16),
+            _buildTextField(
+              'Date of Birth',
+              Icons.calendar_today_outlined,
+              isDate: true,
+              controller: _dateController
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              'Time of Birth',
+              Icons.access_time_outlined,
+              isTime: true,
+              controller: _timeController
+            ),
+            const SizedBox(height: 16),
+            _buildTextField('Place of Birth', Icons.location_on_outlined, controller: _placeController),
 
-              const SizedBox(height: 48),
-              GradientButton(
-                text: 'Generate Kundli',
-                onPressed: _handleGenerate,
-              ),
-            ],
-          ),
+            const SizedBox(height: 48),
+            GradientButton(
+              text: 'Generate Kundli',
+              onPressed: _handleGenerate,
+            ),
+          ],
         ),
       ),
     );

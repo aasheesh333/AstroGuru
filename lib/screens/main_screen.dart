@@ -17,16 +17,42 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const HomeScreen(),
-    const HoroscopeScreen(),
-    const KundliInputScreen(),
-    const ChatScreen(),
-    const ProfileScreen(),
+    const HomeScreen(),        // Now returns content (SingleChildScrollView)
+    const HoroscopeContent(),  // Extracted content
+    const KundliInputContent(),// Extracted content
+    const ChatContent(),       // Extracted content
+    const ProfileContent(),    // Extracted content
   ];
+
+  PreferredSizeWidget? _buildAppBar() {
+    switch (_currentIndex) {
+      case 0:
+        return AppBar(
+          title: const Text("AstroPrerna"),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () => Navigator.pushNamed(context, '/profile'),
+            ),
+          ],
+        );
+      case 1:
+        return AppBar(title: const Text("Horoscope"));
+      case 2:
+        return AppBar(title: const Text("Generate Kundli"));
+      case 3:
+        return AppBar(title: const Text("Ask AI Sage"));
+      case 4:
+        return AppBar(title: const Text("Profile"));
+      default:
+        return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: _buildAppBar(),
       body: _screens[_currentIndex],
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
