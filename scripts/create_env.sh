@@ -20,12 +20,18 @@ echo "" > assets/.env
 echo "Assets env created."
 
 # Create google-services.json
+# We use tr -d '\n' to ensure no newlines break the base64 decoding
 if [ -n "$APP_FIREBASE_JSON_BASE64" ]; then
     echo "Creating google-services.json from APP_FIREBASE_JSON_BASE64..."
-    echo "$APP_FIREBASE_JSON_BASE64" | base64 --decode > android/app/google-services.json
+    echo "$APP_FIREBASE_JSON_BASE64" | tr -d '\n' | base64 --decode > android/app/google-services.json
 elif [ -n "$FIREBASE_JSON_BASE64" ]; then
     echo "Creating google-services.json from FIREBASE_JSON_BASE64..."
-    echo "$FIREBASE_JSON_BASE64" | base64 --decode > android/app/google-services.json
+    echo "$FIREBASE_JSON_BASE64" | tr -d '\n' | base64 --decode > android/app/google-services.json
+elif [ -n "$APP_FIREBASE_ANDROID_ID" ]; then
+    # Fallback: If no JSON, maybe we can construct a minimal one?
+    # But usually it's better to fail or let the user know.
+    echo "Warning: No Firebase JSON base64 found, but APP_FIREBASE_ANDROID_ID is present."
+    echo "Please ensure APP_FIREBASE_JSON_BASE64 is set."
 else
     echo "Warning: No Firebase JSON base64 variable found. google-services.json might be missing."
 fi

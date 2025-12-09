@@ -14,12 +14,20 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
 
-  bool _isLoginMode = true; // Toggle between Login and Sign Up
+  // Auth State
+  bool _codeSent = false;
+  String? _verificationId;
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
 
   FirebaseAuth? get _auth {
     try {
@@ -58,98 +66,113 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _handleAuth() async {
+  void _verifyPhoneNumber() async {
     setState(() => _isLoading = true);
 
-    // Ensure Firebase is ready
     final auth = await _ensureAuthInitialized();
-
     if (auth == null) {
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Cannot connect to Firebase. Please check configuration.")),
-        );
+      return;
+    }
+
+    String phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter phone number")),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // Append +91 if missing
+    if (!phone.startsWith('+')) {
+      if (!phone.startsWith('91')) {
+        phone = "+91$phone";
+      } else {
+        phone = "+$phone";
       }
-      return;
-    }
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    final name = _nameController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter email and password.")),
-      );
-      return;
-    }
-
-    if (!_isLoginMode && name.isEmpty) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter your name.")),
-      );
-      return;
     }
 
     try {
-      UserCredential credential;
-      if (_isLoginMode) {
-        // Log In
-        credential = await auth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-      } else {
-        // Sign Up
-        credential = await auth.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-        // Update Display Name
-        if (credential.user != null) {
-          await credential.user!.updateDisplayName(name);
-          await credential.user!.reload();
-        }
-      }
+      await auth.verifyPhoneNumber(
+        phoneNumber: phone,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto-resolution on Android
+          await auth.signInWithCredential(credential);
+          await _onAuthSuccess(auth.currentUser);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Verification Failed: ${e.message}")),
+          );
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          setState(() {
+            _verificationId = verificationId;
+            _codeSent = true;
+            _isLoading = false;
+          });
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+  }
 
-      // Save Data Locally
-      await _onAuthSuccess(credential.user, name);
+  void _verifyOtp() async {
+    final otp = _otpController.text.trim();
+    if (otp.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter 6-digit OTP")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final auth = await _ensureAuthInitialized();
+
+    try {
+      PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: otp,
+      );
+
+      await auth?.signInWithCredential(credential);
+      await _onAuthSuccess(auth?.currentUser);
 
     } on FirebaseAuthException catch (e) {
-      if (mounted) {
+       setState(() => _isLoading = false);
+       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? "Authentication failed")),
+          SnackBar(content: Text(e.message ?? "Invalid OTP")),
         );
-      }
+       }
     } catch (e) {
+      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e")),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
     }
   }
 
-  Future<void> _onAuthSuccess(User? user, String enteredName) async {
+  Future<void> _onAuthSuccess(User? user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('user_logged_in', true);
     await prefs.setBool('guest_mode', false);
-    await prefs.setString('user_email', user?.email ?? "");
-
-    // For login, we might want to fetch the existing name if not in sign-up mode
-    String userName = enteredName;
-    if (_isLoginMode && user?.displayName != null) {
-      userName = user!.displayName!;
+    await prefs.setString('user_phone', user?.phoneNumber ?? "");
+    // Default name if not set
+    if (prefs.getString('user_name') == null) {
+      await prefs.setString('user_name', "User");
     }
-
-    await prefs.setString('user_name', userName.isNotEmpty ? userName : "User");
 
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/home');
@@ -173,25 +196,30 @@ class _LoginScreenState extends State<LoginScreen> {
                   const BabaAvatar(size: 100),
                   const SizedBox(height: 24),
                   Text(
-                    _isLoginMode ? 'Welcome Back' : 'Create Account',
+                    _codeSent ? 'Enter OTP' : 'Welcome to AstroPrerna',
                     style: Theme.of(context).textTheme.displayMedium,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _isLoginMode ? 'Log in to continue' : 'Sign up to get started',
+                    _codeSent
+                      ? 'We sent a code to ${_phoneController.text}'
+                      : 'Log in with your phone number',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 32),
 
-                  // Name Field (Sign Up Only)
-                  if (!_isLoginMode) ...[
+                  if (!_codeSent) ...[
+                    // Phone Number Input
                     TextField(
-                      controller: _nameController,
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        labelText: 'Full Name',
+                        labelText: 'Phone Number',
+                        hintText: '+91 9876543210',
+                        hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
                         labelStyle: const TextStyle(color: AppColors.textSecondary),
-                        prefixIcon: const Icon(Icons.person, color: AppColors.primaryGold),
+                        prefixIcon: const Icon(Icons.phone, color: AppColors.primaryGold),
                         enabledBorder: OutlineInputBorder(
                           borderSide: const BorderSide(color: AppColors.textSecondary),
                           borderRadius: BorderRadius.circular(12),
@@ -202,85 +230,66 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                  ] else ...[
+                    // OTP Input
+                     TextField(
+                      controller: _otpController,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      maxLength: 6,
+                      decoration: InputDecoration(
+                        labelText: 'OTP',
+                        counterText: "",
+                        labelStyle: const TextStyle(color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.lock_clock, color: AppColors.primaryGold),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: const BorderSide(color: AppColors.textSecondary),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: const BorderSide(color: AppColors.primaryGold),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ],
 
-                  // Email Field
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      labelStyle: const TextStyle(color: AppColors.textSecondary),
-                      prefixIcon: const Icon(Icons.email, color: AppColors.primaryGold),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: AppColors.textSecondary),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: AppColors.primaryGold),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password Field
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      labelStyle: const TextStyle(color: AppColors.textSecondary),
-                      prefixIcon: const Icon(Icons.lock, color: AppColors.primaryGold),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: AppColors.textSecondary),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: AppColors.primaryGold),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 32),
 
                   // Action Button
                   GradientButton(
-                    text: _isLoginMode ? 'Log In' : 'Sign Up',
+                    text: _codeSent ? 'Verify OTP' : 'Get OTP',
                     isLoading: _isLoading,
-                    onPressed: _handleAuth,
+                    onPressed: _codeSent ? _verifyOtp : _verifyPhoneNumber,
                   ),
 
                   const SizedBox(height: 16),
 
-                  // Toggle Mode Button
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _isLoginMode = !_isLoginMode;
-                      });
-                    },
-                    child: Text(
-                      _isLoginMode
-                          ? "Don't have an account? Sign Up"
-                          : "Already have an account? Log In",
-                      style: const TextStyle(color: AppColors.primaryGold),
+                  if (_codeSent)
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _codeSent = false;
+                          _otpController.clear();
+                        });
+                      },
+                      child: const Text(
+                        "Change Phone Number",
+                        style: TextStyle(color: AppColors.primaryGold),
+                      ),
                     ),
-                  ),
 
                   const SizedBox(height: 8),
 
                   // Skip Button
-                  TextButton(
-                    onPressed: _skipLogin,
-                    child: const Text(
-                      'Skip for Now',
-                      style: TextStyle(color: AppColors.textSecondary),
+                  if (!_codeSent)
+                    TextButton(
+                      onPressed: _skipLogin,
+                      child: const Text(
+                        'Skip for Now',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

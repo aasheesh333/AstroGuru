@@ -30,15 +30,18 @@ class _SplashScreenState extends State<SplashScreen> {
       final prefs = await SharedPreferences.getInstance();
       final bool onboardingSeen = prefs.getBool('onboarding_seen') ?? false;
       final bool userLoggedIn = prefs.getBool('user_logged_in') ?? false;
+      final bool guestMode = prefs.getBool('guest_mode') ?? false;
 
       if (!mounted) return;
 
       if (!onboardingSeen) {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OnboardingScreen()));
-      } else if (!userLoggedIn) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      } else if (userLoggedIn || guestMode) {
+        // If logged in OR guest mode, go to Home
+        Navigator.pushReplacementNamed(context, '/home');
       } else {
-        Navigator.pushReplacementNamed(context, '/home'); // Navigate to MainScreen via route
+        // Seen onboarding but not logged in/guest -> Login
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
       }
     } catch (e) {
       debugPrint("Error in SplashScreen: $e");
