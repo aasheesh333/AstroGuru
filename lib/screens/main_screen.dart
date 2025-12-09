@@ -25,35 +25,60 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   PreferredSizeWidget? _buildAppBar() {
+    Widget? titleWidget;
+    List<Widget>? actions;
+
     switch (_currentIndex) {
       case 0:
-        return AppBar(
-          title: const Text("AstroPrerna"),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.person),
-              onPressed: () => Navigator.pushNamed(context, '/profile'),
-            ),
-          ],
-        );
+        titleWidget = const Text("AstroPrerna");
+        actions = [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
+          ),
+        ];
+        break;
       case 1:
-        return AppBar(title: const Text("Horoscope"));
+        titleWidget = const Text("Horoscope");
+        break;
       case 2:
-        return AppBar(title: const Text("Generate Kundli"));
+        titleWidget = const Text("Generate Kundli");
+        break;
       case 3:
-        return AppBar(title: const Text("Ask AI Sage"));
+        titleWidget = const Text("Ask AI Sage");
+        break;
       case 4:
-        return AppBar(title: const Text("Profile"));
+        titleWidget = const Text("Profile");
+        break;
       default:
         return null;
     }
+
+    return AppBar(
+      title: titleWidget,
+      actions: actions,
+      backgroundColor: Colors.transparent, // Make transparent to show flexibleSpace gradient
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          gradient: AppColors.mainGradient,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-      body: _screens[_currentIndex],
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: AppColors.mainGradient,
+        ),
+        child: _screens[_currentIndex],
+      ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.surfaceColor, width: 1)),

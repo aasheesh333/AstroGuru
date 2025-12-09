@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../widgets/baba_avatar.dart';
+import '../widgets/gradient_button.dart';
+import '../theme/app_colors.dart';
 import 'login_screen.dart';
 
 // HomeScreen is now just the content widget (no Scaffold)
@@ -97,18 +99,30 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const SizedBox(height: 20),
           const BabaAvatar(size: 100),
+          const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Card(
-              color: const Color(0xFF0E1016),
+              color: AppColors.surfaceColor.withOpacity(0.9),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(20.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Daily Horoscope", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 20, fontWeight: FontWeight.bold)),
+                    Row(
+                      children: const [
+                        Icon(Icons.auto_awesome, color: AppColors.primaryGold),
+                        SizedBox(width: 10),
+                        Text("Daily Horoscope", style: TextStyle(color: AppColors.primaryGold, fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const Divider(color: AppColors.textSecondary),
                     const SizedBox(height: 10),
-                    Text(horoscope, style: const TextStyle(color: Colors.white)),
+                    Text(
+                      horoscope,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
+                    ),
                   ],
                 ),
               ),
@@ -116,22 +130,21 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Wrap(
-              spacing: 20,
-              runSpacing: 10,
-              alignment: WrapAlignment.center,
+            child: Column(
               children: [
-                ElevatedButton(
+                GradientButton(
+                  text: "Generate Kundli",
                   onPressed: () => _checkAccess('/kundli'),
-                  child: const Text("Generate Kundli"),
                 ),
-                ElevatedButton(
+                const SizedBox(height: 16),
+                GradientButton(
+                  text: "Ask AI Sage",
                   onPressed: () => _checkAccess('/chat'),
-                  child: const Text("Ask AI Sage"),
                 ),
               ],
             ),
-          )
+          ),
+          const SizedBox(height: 40),
         ],
       ),
     );

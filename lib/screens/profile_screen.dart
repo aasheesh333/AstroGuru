@@ -5,7 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../logic/language_provider.dart';
 import 'login_screen.dart';
+import '../widgets/gradient_button.dart';
+import '../theme/app_colors.dart';
 
+// ProfileScreen wrapper (not used by MainScreen but kept for completeness or direct nav)
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -98,61 +101,159 @@ class _ProfileContentState extends State<ProfileContent> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        ListTile(
-          leading: const CircleAvatar(child: Icon(Icons.person)),
-          title: Text(userName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          subtitle: isGuest ? null : Text(userPhone),
-        ),
-        const Divider(),
-        ListTile(
-          leading: const Icon(Icons.edit),
-          title: const Text("Edit Profile"),
-          onTap: isGuest ? _showLoginDialog : () {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Edit Profile logic not implemented yet.")));
-          },
-        ),
-        const Divider(),
-        const ListTile(title: Text("Language Settings")),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Consumer<LanguageProvider>(
-            builder: (context, provider, child) {
-              return DropdownButton<Locale>(
-                value: provider.locale,
-                isExpanded: true,
-                dropdownColor: const Color(0xFF0E1016),
-                items: const [
-                  DropdownMenuItem(value: Locale('en'), child: Text("English")),
-                  DropdownMenuItem(value: Locale('hi'), child: Text("Hindi")),
-                  DropdownMenuItem(value: Locale('bn'), child: Text("Bengali")),
-                  DropdownMenuItem(value: Locale('mr'), child: Text("Marathi")),
-                  DropdownMenuItem(value: Locale('ta'), child: Text("Tamil")),
-                  DropdownMenuItem(value: Locale('te'), child: Text("Telugu")),
-                  DropdownMenuItem(value: Locale('gu'), child: Text("Gujarati")),
-                  DropdownMenuItem(value: Locale('pa'), child: Text("Punjabi")),
-                  DropdownMenuItem(value: Locale('kn'), child: Text("Kannada")),
-                  DropdownMenuItem(value: Locale('ml'), child: Text("Malayalam")),
-                  DropdownMenuItem(value: Locale('or'), child: Text("Odia")),
-                  DropdownMenuItem(value: Locale('as'), child: Text("Assamese")),
-                  DropdownMenuItem(value: Locale('ur'), child: Text("Urdu")),
-                ],
-                onChanged: (val) {
-                  if (val != null) provider.setLocale(val);
-                },
-              );
-            },
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header Section
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+            decoration: const BoxDecoration(
+              // The main gradient is already on the background, but we can darken this top area slightly
+              // or let it be transparent.
+              // Original UI seemed to have a distinct header card or just centralized content.
+              // Let's keep it clean but centered.
+              color: Colors.transparent,
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.surfaceColor,
+                    border: Border.all(color: AppColors.primaryGold, width: 2),
+                  ),
+                  child: const Icon(Icons.person, size: 50, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  userName,
+                  style: Theme.of(context).textTheme.displayMedium,
+                ),
+                if (!isGuest && userPhone.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      userPhone,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
+                    ),
+                  ),
+              ],
+            ),
           ),
+
+          // Options List
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceColor.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                _buildProfileItem(
+                  icon: Icons.edit,
+                  title: "Edit Profile",
+                  onTap: isGuest ? _showLoginDialog : () {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Edit Profile logic not implemented yet.")));
+                  },
+                ),
+                const Divider(color: AppColors.scaffoldBackgroundColor),
+                _buildProfileItem(
+                  icon: Icons.language,
+                  title: "Language Settings",
+                  trailing: SizedBox(
+                    width: 120,
+                    child: Consumer<LanguageProvider>(
+                      builder: (context, provider, child) {
+                        return DropdownButtonHideUnderline(
+                          child: DropdownButton<Locale>(
+                            value: provider.locale,
+                            isExpanded: true,
+                            dropdownColor: AppColors.surfaceColor,
+                            icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryGold),
+                            style: const TextStyle(color: AppColors.textPrimary),
+                            items: const [
+                              DropdownMenuItem(value: Locale('en'), child: Text("English")),
+                              DropdownMenuItem(value: Locale('hi'), child: Text("Hindi")),
+                              DropdownMenuItem(value: Locale('bn'), child: Text("Bengali")),
+                              DropdownMenuItem(value: Locale('mr'), child: Text("Marathi")),
+                              DropdownMenuItem(value: Locale('ta'), child: Text("Tamil")),
+                              DropdownMenuItem(value: Locale('te'), child: Text("Telugu")),
+                              DropdownMenuItem(value: Locale('gu'), child: Text("Gujarati")),
+                              DropdownMenuItem(value: Locale('pa'), child: Text("Punjabi")),
+                              DropdownMenuItem(value: Locale('kn'), child: Text("Kannada")),
+                              DropdownMenuItem(value: Locale('ml'), child: Text("Malayalam")),
+                              DropdownMenuItem(value: Locale('or'), child: Text("Odia")),
+                              DropdownMenuItem(value: Locale('as'), child: Text("Assamese")),
+                              DropdownMenuItem(value: Locale('ur'), child: Text("Urdu")),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) provider.setLocale(val);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const Divider(color: AppColors.scaffoldBackgroundColor),
+                _buildProfileItem(
+                  icon: Icons.star_rate_rounded,
+                  title: "Rate App",
+                  onTap: () {},
+                ),
+                const Divider(color: AppColors.scaffoldBackgroundColor),
+                _buildProfileItem(
+                  icon: Icons.privacy_tip_outlined,
+                  title: "Privacy Policy",
+                  onTap: () {},
+                ),
+                const Divider(color: AppColors.scaffoldBackgroundColor),
+                _buildProfileItem(
+                  icon: Icons.headset_mic_outlined,
+                  title: "Help & Support",
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: GradientButton(
+              text: isGuest ? "Log in to unlock full features" : "Log Out",
+              onPressed: _handleLogout,
+            ),
+          ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileItem({
+    required IconData icon,
+    required String title,
+    VoidCallback? onTap,
+    Widget? trailing,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.scaffoldBackgroundColor,
+          borderRadius: BorderRadius.circular(8),
         ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          onPressed: _handleLogout,
-          child: Text(isGuest ? "Log in to unlock full features" : "Logout"),
-        ),
-      ],
+        child: Icon(icon, color: AppColors.primaryGold, size: 20),
+      ),
+      title: Text(title, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
+      trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
+      onTap: onTap,
     );
   }
 }
