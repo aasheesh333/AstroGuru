@@ -90,7 +90,7 @@ class _ProfileContentState extends State<ProfileContent> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF0E1016),
         title: const Text("Login Required", style: TextStyle(color: Color(0xFFD4AF37))),
-        content: const Text("Please log in with phone number to unlock this feature.", style: TextStyle(color: Colors.white)),
+        content: const Text("Please log in to unlock this feature.", style: TextStyle(color: Colors.white)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(

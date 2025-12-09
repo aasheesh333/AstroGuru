@@ -43,7 +43,7 @@ class AIService {
   }
 
   static Future<String> getDailyHoroscope(String sign, DateTime date, String language) async {
-    String system = "You are an expert Vedic Astrologer. Output language: $language. Return ONLY a JSON object with the following keys: 'summary' (2 sentences), 'love' (short forecast), 'career' (short forecast), 'health' (short forecast), 'lucky_number', 'lucky_color'. Ensure the JSON is valid.";
+    String system = "You are an expert Vedic Astrologer. Output language: $language. Return ONLY a JSON object with the following keys: 'summary' (2 sentences), 'love' (forecast), 'career' (forecast), 'health' (forecast), 'lucky_number', 'lucky_color'. Ensure the JSON is valid.";
     String user = "Generate a daily horoscope for $sign for ${date.toIso8601String()}.";
     return await getResponse(system, user, jsonMode: true);
   }
