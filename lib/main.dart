@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'dart:developer' as developer;
 
 import 'logic/language_provider.dart';
 import 'logic/kundli_service.dart';
@@ -18,23 +19,43 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load Env
-  await dotenv.load(fileName: "assets/.env");
+  try {
+    await dotenv.load(fileName: "assets/.env");
+  } catch (e) {
+    developer.log("Error loading .env file: $e");
+  }
 
   // Initialize Firebase
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    developer.log("Error initializing Firebase: $e");
+  }
 
   // Initialize Services
-  await KundliService.initialize();
+  try {
+    await KundliService.initialize();
+  } catch (e) {
+    developer.log("Error initializing KundliService: $e");
+  }
 
   // AdMob
-  MobileAds.instance.initialize();
+  try {
+    MobileAds.instance.initialize();
+  } catch (e) {
+    developer.log("Error initializing AdMob: $e");
+  }
 
   // OneSignal
-  String oneSignalAppId = dotenv.env['APP_ONESIGNAL_APP_ID'] ?? '';
-  if (oneSignalAppId.isNotEmpty) {
-    OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-    OneSignal.initialize(oneSignalAppId);
-    OneSignal.Notifications.requestPermission(true);
+  try {
+    String oneSignalAppId = dotenv.env['APP_ONESIGNAL_APP_ID'] ?? '';
+    if (oneSignalAppId.isNotEmpty) {
+      OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+      OneSignal.initialize(oneSignalAppId);
+      OneSignal.Notifications.requestPermission(true);
+    }
+  } catch (e) {
+    developer.log("Error initializing OneSignal: $e");
   }
 
   runApp(

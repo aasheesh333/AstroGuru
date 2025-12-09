@@ -4,6 +4,9 @@ set -e
 # Create assets/.env
 mkdir -p assets
 echo "Creating assets/.env..."
+# Clear the file first to avoid duplication
+echo "" > assets/.env
+
 # Only add keys if they are set in the environment
 [ -n "$APP_GROQ_API_KEY" ] && echo "APP_GROQ_API_KEY=$APP_GROQ_API_KEY" >> assets/.env
 [ -n "$GROQ_API_KEY" ] && echo "APP_GROQ_API_KEY=$GROQ_API_KEY" >> assets/.env # Mapping for CI
