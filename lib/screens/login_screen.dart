@@ -5,7 +5,7 @@ import 'package:firebase_core/firebase_core.dart'; // Import needed for Firebase
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/baba_avatar.dart';
-import 'home_screen.dart';
+import 'main_screen.dart'; // Import MainScreen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,7 +16,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   // Removed field initialization to prevent crash if Firebase isn't initialized
-  // final FirebaseAuth _auth = FirebaseAuth.instance;
 
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
@@ -37,10 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await prefs.setBool('user_logged_in', false);
     await prefs.setBool('guest_mode', true);
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      Navigator.pushReplacementNamed(context, '/home'); // Navigate to MainScreen
     }
   }
 
@@ -202,10 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await prefs.setString('user_name', "User"); // Default name
 
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      Navigator.pushReplacementNamed(context, '/home'); // Navigate to MainScreen
     }
   }
 

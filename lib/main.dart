@@ -11,9 +11,10 @@ import 'logic/language_provider.dart';
 import 'logic/kundli_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/kundli_screen.dart';
+import 'screens/kundli_input_screen.dart'; // Import Input Screen
 import 'screens/chat_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -98,8 +99,8 @@ class AstroPrernaApp extends StatelessWidget {
           initialRoute: '/',
           routes: {
             '/': (context) => const SplashScreen(),
-            '/home': (context) => const HomeScreen(),
-            '/kundli': (context) => const KundliScreen(),
+            '/home': (context) => const MainScreen(),
+            '/kundli': (context) => const KundliInputScreen(), // Changed to Input Screen
             '/chat': (context) => const ChatScreen(),
             '/profile': (context) => const ProfileScreen(),
           },
