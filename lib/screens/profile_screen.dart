@@ -30,7 +30,7 @@ class ProfileContent extends StatefulWidget {
 
 class _ProfileContentState extends State<ProfileContent> {
   String userName = "Loading...";
-  String userPhone = "";
+  String userIdentifier = ""; // Phone or Email
   bool isGuest = false;
 
   @override
@@ -46,10 +46,13 @@ class _ProfileContentState extends State<ProfileContent> {
       isGuest = prefs.getBool('guest_mode') ?? false;
       if (isGuest) {
         userName = "Guest User";
-        userPhone = "";
+        userIdentifier = "";
       } else {
         userName = prefs.getString('user_name') ?? "User";
-        userPhone = prefs.getString('user_phone') ?? "";
+        // Prefer email, fallback to phone
+        String email = prefs.getString('user_email') ?? "";
+        String phone = prefs.getString('user_phone') ?? "";
+        userIdentifier = email.isNotEmpty ? email : phone;
       }
     });
   }
@@ -61,6 +64,7 @@ class _ProfileContentState extends State<ProfileContent> {
     await prefs.setBool('user_logged_in', false);
     await prefs.setBool('guest_mode', false);
     await prefs.remove('user_phone');
+    await prefs.remove('user_email');
     await prefs.remove('user_name');
 
     try {
@@ -129,11 +133,11 @@ class _ProfileContentState extends State<ProfileContent> {
                   userName,
                   style: Theme.of(context).textTheme.displayMedium,
                 ),
-                if (!isGuest && userPhone.isNotEmpty)
+                if (!isGuest && userIdentifier.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      userPhone,
+                      userIdentifier,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
                     ),
                   ),
