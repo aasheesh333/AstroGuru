@@ -29,18 +29,31 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
+    - name: Create Environment Files
+      env:
+        FIREBASE_JSON_BASE64: ${{ secrets.FIREBASE_JSON_BASE64 }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        APP_ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+        APP_ONESIGNAL_API_KEY: ${{ secrets.ONESIGNAL_API_KEY }}
+        ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
+        ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
+        ADMOB_REWARDED_ID: ${{ secrets.ADMOB_REWARDED_ID }}
+      run: |
+        chmod +x scripts/create_env.sh
+        bash scripts/create_env.sh
+
     - name: Configure Keystore
       # The keystore is committed to the repo, so we just need to ensure key.properties is set up correctly.
       # Prioritize secrets if they exist, otherwise rely on the committed files.
       env:
-        ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: |
-        if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+        if [ -n "$KEYSTORE_BASE64" ]; then
           echo "Decoding keystore from secrets..."
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
         else
           echo "Using committed keystore (if present)..."
         fi
@@ -49,7 +62,12 @@ jobs:
           echo "Creating key.properties from secrets..."
           echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
           echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
-          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+          # Default to key0 if alias is missing
+          if [ -n "$KEY_ALIAS" ]; then
+            echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+          else
+            echo "keyAlias=mykey" >> android/key.properties
+          fi
           echo "storeFile=../upload-keystore.jks" >> android/key.properties
         else
           echo "Using committed key.properties (if present)..."
@@ -66,10 +84,10 @@ jobs:
         fi
 
     - name: Build APK
-      run: flutter build apk --release
+      run: flutter build apk --release -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }}
 
     - name: Build App Bundle
-      run: flutter build appbundle --release
+      run: flutter build appbundle --release -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }}
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
