@@ -1,11 +1,166 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/baba_avatar.dart';
-import 'main_screen.dart';
+import 'home_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
+  String? _verificationId;
+
+  void _skipLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('user_logged_in', false);
+    await prefs.setBool('guest_mode', true);
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
+  }
+
+  void _startPhoneAuth() async {
+    // Show phone number input dialog first
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0E1016),
+        title: const Text("Enter Phone Number", style: TextStyle(color: Color(0xFFD4AF37))),
+        content: TextField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            hintText: "+91...",
+            hintStyle: TextStyle(color: Colors.grey),
+          ),
+          style: const TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _verifyPhoneNumber(_phoneController.text.trim());
+            },
+            child: const Text("Send OTP"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _verifyPhoneNumber(String phoneNumber) async {
+    if (phoneNumber.isEmpty) return;
+    if (!phoneNumber.startsWith('+')) {
+      phoneNumber = "+91$phoneNumber"; // Default to India if no code
+    }
+
+    try {
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await _auth.signInWithCredential(credential);
+          _onLoginSuccess(phoneNumber);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Verification Failed: ${e.message}")),
+          );
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          setState(() {
+            _verificationId = verificationId;
+          });
+          _showOtpDialog(phoneNumber);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+  }
+
+  void _showOtpDialog(String phoneNumber) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0E1016),
+        title: const Text("Enter OTP", style: TextStyle(color: Color(0xFFD4AF37))),
+        content: TextField(
+          controller: _otpController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: "######",
+            hintStyle: TextStyle(color: Colors.grey),
+          ),
+          style: const TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _signInWithOTP(phoneNumber);
+            },
+            child: const Text("Verify"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _signInWithOTP(String phoneNumber) async {
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: _otpController.text.trim(),
+      );
+      await _auth.signInWithCredential(credential);
+      _onLoginSuccess(phoneNumber);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Invalid OTP: $e")),
+      );
+    }
+  }
+
+  void _onLoginSuccess(String phoneNumber) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('user_logged_in', true);
+    await prefs.setBool('guest_mode', false);
+    await prefs.setString('user_phone', phoneNumber);
+    await prefs.setString('user_name', "User"); // Default name
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,22 +194,11 @@ class LoginScreen extends StatelessWidget {
                 const Spacer(),
                 GradientButton(
                   text: 'Continue with Phone Number',
-                  onPressed: () {
-                    // Navigate to MainScreen directly (UI Only)
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                    );
-                  },
+                  onPressed: _startPhoneAuth,
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MainScreen()),
-                    );
-                  },
+                  onPressed: _skipLogin,
                   child: Text(
                     'Skip for Now',
                     style: TextStyle(

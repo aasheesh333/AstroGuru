@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../logic/language_provider.dart';
-// import '../l10n/app_localizations.dart'; // Removed to fix build error
+import 'package:shared_preferences/shared_preferences.dart';
+import 'onboarding_screen.dart';
+import 'login_screen.dart';
+import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,11 +21,19 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _checkLanguage() async {
     await Future.delayed(const Duration(seconds: 2));
-    // Check if language is set in provider (loaded from prefs)
-    // If loaded, go to Home. Else show Language Selection.
-    // Since provider loads async, we might need to check state.
-    if (mounted) {
-       Navigator.pushReplacementNamed(context, '/home'); // Simplified navigation
+
+    final prefs = await SharedPreferences.getInstance();
+    final bool onboardingSeen = prefs.getBool('onboarding_seen') ?? false;
+    final bool userLoggedIn = prefs.getBool('user_logged_in') ?? false;
+
+    if (!mounted) return;
+
+    if (!onboardingSeen) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OnboardingScreen()));
+    } else if (!userLoggedIn) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+    } else {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
     }
   }
 

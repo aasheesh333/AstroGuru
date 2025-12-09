@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import 'login_screen.dart';
@@ -110,12 +111,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     const SizedBox(height: 32),
                     GradientButton(
                       text: _currentPage == _slides.length - 1 ? 'Get Started' : 'Next',
-                      onPressed: () {
+                      onPressed: () async {
                         if (_currentPage == _slides.length - 1) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                          );
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setBool('onboarding_seen', true);
+                          if (mounted) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            );
+                          }
                         } else {
                           _pageController.nextPage(
                             duration: const Duration(milliseconds: 300),

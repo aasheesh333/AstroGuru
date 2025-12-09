@@ -6,7 +6,8 @@ class AIService {
   static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
   static Future<String> getResponse(String systemPrompt, String userPrompt) async {
-    final String apiKey = dotenv.env['APP_GROQ_API_KEY'] ?? '';
+    // Check both local and CI keys
+    final String apiKey = dotenv.env['APP_GROQ_API_KEY'] ?? dotenv.env['GROQ_API_KEY'] ?? '';
 
     if (apiKey.isEmpty) {
       return "Error: AI API Key not configured.";
@@ -20,7 +21,7 @@ class AIService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'model': 'llama3-70b-8192', // Recommended model
+          'model': 'llama-3.3-70b-versatile',
           'messages': [
             {'role': 'system', 'content': systemPrompt},
             {'role': 'user', 'content': userPrompt}
@@ -33,10 +34,10 @@ class AIService {
         final data = jsonDecode(response.body);
         return data['choices'][0]['message']['content'];
       } else {
-        return "Error: AI Service Unavailable (${response.statusCode})";
+        return "Service is temporarily unavailable. Please try again.";
       }
     } catch (e) {
-      return "Error: Connection failed ($e)";
+      return "Service is temporarily unavailable. Please try again.";
     }
   }
 

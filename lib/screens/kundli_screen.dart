@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../logic/kundli_service.dart';
+import '../logic/remedy_service.dart';
+import '../logic/language_provider.dart';
 
 class KundliScreen extends StatefulWidget {
   const KundliScreen({super.key});
@@ -12,16 +15,34 @@ class _KundliScreenState extends State<KundliScreen> {
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay.now();
   Map<String, dynamic>? chartData;
+  String remedies = "";
+  bool isLoading = false;
 
-  void _calculate() {
+  void _calculate() async {
+    setState(() => isLoading = true);
+
     final DateTime dt = DateTime(
       selectedDate.year, selectedDate.month, selectedDate.day,
       selectedTime.hour, selectedTime.minute,
     );
+
     // Hardcoded Lat/Lon for New Delhi for MVP
-    setState(() {
-      chartData = KundliService.calculateChart(dt, 28.6139, 77.2090);
-    });
+    final data = KundliService.calculateChart(dt, 28.6139, 77.2090);
+
+    final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final rem = await RemedyService.getRemedies(
+      List<String>.from(data['doshas']),
+      data['summary'],
+      lang
+    );
+
+    if (mounted) {
+      setState(() {
+        chartData = data;
+        remedies = rem;
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -44,7 +65,7 @@ class _KundliScreenState extends State<KundliScreen> {
               if (t != null) setState(() => selectedTime = t);
             },
           ),
-          ElevatedButton(onPressed: _calculate, child: const Text("Generate Kundli")),
+          ElevatedButton(onPressed: isLoading ? null : _calculate, child: isLoading ? const CircularProgressIndicator() : const Text("Generate Kundli")),
           if (chartData != null) ...[
             Expanded(
               child: ListView(
@@ -53,6 +74,15 @@ class _KundliScreenState extends State<KundliScreen> {
                   ...(chartData!['planets'] as List).map((p) => ListTile(
                     title: Text("${p['name']}: ${p['rashi']} (${p['degree'].toStringAsFixed(2)}°) ${p['isRetrograde'] ? '(R)' : ''}"),
                   )).toList(),
+                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text("Remedies & Analysis", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(remedies),
+                  ),
                 ],
               ),
             )
