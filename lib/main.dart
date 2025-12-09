@@ -6,6 +6,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'logic/language_provider.dart';
 import 'logic/kundli_service.dart';
@@ -28,7 +29,19 @@ void main() async {
 
   // Initialize Firebase
   try {
-    await Firebase.initializeApp();
+    if (Platform.isAndroid) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'AIzaSyBwE74YsLUWHPW7VqXceFgAUtiACYG6rXw',
+          appId: '1:10129614422:android:14fe96393d410dd465fdf7',
+          messagingSenderId: '10129614422',
+          projectId: 'astroprerna-7ee7c',
+          storageBucket: 'astroprerna-7ee7c.firebasestorage.app',
+        ),
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
   } catch (e) {
     developer.log("Error initializing Firebase: $e");
   }

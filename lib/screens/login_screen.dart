@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -52,7 +53,19 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_auth != null) return _auth;
 
     try {
-      await Firebase.initializeApp();
+      if (Platform.isAndroid) {
+        await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: 'AIzaSyBwE74YsLUWHPW7VqXceFgAUtiACYG6rXw',
+            appId: '1:10129614422:android:14fe96393d410dd465fdf7',
+            messagingSenderId: '10129614422',
+            projectId: 'astroprerna-7ee7c',
+            storageBucket: 'astroprerna-7ee7c.firebasestorage.app',
+          ),
+        );
+      } else {
+        await Firebase.initializeApp();
+      }
       return FirebaseAuth.instance;
     } catch (e) {
       if (mounted) {
