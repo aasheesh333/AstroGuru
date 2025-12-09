@@ -17,24 +17,33 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const HomeScreen(),        // Now returns content (SingleChildScrollView)
-    const HoroscopeContent(),  // Extracted content
-    const KundliInputContent(),// Extracted content
-    const ChatContent(),       // Extracted content
-    const ProfileContent(),    // Extracted content
+    const HomeScreen(),
+    const HoroscopeContent(),
+    const KundliInputContent(),
+    const ChatContent(),
+    const ProfileContent(),
   ];
 
   PreferredSizeWidget? _buildAppBar() {
     Widget? titleWidget;
     List<Widget>? actions;
+    bool centerTitle = false;
 
     switch (_currentIndex) {
-      case 0:
-        titleWidget = const Text("AstroPrerna");
+      case 0: // Home
+        titleWidget = const Text(
+          "AstroPrerna",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)
+        );
+        centerTitle = true;
         actions = [
           IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () => Navigator.pushNamed(context, '/profile'),
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("No new notifications")),
+              );
+            },
           ),
         ];
         break;
@@ -56,8 +65,9 @@ class _MainScreenState extends State<MainScreen> {
 
     return AppBar(
       title: titleWidget,
+      centerTitle: centerTitle,
       actions: actions,
-      backgroundColor: Colors.transparent, // Make transparent to show flexibleSpace gradient
+      backgroundColor: Colors.transparent,
       elevation: 0,
       flexibleSpace: Container(
         decoration: const BoxDecoration(
@@ -86,30 +96,29 @@ class _MainScreenState extends State<MainScreen> {
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
+          type: BottomNavigationBarType.fixed, // Ensure items don't shift
+          backgroundColor: const Color(0xFF05060A), // Match scaffold background or surface
+          selectedItemColor: AppColors.primaryGold,
+          unselectedItemColor: Colors.grey,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
+              icon: Icon(Icons.home_filled),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.star_outline),
-              activeIcon: Icon(Icons.star),
+              icon: Icon(Icons.star),
               label: 'Horoscope',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.auto_awesome_outlined),
-              activeIcon: Icon(Icons.auto_awesome),
+              icon: Icon(Icons.auto_awesome),
               label: 'Kundli',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble),
+              icon: Icon(Icons.chat_bubble),
               label: 'Chat',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              icon: Icon(Icons.person),
               label: 'Profile',
             ),
           ],
