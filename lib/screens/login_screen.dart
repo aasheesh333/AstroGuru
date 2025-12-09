@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart'; // Import needed for Firebase.apps check
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/baba_avatar.dart';
@@ -14,10 +15,22 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // Removed field initialization to prevent crash if Firebase isn't initialized
+  // final FirebaseAuth _auth = FirebaseAuth.instance;
+
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   String? _verificationId;
+
+  // Helper to safely access FirebaseAuth
+  FirebaseAuth? get _auth {
+    try {
+      if (Firebase.apps.isEmpty) return null;
+      return FirebaseAuth.instance;
+    } catch (e) {
+      return null;
+    }
+  }
 
   void _skipLogin() async {
     final prefs = await SharedPreferences.getInstance();
@@ -32,7 +45,29 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _startPhoneAuth() async {
-    // Show phone number input dialog first
+    // Check if Firebase is ready before showing dialog
+    if (_auth == null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF0E1016),
+          title: const Text("Configuration Error", style: TextStyle(color: Color(0xFFD4AF37))),
+          content: const Text(
+            "Firebase is not initialized. Phone login is disabled in this environment. Please use 'Skip for Now'.",
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Show phone number input dialog
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -65,22 +100,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _verifyPhoneNumber(String phoneNumber) async {
+    final auth = _auth;
+    if (auth == null) return; // Should have been caught by _startPhoneAuth
+
     if (phoneNumber.isEmpty) return;
     if (!phoneNumber.startsWith('+')) {
       phoneNumber = "+91$phoneNumber"; // Default to India if no code
     }
 
     try {
-      await _auth.verifyPhoneNumber(
+      await auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          await _auth.signInWithCredential(credential);
+          await auth.signInWithCredential(credential);
           _onLoginSuccess(phoneNumber);
         },
         verificationFailed: (FirebaseAuthException e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Verification Failed: ${e.message}")),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Verification Failed: ${e.message}")),
+            );
+          }
         },
         codeSent: (String verificationId, int? resendToken) {
           setState(() {
@@ -93,9 +133,11 @@ class _LoginScreenState extends State<LoginScreen> {
         },
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
     }
   }
 
@@ -133,17 +175,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _signInWithOTP(String phoneNumber) async {
+    final auth = _auth;
+    if (auth == null) return;
+
     try {
       final credential = PhoneAuthProvider.credential(
         verificationId: _verificationId!,
         smsCode: _otpController.text.trim(),
       );
-      await _auth.signInWithCredential(credential);
+      await auth.signInWithCredential(credential);
       _onLoginSuccess(phoneNumber);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Invalid OTP: $e")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Invalid OTP: $e")),
+        );
+      }
     }
   }
 

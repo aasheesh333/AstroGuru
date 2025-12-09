@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../logic/language_provider.dart';
 import 'login_screen.dart';
 
@@ -39,9 +40,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _handleLogout() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Clear Session
     await prefs.setBool('user_logged_in', false);
     await prefs.setBool('guest_mode', false);
-    await FirebaseAuth.instance.signOut();
+    // Optional: Clear other user data
+    // await prefs.remove('user_phone');
+    // await prefs.remove('user_name');
+
+    // Sign out from Firebase if apps initialized
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        await FirebaseAuth.instance.signOut();
+      }
+    } catch (e) {
+      // Ignore errors during sign out
+    }
 
     if (mounted) {
       Navigator.pushAndRemoveUntil(
@@ -91,6 +105,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: const Text("Edit Profile"),
             onTap: isGuest ? _showLoginDialog : () {
               // Edit logic would go here
+              // For MVP, we can just show a snackbar or implement later
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Edit Profile logic not implemented yet.")));
             },
           ),
           const Divider(),
