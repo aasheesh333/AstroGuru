@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -5,6 +6,8 @@ import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import 'login_screen.dart';
+import 'horoscope_detail_screen.dart';
+import 'love_match_screen.dart';
 
 // HomeScreen Content Widget
 class HomeScreen extends StatefulWidget {
@@ -15,7 +18,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String horoscope = "Loading daily forecast...";
+  String horoscopeSummary = "Loading daily forecast...";
+  Map<String, dynamic>? horoscopeData;
+
+  String quoteText = "The stars incline, but do not bind.";
+  String quoteAuthor = "";
+
   String userName = "User";
   bool isGuest = false;
 
@@ -29,44 +37,91 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
+
+      bool guest = prefs.getBool('guest_mode') ?? false;
+      String fullName = prefs.getString('user_name') ?? "User";
+      String firstName = fullName.split(' ')[0];
+
       setState(() {
-        isGuest = prefs.getBool('guest_mode') ?? false;
-        userName = isGuest ? "Guest" : (prefs.getString('user_name') ?? "User");
+        isGuest = guest;
+        userName = guest ? "Guest" : firstName;
       });
-      _loadHoroscope();
+
+      _checkDailyUpdates(prefs);
     } catch (e) {
       // Handle error safely
     }
   }
 
-  void _loadHoroscope() async {
+  void _checkDailyUpdates(SharedPreferences prefs) async {
+    String today = DateTime.now().toIso8601String().split('T')[0];
+    String lastDate = prefs.getString('last_fetch_date') ?? "";
+
+    if (lastDate != today) {
+       await _fetchNewData(prefs, today);
+    } else {
+       _loadFromPrefs(prefs);
+    }
+  }
+
+  Future<void> _fetchNewData(SharedPreferences prefs, String today) async {
+    if (!mounted) return;
+    final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+
+    // Fetch Horoscope
+    // Default sign for home preview or guest is generic (e.g., Aries or from profile)
+    // For now, we use "Libra" as a placeholder or fetch user's sign if available.
+    // In a real app, we'd store the user's sign in profile.
+    // I will assume a default "Aries" for now if not stored.
+    String sign = "Aries";
+
     try {
-      final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
-      // Defaulting to Aries for the home preview, ideally user's sign
-      String result = await AIService.getDailyHoroscope("Libra", DateTime.now(), lang);
-
-      if (isGuest) {
-        // Truncate for guest
-        if (result.length > 80) {
-            result = "${result.substring(0, 80)}...";
-        }
-      } else {
-        // Keep it relatively short for the card even if logged in
-        if (result.length > 120) {
-            result = "${result.substring(0, 120)}...";
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          horoscope = result;
-        });
-      }
+      String horoscopeJson = await AIService.getDailyHoroscope(sign, DateTime.now(), lang);
+      await prefs.setString('daily_horoscope_json', horoscopeJson);
     } catch (e) {
-      if (mounted) {
+      // Keep old or default
+    }
+
+    // Fetch Quote
+    try {
+      String quoteJson = await AIService.getDailyQuote(isGuest ? null : sign, lang);
+      await prefs.setString('daily_quote_json', quoteJson);
+    } catch (e) {
+      // Keep old
+    }
+
+    await prefs.setString('last_fetch_date', today);
+    _loadFromPrefs(prefs);
+  }
+
+  void _loadFromPrefs(SharedPreferences prefs) {
+    String? hJson = prefs.getString('daily_horoscope_json');
+    String? qJson = prefs.getString('daily_quote_json');
+
+    if (hJson != null) {
+      try {
+        final data = jsonDecode(hJson);
         setState(() {
-          horoscope = "Failed to load horoscope.";
+          horoscopeData = data;
+          horoscopeSummary = data['summary'] ?? "No summary available.";
+          if (isGuest && horoscopeSummary.length > 80) {
+             horoscopeSummary = "${horoscopeSummary.substring(0, 80)}...";
+          }
         });
+      } catch (e) {
+        setState(() => horoscopeSummary = "Forecast unavailable.");
+      }
+    }
+
+    if (qJson != null) {
+      try {
+        final data = jsonDecode(qJson);
+        setState(() {
+          quoteText = data['quote'] ?? quoteText;
+          quoteAuthor = data['author'] ?? "";
+        });
+      } catch (e) {
+        // Ignore
       }
     }
   }
@@ -78,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF0E1016),
           title: const Text("Login Required", style: TextStyle(color: Color(0xFFD4AF37))),
-          content: const Text("Please log in to unlock this feature.", style: TextStyle(color: Colors.white)),
+          content: const Text("Please log in with phone number to unlock this feature.", style: TextStyle(color: Colors.white)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -96,23 +151,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else {
-      // If route is 'LoveMatch', it's a placeholder for now
       if (route == 'LoveMatch') {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Love Match coming soon!")));
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoveMatchScreen()));
+      } else if (route == 'HoroscopeDetail') {
+        if (horoscopeData != null) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => HoroscopeDetailScreen(
+            signName: "Daily Forecast",
+            signIcon: Icons.auto_awesome,
+            data: horoscopeData!
+          )));
+        }
       } else {
-        // For standard tabs, we switch the tab via MainScreen logic usually,
-        // but since we are inside MainScreen, we can't easily switch the tab index from here without a callback.
-        // However, the routes in main.dart map to the Screen Widgets directly, not the MainScreen tab switcher.
-        // For "Generate Kundli" and "Ask AI Sage", let's just push the relevant screen onto the stack
-        // OR (better) inform user to use the tab.
-        // But the requirement says "navigate".
-        // Current MainScreen structure renders these widgets.
-        // We will just push the relevant widget in a new route context if we want to isolate it,
-        // OR finding a way to switch MainScreen tab is better UX.
-        // Given the constraints, I will Push the specific content screen wrapper.
-
-        // Actually, the routes '/kundli' and '/chat' are defined in main.dart to load KundliInputScreen and ChatScreen.
-        // So Navigator.pushNamed(context, route) works perfectly.
         Navigator.pushNamed(context, route);
       }
     }
@@ -147,16 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Daily Horoscope Card
           GestureDetector(
-            onTap: () {
-               // Navigate to detailed horoscope tab/screen
-               // Using the route or tab. Let's use route for detail.
-               // Assuming logic connects to existing flows.
-               // The user wants "Daily Horoscope" flow.
-               // I'll push a detailed view or just let it stay here.
-               // Plan says "Only connect backend logic".
-               // I will trigger the same lock check if needed, or open detail.
-               // Let's assume it opens the Horoscope Tab content in a new view for focus.
-            },
+            onTap: () => _checkAccess('HoroscopeDetail'),
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -191,10 +231,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text("Libra", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            const Text("Today's Forecast", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 4),
                             Text(
-                              horoscope,
+                              horoscopeSummary,
                               style: const TextStyle(color: Colors.grey, fontSize: 14),
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
@@ -271,10 +311,22 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Icon(Icons.format_quote, color: AppColors.primaryGold, size: 40),
                 const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    "\"The stars incline, but do not bind.\"",
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontStyle: FontStyle.italic),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "\"$quoteText\"",
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontStyle: FontStyle.italic),
+                      ),
+                      if (quoteAuthor.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          "- $quoteAuthor",
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ]
+                    ],
                   ),
                 ),
               ],

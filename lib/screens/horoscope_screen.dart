@@ -65,6 +65,7 @@ class HoroscopeContent extends StatelessWidget {
                         builder: (_) => HoroscopeDetailScreen(
                           signName: sign['name'],
                           signIcon: sign['icon'],
+                          // data is optional now, so it will fetch automatically
                         ),
                       ),
                     );

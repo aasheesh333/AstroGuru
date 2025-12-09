@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async'; // Import for Timer
 import 'onboarding_screen.dart';
 import 'login_screen.dart';
-import 'main_screen.dart'; // Import MainScreen
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

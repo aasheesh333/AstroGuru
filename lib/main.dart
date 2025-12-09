@@ -11,7 +11,6 @@ import 'dart:io';
 import 'logic/language_provider.dart';
 import 'logic/kundli_service.dart';
 import 'screens/splash_screen.dart';
-import 'screens/home_screen.dart';
 import 'screens/kundli_input_screen.dart'; // Import Input Screen
 import 'screens/chat_screen.dart';
 import 'screens/profile_screen.dart';

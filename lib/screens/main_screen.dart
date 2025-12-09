@@ -28,9 +28,26 @@ class _MainScreenState extends State<MainScreen> {
     Widget? titleWidget;
     List<Widget>? actions;
     bool centerTitle = false;
+    Widget? leading;
 
     switch (_currentIndex) {
       case 0: // Home
+        leading = GestureDetector(
+          onTap: () {
+            setState(() => _currentIndex = 4);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primaryGold, width: 2),
+                color: AppColors.surfaceColor,
+              ),
+              child: const Icon(Icons.person, color: AppColors.primaryGold, size: 20),
+            ),
+          ),
+        );
         titleWidget = const Text(
           "AstroPrerna",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)
@@ -67,6 +84,7 @@ class _MainScreenState extends State<MainScreen> {
       title: titleWidget,
       centerTitle: centerTitle,
       actions: actions,
+      leading: leading, // Add leading widget
       backgroundColor: Colors.transparent,
       elevation: 0,
       flexibleSpace: Container(
