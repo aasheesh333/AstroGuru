@@ -39,12 +39,38 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<FirebaseAuth?> _ensureAuthInitialized() async {
+    if (_auth != null) return _auth;
+
+    try {
+      await Firebase.initializeApp();
+      return FirebaseAuth.instance;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Firebase Init Failed: $e"),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+      return null;
+    }
+  }
+
   void _handleAuth() async {
-    final auth = _auth;
+    setState(() => _isLoading = true);
+
+    // Ensure Firebase is ready
+    final auth = await _ensureAuthInitialized();
+
     if (auth == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Firebase not initialized.")),
-      );
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Cannot connect to Firebase. Please check configuration.")),
+        );
+      }
       return;
     }
 
@@ -53,6 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final name = _nameController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter email and password.")),
       );
@@ -60,13 +87,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (!_isLoginMode && name.isEmpty) {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter your name.")),
       );
       return;
     }
-
-    setState(() => _isLoading = true);
 
     try {
       UserCredential credential;
@@ -96,6 +122,12 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message ?? "Authentication failed")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
         );
       }
     } finally {

@@ -22,10 +22,10 @@ echo "Assets env created."
 # Create google-services.json
 if [ -n "$APP_FIREBASE_JSON_BASE64" ]; then
     echo "Creating google-services.json from APP_FIREBASE_JSON_BASE64..."
-    echo "$APP_FIREBASE_JSON_BASE64" | base64 --decode | tr -d '\n' > android/app/google-services.json
+    echo "$APP_FIREBASE_JSON_BASE64" | base64 --decode > android/app/google-services.json
 elif [ -n "$FIREBASE_JSON_BASE64" ]; then
     echo "Creating google-services.json from FIREBASE_JSON_BASE64..."
-    echo "$FIREBASE_JSON_BASE64" | base64 --decode | tr -d '\n' > android/app/google-services.json
+    echo "$FIREBASE_JSON_BASE64" | base64 --decode > android/app/google-services.json
 else
     echo "Warning: No Firebase JSON base64 variable found. google-services.json might be missing."
 fi
