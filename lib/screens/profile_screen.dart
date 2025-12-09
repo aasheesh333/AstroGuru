@@ -30,7 +30,7 @@ class ProfileContent extends StatefulWidget {
 
 class _ProfileContentState extends State<ProfileContent> {
   String userName = "Loading...";
-  String userPhone = "";
+  String userEmail = "";
   bool isGuest = false;
 
   @override
@@ -46,10 +46,10 @@ class _ProfileContentState extends State<ProfileContent> {
       isGuest = prefs.getBool('guest_mode') ?? false;
       if (isGuest) {
         userName = "Guest User";
-        userPhone = "";
+        userEmail = "";
       } else {
         userName = prefs.getString('user_name') ?? "User";
-        userPhone = prefs.getString('user_phone') ?? "";
+        userEmail = prefs.getString('user_email') ?? "";
       }
     });
   }
@@ -60,6 +60,8 @@ class _ProfileContentState extends State<ProfileContent> {
     // Clear Session
     await prefs.setBool('user_logged_in', false);
     await prefs.setBool('guest_mode', false);
+    await prefs.remove('user_email');
+    await prefs.remove('user_name');
 
     try {
       if (Firebase.apps.isNotEmpty) {
@@ -131,11 +133,11 @@ class _ProfileContentState extends State<ProfileContent> {
                   userName,
                   style: Theme.of(context).textTheme.displayMedium,
                 ),
-                if (!isGuest && userPhone.isNotEmpty)
+                if (!isGuest && userEmail.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      userPhone,
+                      userEmail,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
                     ),
                   ),
