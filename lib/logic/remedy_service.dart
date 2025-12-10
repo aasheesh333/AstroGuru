@@ -1,7 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import '../services/ai_service.dart';
 
 class RemedyService {
@@ -15,33 +12,11 @@ class RemedyService {
     'Sade Sati': "Light a mustard oil lamp under a Peepal tree on Saturdays. Recite Shani Chalisa.",
   };
 
-  /// Generates a unique cache key based on the input parameters.
-  static String _generateCacheKey(List<String> doshas, String kundliSummary, String language) {
-    // We create a hash of the inputs to ensure uniqueness
-    final String data = "${doshas.join(',')}|$kundliSummary|$language";
-    final bytes = utf8.encode(data);
-    final digest = md5.convert(bytes);
-    return 'remedy_cache_$digest';
-  }
-
   static Future<String> getRemedies(List<String> doshas, String kundliSummary, String language) async {
-    // 1. Check Cache
-    final String cacheKey = _generateCacheKey(doshas, kundliSummary, language);
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? cachedRemedies = prefs.getString(cacheKey);
-
-    if (cachedRemedies != null && cachedRemedies.isNotEmpty) {
-      if (kDebugMode) {
-        print("Fetching remedies from Cache for key: $cacheKey");
-      }
-      return cachedRemedies;
-    }
-
-    // 2. Generate Remedies
     StringBuffer remedies = StringBuffer();
 
-    // Add Rule-Based Remedies (First Section)
-    remedies.writeln("### Traditional Remedies");
+    // 1. Add Rule-Based Remedies (50%)
+    remedies.writeln("### Traditional Remedies (Rule-Based):");
     if (doshas.isEmpty) {
       remedies.writeln("- No major doshas detected. Focus on strengthening your favorable planets.");
     } else {
@@ -51,11 +26,11 @@ class RemedyService {
         }
       }
     }
-    remedies.writeln(""); // Spacing
 
-    // Add AI Remedies (Second Section)
-    // Note: We removed the hardcoded "### Personalized AI Remedies:" header.
-    // The AI is now instructed to use its own mystical headers.
+    remedies.writeln("\n### Personalized AI Remedies:");
+
+    // 2. Add AI Remedies (50%)
+    // We ask the AI to provide complementary remedies based on the full chart summary
     try {
       String aiRemedies = await AIService.getRemedies(kundliSummary, language);
       remedies.writeln(aiRemedies);
@@ -63,14 +38,9 @@ class RemedyService {
       if (kDebugMode) {
         print("Error fetching AI remedies: $e");
       }
-      remedies.writeln("Unable to fetch personalized insights at this moment.");
+      remedies.writeln("Unable to fetch personalized remedies at the moment.");
     }
 
-    final String result = remedies.toString();
-
-    // 3. Save to Cache
-    await prefs.setString(cacheKey, result);
-
-    return result;
+    return remedies.toString();
   }
 }

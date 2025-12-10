@@ -91,15 +91,14 @@ class AIService {
     ];
 
     // Add history (limit to last 10 messages to save context window)
+    // IMPORTANT: 'history' includes the current message as the last item (added by UI),
+    // so we just add the whole (trimmed) history.
     int start = history.length > 10 ? history.length - 10 : 0;
     for (int i = start; i < history.length; i++) {
        // Map 'sage' role to 'assistant' for the API
        String role = history[i]['role'] == 'user' ? 'user' : 'assistant';
        messages.add({'role': role, 'content': history[i]['content']!});
     }
-
-    // Add current user query
-    messages.add({'role': 'user', 'content': query});
 
     try {
       final response = await http.post(
