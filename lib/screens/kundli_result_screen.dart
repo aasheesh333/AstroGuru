@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/astro_card.dart';
+import '../widgets/astro_text_parser.dart';
 import '../logic/kundli_service.dart';
 import '../logic/remedy_service.dart';
 import '../logic/language_provider.dart';
@@ -153,9 +154,71 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
               ),
               const SizedBox(height: 24),
               AstroCard(
-                child: Text(
-                  'Ascendant (Lagna) is in Rashi #${lagna['rashi']}.\nSun is in Rashi #${sun['rashi']}.\nMoon is in Rashi #${moon['rashi']}.',
+                child: RichText(
                   textAlign: TextAlign.center,
+                  text: TextSpan(
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      height: 1.5,
+                      fontFamily: 'Inter' // Assuming generic sans-serif available
+                    ),
+                    children: [
+                      // Ascendant Line
+                      const TextSpan(
+                        text: 'Ascendant (Lagna)',
+                        style: TextStyle(
+                          color: AppColors.primaryGold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const TextSpan(text: ' is in '),
+                      TextSpan(
+                        text: 'Rashi ${lagna['rashi']}',
+                        style: const TextStyle(
+                          color: AppColors.primaryGold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const TextSpan(text: '.\n'),
+
+                      // Sun Line
+                      const TextSpan(
+                        text: 'Sun',
+                        style: TextStyle(
+                          color: AppColors.primaryGold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const TextSpan(text: ' is in '),
+                      TextSpan(
+                        text: 'Rashi ${sun['rashi']}',
+                        style: const TextStyle(
+                          color: AppColors.primaryGold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const TextSpan(text: '.\n'),
+
+                      // Moon Line
+                      const TextSpan(
+                        text: 'Moon',
+                        style: TextStyle(
+                          color: AppColors.primaryGold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const TextSpan(text: ' is in '),
+                      TextSpan(
+                        text: 'Rashi ${moon['rashi']}',
+                        style: const TextStyle(
+                          color: AppColors.primaryGold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const TextSpan(text: '.'),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -208,7 +271,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
              ),
            ),
            const SizedBox(height: 16),
-           Text(remedies, style: const TextStyle(color: Colors.white, height: 1.5)),
+           AstroTextParser(text: remedies),
         ],
       ),
     );
