@@ -48,6 +48,18 @@ class AIService {
     return await getResponse(system, user, jsonMode: true);
   }
 
+  static Future<String> getWeeklyHoroscope(String sign, DateTime date, String language) async {
+    String system = "You are an expert Vedic Astrologer. Output language: $language. Return ONLY a JSON object with the following keys: 'summary' (2 sentences), 'love' (forecast), 'career' (forecast), 'health' (forecast), 'lucky_number', 'lucky_color'. Ensure the JSON is valid.";
+    String user = "Generate a weekly horoscope for $sign for the week containing ${date.toIso8601String()}.";
+    return await getResponse(system, user, jsonMode: true);
+  }
+
+  static Future<String> getMonthlyHoroscope(String sign, DateTime date, String language) async {
+    String system = "You are an expert Vedic Astrologer. Output language: $language. Return ONLY a JSON object with the following keys: 'summary' (2 sentences), 'love' (forecast), 'career' (forecast), 'health' (forecast), 'lucky_number', 'lucky_color'. Ensure the JSON is valid.";
+    String user = "Generate a monthly horoscope for $sign for the month of ${date.month}, ${date.year}.";
+    return await getResponse(system, user, jsonMode: true);
+  }
+
   static Future<String> getLoveMatch(String name1, String sign1, String name2, String sign2, String language) async {
     String system = "You are an expert Astrologer specializing in relationship compatibility. Output language: $language. Return ONLY a JSON object with keys: 'score' (integer 0-100), 'summary' (short summary), 'detailed_analysis' (paragraph).";
     String user = "Analyze compatibility between $name1 ($sign1) and $name2 ($sign2).";
