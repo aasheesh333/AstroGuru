@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:convert';
 import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/astro_text_parser.dart';
+import '../widgets/baba_avatar.dart';
 import 'login_screen.dart';
 
 // ChatScreen wrapper
@@ -12,10 +17,7 @@ class ChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Ask AI Sage")),
-      body: const ChatContent(),
-    );
+    return const ChatContent();
   }
 }
 
@@ -28,12 +30,18 @@ class ChatContent extends StatefulWidget {
 
 class _ChatContentState extends State<ChatContent> {
   final TextEditingController _controller = TextEditingController();
-  final List<Map<String, String>> _messages = [];
+  final ScrollController _scrollController = ScrollController();
+  List<Map<String, String>> _messages = [];
   bool isGuest = false;
+
+  // Voice
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
 
   @override
   void initState() {
     super.initState();
+    _speech = stt.SpeechToText();
     _checkAccess();
   }
 
@@ -65,121 +73,290 @@ class _ChatContentState extends State<ChatContent> {
           ),
         );
       });
+    } else {
+      _loadHistory();
     }
   }
 
+  void _loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? historyJson = prefs.getString('chat_history');
+
+    if (historyJson != null) {
+      final List<dynamic> decoded = jsonDecode(historyJson);
+      setState(() {
+        _messages = decoded.map((e) => Map<String, String>.from(e)).toList();
+      });
+    }
+
+    // Add default greeting if empty
+    if (_messages.isEmpty) {
+      setState(() {
+        _messages.add({
+          'role': 'sage',
+          'content': "Namaste! I am your AI Sage. Ask me anything about your destiny."
+        });
+      });
+    }
+    _scrollToBottom();
+  }
+
+  void _saveHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('chat_history', jsonEncode(_messages));
+  }
+
+  void _resetHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceColor,
+        title: const Text("Reset History?", style: TextStyle(color: AppColors.primaryGold)),
+        content: const Text("This will clear your conversation memory with the Sage.", style: TextStyle(color: AppColors.textPrimary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Reset", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _messages.clear();
+        _messages.add({
+          'role': 'sage',
+          'content': "Namaste! I am your AI Sage. Ask me anything about your destiny."
+        });
+      });
+      _saveHistory();
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   void _sendMessage() async {
-    if (_controller.text.isEmpty) return;
-    String userMsg = _controller.text;
+    if (_controller.text.trim().isEmpty) return;
+    String userMsg = _controller.text.trim();
+
     setState(() {
       _messages.add({'role': 'user', 'content': userMsg});
       _controller.clear();
     });
+    _saveHistory();
+    _scrollToBottom();
 
     String lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
-
     // In a real scenario, we would retrieve the stored Kundli summary here.
     String kundliSummary = "General Query (No specific Kundli context available).";
 
     try {
-      String response = await AIService.getChatResponse(userMsg, kundliSummary, lang);
-      setState(() {
-        _messages.add({'role': 'sage', 'content': response});
-      });
+      // Pass history (excluding the message we just added effectively, handled by logic but passing all for context)
+      // Actually, we pass the current list including the user's new message
+      String response = await AIService.getChatResponse(userMsg, kundliSummary, lang, _messages);
+
+      if (mounted) {
+        setState(() {
+          _messages.add({'role': 'sage', 'content': response});
+        });
+        _saveHistory();
+        _scrollToBottom();
+      }
     } catch (e) {
-      setState(() {
-        _messages.add({'role': 'sage', 'content': "Sorry, I am having trouble connecting to the stars right now."});
-      });
+      if (mounted) {
+        setState(() {
+          _messages.add({'role': 'sage', 'content': "Sorry, I am having trouble connecting to the stars right now."});
+        });
+        _scrollToBottom();
+      }
+    }
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      var status = await Permission.microphone.request();
+      if (status != PermissionStatus.granted) return;
+
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+           if (status == 'notListening') {
+             setState(() => _isListening = false);
+           }
+        },
+        onError: (error) => setState(() => _isListening = false),
+      );
+
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) {
+            setState(() {
+              _controller.text = val.recognizedWords;
+              // If final, maybe auto-send? User prefers confirm usually.
+            });
+          },
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (isGuest) {
-      return const Center(child: CircularProgressIndicator());
+      return const Scaffold(
+        backgroundColor: AppColors.scaffoldBackgroundColor,
+        body: Center(child: CircularProgressIndicator())
+      );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _messages.length,
-            itemBuilder: (context, index) {
-              final msg = _messages[index];
-              final isUser = msg['role'] == 'user';
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: isUser ? AppColors.primaryPurple : AppColors.surfaceColor,
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(12),
-                        topRight: const Radius.circular(12),
-                        bottomLeft: isUser ? const Radius.circular(12) : Radius.zero,
-                        bottomRight: isUser ? Radius.zero : const Radius.circular(12),
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text("Ask AI Sage"),
+        backgroundColor: AppColors.primaryPurple, // Explicitly match nav
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: "Reset History",
+            onPressed: _resetHistory,
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                final isUser = msg['role'] == 'user';
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8), // More breathing room
+                  child: Row(
+                    mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (!isUser) ...[
+                        const SizedBox(width: 4), // Small offset
+                         // Baba Avatar at bottom left of bubble
+                         const Padding(
+                           padding: EdgeInsets.only(bottom: 4),
+                           child: BabaAvatar(size: 32),
+                         ),
+                        const SizedBox(width: 8),
+                      ],
+
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isUser ? AppColors.primaryPurple : AppColors.surfaceColor,
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(20),
+                              topRight: const Radius.circular(20),
+                              bottomLeft: isUser ? const Radius.circular(20) : Radius.zero,
+                              bottomRight: isUser ? Radius.zero : const Radius.circular(20),
+                            ),
+                            border: isUser ? null : Border.all(color: Colors.white10),
+                          ),
+                          child: isUser
+                            ? Text(
+                                msg['content']!,
+                                style: const TextStyle(color: Colors.white, fontSize: 16),
+                              )
+                            : AstroTextParser(text: msg['content']!), // Solves the '#' issue
+                        ),
                       ),
-                      boxShadow: [
-                         BoxShadow(
-                           color: Colors.black.withOpacity(0.2),
-                           blurRadius: 4,
-                           offset: const Offset(0, 2),
-                         )
-                      ]
-                    ),
-                    child: Text(
-                      msg['content']!,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
-                    ),
+
+                      if (isUser) ...[
+                        const SizedBox(width: 8),
+                        const CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Colors.white24,
+                          child: Icon(Icons.person, color: Colors.white, size: 20),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // Input Area
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: AppColors.surfaceColor, // Slightly distinct from scaffold to frame it
+              border: Border(top: BorderSide(color: Colors.white10)),
+            ),
+            child: Row(
+              children: [
+                // Voice Icon
+                Container(
+                  decoration: BoxDecoration(
+                    color: _isListening ? Colors.redAccent : AppColors.scaffoldBackgroundColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(_isListening ? Icons.mic_off : Icons.mic),
+                    color: _isListening ? Colors.white : AppColors.primaryGold,
+                    onPressed: _listen,
                   ),
                 ),
-              );
-            },
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(12.0),
-          decoration: const BoxDecoration(
-            color: AppColors.surfaceColor,
-            border: Border(top: BorderSide(color: Colors.white10)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    hintText: "Ask AI Sage...",
-                    hintStyle: const TextStyle(color: AppColors.textSecondary),
-                    filled: true,
-                    fillColor: AppColors.scaffoldBackgroundColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
+                const SizedBox(width: 12),
+
+                // Text Field
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: "Type your question...",
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      filled: true,
+                      fillColor: AppColors.scaffoldBackgroundColor, // Matches screen bg as requested
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    onSubmitted: (_) => _sendMessage(),
                   ),
-                  style: const TextStyle(color: AppColors.textPrimary),
-                )
-              ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primaryGold,
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.send, color: Colors.black),
-                  onPressed: _sendMessage,
+                const SizedBox(width: 12),
+
+                // Send Icon
+                Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryGold,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.black),
+                    onPressed: _sendMessage,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        )
-      ],
+        ],
+      ),
     );
   }
 }

@@ -74,10 +74,56 @@ class AIService {
     return await getResponse(system, user, jsonMode: true);
   }
 
-  static Future<String> getChatResponse(String query, String kundliSummary, String language) async {
-    String system = "You are 'AI Sage', a wise Vedic Astrologer. Use the provided Kundli summary to answer specific questions. Tone: Wise, Empathetic. Output language: $language.";
-    String user = "User Kundli: $kundliSummary. Question: $query";
-    return await getResponse(system, user);
+  static Future<String> getChatResponse(String query, String kundliSummary, String language, List<Map<String, String>> history) async {
+    // Check both local and CI keys
+    final String apiKey = dotenv.env['APP_GROQ_API_KEY'] ?? dotenv.env['GROQ_API_KEY'] ?? '';
+
+    if (apiKey.isEmpty) {
+      return "Error: AI API Key not configured.";
+    }
+
+    // Build the messages list including history
+    final List<Map<String, dynamic>> messages = [
+      {
+        'role': 'system',
+        'content': "You are 'AI Sage', a wise Vedic Astrologer. Tone: Wise, Empathetic, Concise, and Genuine. Act like a real human Guru, not an AI. Use Markdown headers (###) and bullet points (*) for formatting if needed, but keep it natural. Avoid raw special characters like '#' in the middle of sentences unless for formatting. Output language: $language. Context (User Kundli): $kundliSummary"
+      }
+    ];
+
+    // Add history (limit to last 10 messages to save context window)
+    int start = history.length > 10 ? history.length - 10 : 0;
+    for (int i = start; i < history.length; i++) {
+       // Map 'sage' role to 'assistant' for the API
+       String role = history[i]['role'] == 'user' ? 'user' : 'assistant';
+       messages.add({'role': role, 'content': history[i]['content']!});
+    }
+
+    // Add current user query
+    messages.add({'role': 'user', 'content': query});
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': 'llama-3.3-70b-versatile',
+          'messages': messages,
+          'temperature': 0.7,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content'];
+      } else {
+        return "Service is temporarily unavailable. Please try again.";
+      }
+    } catch (e) {
+      return "Service is temporarily unavailable. Please try again.";
+    }
   }
 
   static Future<String> getRemedies(String kundliSummary, String language) async {
