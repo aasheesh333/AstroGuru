@@ -83,6 +83,16 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
     super.dispose();
   }
 
+  String _getRashiName(int id) {
+    const names = [
+      'Aries (Mesh)', 'Taurus (Vrishabha)', 'Gemini (Mithuna)', 'Cancer (Karka)',
+      'Leo (Simha)', 'Virgo (Kanya)', 'Libra (Tula)', 'Scorpio (Vrishchika)',
+      'Sagittarius (Dhanu)', 'Capricorn (Makara)', 'Aquarius (Kumbha)', 'Pisces (Meena)'
+    ];
+    if (id < 1 || id > 12) return 'Unknown';
+    return names[id - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,6 +131,10 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
     final sun = planets.firstWhere((p) => p['name'] == 'Sun');
     final moon = planets.firstWhere((p) => p['name'] == 'Moon');
 
+    String ascName = _getRashiName(lagna['rashi']);
+    String sunName = _getRashiName(sun['rashi']);
+    String moonName = _getRashiName(moon['rashi']);
+
     return Center(
       child: SingleChildScrollView(
         child: Padding(
@@ -153,9 +167,20 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
               ),
               const SizedBox(height: 24),
               AstroCard(
-                child: Text(
-                  'Ascendant (Lagna) is in Rashi #${lagna['rashi']}.\nSun is in Rashi #${sun['rashi']}.\nMoon is in Rashi #${moon['rashi']}.',
+                child: RichText(
                   textAlign: TextAlign.center,
+                  text: TextSpan(
+                    style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5, fontFamily: 'Inter'),
+                    children: [
+                      const TextSpan(text: "Your Ascendant (Lagna) is in "),
+                      TextSpan(text: ascName, style: const TextStyle(color: AppColors.primaryGold, fontWeight: FontWeight.bold)),
+                      const TextSpan(text: ".\nThe Sun is positioned in "),
+                      TextSpan(text: sunName, style: const TextStyle(color: AppColors.primaryGold, fontWeight: FontWeight.bold)),
+                      const TextSpan(text: ", and the Moon is in "),
+                      TextSpan(text: moonName, style: const TextStyle(color: AppColors.primaryGold, fontWeight: FontWeight.bold)),
+                      const TextSpan(text: "."),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -208,10 +233,108 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
              ),
            ),
            const SizedBox(height: 16),
-           Text(remedies, style: const TextStyle(color: Colors.white, height: 1.5)),
+           _buildFormattedRemedies(remedies),
         ],
       ),
     );
+  }
+
+  Widget _buildFormattedRemedies(String text) {
+    List<Widget> children = [];
+    List<String> lines = text.split('\n');
+
+    for (String line in lines) {
+      String trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (trimmed.startsWith('###')) {
+        // Title
+        String title = trimmed.replaceAll('#', '').trim();
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 24.0, bottom: 12.0),
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.primaryGold,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Poppins',
+              ),
+            ),
+          ),
+        );
+      } else if (trimmed.startsWith('- **') || trimmed.startsWith('**')) {
+        // Bold Key with Value or just Bold
+        // Format: "- **Key**: Value" or "**Key**: Value"
+        // Remove markdown chars
+        String content = trimmed;
+        if (content.startsWith('- ')) content = content.substring(2);
+
+        List<String> parts = content.split('**:');
+        if (parts.length >= 2) {
+            String key = parts[0].replaceAll('*', '').trim();
+            // Rejoin the rest just in case
+            String value = parts.sublist(1).join('**:').trim();
+             children.add(
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(color: Colors.white, height: 1.6, fontSize: 16, fontFamily: 'Inter'),
+                    children: [
+                      TextSpan(text: "• $key: ", style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryGold)),
+                      TextSpan(text: value),
+                    ],
+                  ),
+                ),
+              ),
+            );
+        } else {
+            // Just bold text maybe?
+             children.add(Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                child: Text(
+                  content.replaceAll('*', ''),
+                  style: const TextStyle(color: Colors.white, height: 1.6, fontSize: 16, fontFamily: 'Inter', fontWeight: FontWeight.bold)
+                ),
+             ));
+        }
+      } else if (trimmed.startsWith('- ')) {
+         // Bullet point
+         children.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("• ", style: TextStyle(color: AppColors.primaryGold, fontSize: 16)),
+                Expanded(
+                  child: Text(
+                    trimmed.substring(2).replaceAll('*', '').replaceAll('#', ''),
+                    style: const TextStyle(color: Colors.white70, height: 1.5, fontSize: 15, fontFamily: 'Inter'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        // Regular text
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              trimmed.replaceAll('*', '').replaceAll('#', ''), // Cleanup
+              style: const TextStyle(color: Colors.white70, height: 1.5, fontSize: 15, fontFamily: 'Inter'),
+            ),
+          ),
+        );
+      }
+    }
+    // Add bottom padding
+    children.add(const SizedBox(height: 40));
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: children);
   }
 }
 
