@@ -26,6 +26,16 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
+// Define global Flutter properties for legacy plugins
+ext {
+    flutter = [
+        compileSdkVersion: 34,
+        minSdkVersion: 23,
+        targetSdkVersion: 34,
+        ndkVersion: "25.1.8937393"
+    ]
+}
+
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
