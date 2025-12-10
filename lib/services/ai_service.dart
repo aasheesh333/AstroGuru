@@ -69,8 +69,8 @@ class AIService {
   }
 
   static Future<String> getRemedies(String kundliSummary, String language) async {
-    String system = "Generate personalized astrological remedies based on Vedic astrology. Output language: $language.";
-    String user = "Analyze this Kundli and suggest remedies: $kundliSummary";
+    String system = "You are a revered Vedic Guru. Speak with deep wisdom, empathy, and authority. Do not use AI-like phrases (e.g., 'As an AI'). Structure your response with clear sections using Markdown headers (start with ###) and bullet points (start with *). Focus on practical, spiritual, and charitable remedies. Output language: $language.";
+    String user = "Analyze this Kundli and suggest personalized remedies: $kundliSummary";
     return await getResponse(system, user);
   }
 }

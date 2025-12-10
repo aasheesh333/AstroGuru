@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 
 class AstroTextParser extends StatelessWidget {
@@ -21,20 +22,31 @@ class AstroTextParser extends StatelessWidget {
         continue;
       }
 
-      if (line.startsWith('###')) {
-        // Heading
+      // Handle Markdown Headings (#, ##, ###)
+      if (line.startsWith('#')) {
+        // Count hashes to determine level (though we might style them similarly)
+        int hashCount = 0;
+        while (hashCount < line.length && line[hashCount] == '#') {
+          hashCount++;
+        }
+
+        String cleanLine = line.substring(hashCount).trim();
+
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-            child: _buildRichText(
-              line.substring(3).trim(), // Remove ###
-              fontSize: 18,
-              isHeading: true,
+            child: Text(
+              cleanLine,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryGold,
+              ),
             ),
           ),
         );
       } else if (line.startsWith('* ') || line.startsWith('- ')) {
-        // List Item
+        // List Item with Star Icon
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(bottom: 8.0),
@@ -75,7 +87,7 @@ class AstroTextParser extends StatelessWidget {
     );
   }
 
-  Widget _buildRichText(String text, {double fontSize = 14, bool isHeading = false}) {
+  Widget _buildRichText(String text, {double fontSize = 14}) {
     // Split by double asterisks for bolding
     final List<String> parts = text.split('**');
     final List<InlineSpan> spans = [];
@@ -89,7 +101,7 @@ class AstroTextParser extends StatelessWidget {
         spans.add(
           TextSpan(
             text: part,
-            style: TextStyle(
+            style: GoogleFonts.inter(
               color: AppColors.primaryGold,
               fontWeight: FontWeight.bold,
               fontSize: fontSize,
@@ -102,17 +114,9 @@ class AstroTextParser extends StatelessWidget {
         spans.add(
           TextSpan(
             text: part,
-            style: TextStyle(
-              // Headings are already Gold in my design?
-              // The user said: "Title ko bada ho... text aesa lage real baba ne remedies likhi hai"
-              // If it's a heading (###), let's make the whole thing Gold-ish or White?
-              // Usually Headings are fully highlighted.
-              // But if I use AppColors.primaryGold for the whole heading, the bold parts inside might blend in.
-              // Let's make Heading base color Gold, and bold parts Deep Gold or White?
-              // Actually, simplified: Headings -> Gold. Body -> White/Grey.
-              // Bold inside Body -> Gold.
-              color: isHeading ? AppColors.primaryGold : AppColors.textSecondary,
-              fontWeight: isHeading ? FontWeight.bold : FontWeight.normal,
+            style: GoogleFonts.inter(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.normal,
               fontSize: fontSize,
               height: 1.5,
             ),
