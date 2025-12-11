@@ -64,14 +64,43 @@ class _KundliInputContentState extends State<KundliInputContent> {
     }
 
     if (_formKey.currentState!.validate()) {
+      // Internal Validation to prevent spam
+      String name = _nameController.text.trim();
+      String place = _placeController.text.trim();
+
+      // Name Validation: 2-50 chars, only letters/spaces
+      final nameRegExp = RegExp(r"^[a-zA-Z\s]{2,50}$");
+      if (!nameRegExp.hasMatch(name)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter a valid name (letters only)."), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      // Check for repeated characters (e.g., "aaaa")
+      if (RegExp(r"(.)\1{3,}").hasMatch(name)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter a real name."), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      // Place Validation: 2-50 chars, letters/spaces/commas
+      final placeRegExp = RegExp(r"^[a-zA-Z\s,]{2,50}$");
+      if (!placeRegExp.hasMatch(place)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter a valid location."), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => KundliResultScreen(
-            name: _nameController.text,
+            name: name,
             date: _selectedDate!,
             time: _selectedTime!,
-            place: _placeController.text,
+            place: place,
           ),
         ),
       );

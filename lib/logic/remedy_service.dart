@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ai_service.dart';
 
 class RemedyService {
@@ -12,7 +13,7 @@ class RemedyService {
     'Sade Sati': "Light a mustard oil lamp under a Peepal tree on Saturdays. Recite Shani Chalisa.",
   };
 
-  static Future<String> getRemedies(List<String> doshas, String kundliSummary, String language) async {
+  static Future<String> getRemedies(List<String> doshas, String kundliSummary, String language, {String? birthDetailsKey}) async {
     StringBuffer remedies = StringBuffer();
 
     // 1. Add Rule-Based Remedies (50%)
@@ -27,16 +28,35 @@ class RemedyService {
       }
     }
 
-    remedies.writeln("\n### Personalized AI Remedies:");
+    remedies.writeln("\n### Personalized Vedic Remedies:");
 
-    // 2. Add AI Remedies (50%)
-    // We ask the AI to provide complementary remedies based on the full chart summary
+    // 2. Add AI Remedies (50%) - with Caching
     try {
-      String aiRemedies = await AIService.getRemedies(kundliSummary, language);
+      String aiRemedies = "";
+      bool fetchedFromCache = false;
+
+      if (birthDetailsKey != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final cached = prefs.getString('remedy_cache_$birthDetailsKey');
+        if (cached != null && cached.isNotEmpty) {
+          aiRemedies = cached;
+          fetchedFromCache = true;
+        }
+      }
+
+      if (!fetchedFromCache) {
+        aiRemedies = await AIService.getRemedies(kundliSummary, language);
+        // Cache it if we have a key
+        if (birthDetailsKey != null && aiRemedies.isNotEmpty && !aiRemedies.contains("Error")) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('remedy_cache_$birthDetailsKey', aiRemedies);
+        }
+      }
+
       remedies.writeln(aiRemedies);
     } catch (e) {
       if (kDebugMode) {
-        print("Error fetching AI remedies: $e");
+        print("Error fetching remedies: $e");
       }
       remedies.writeln("Unable to fetch personalized remedies at the moment.");
     }

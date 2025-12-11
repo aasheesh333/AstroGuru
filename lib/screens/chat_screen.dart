@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
+import 'dart:io';
 import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
@@ -33,6 +34,13 @@ class ChatContentState extends State<ChatContent> {
   final ScrollController _scrollController = ScrollController();
   List<Map<String, String>> _messages = [];
   bool isGuest = false;
+  String? _profileImagePath;
+
+  // Moderation State
+  int _spamStrikes = 0;
+  int _nudityCount = 0;
+  bool _isBanned = false;
+  String? _lastMessageContent;
 
   // Voice
   late stt.SpeechToText _speech;
@@ -49,6 +57,12 @@ class ChatContentState extends State<ChatContent> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       isGuest = prefs.getBool('guest_mode') ?? false;
+      _profileImagePath = prefs.getString('profile_image_path'); // Load profile image if set
+
+      // Load moderation state
+      _spamStrikes = prefs.getInt('spam_strikes') ?? 0;
+      _nudityCount = prefs.getInt('nudity_count') ?? 0;
+      _isBanned = prefs.getBool('is_banned') ?? false;
     });
 
     if (isGuest && mounted) {
@@ -73,6 +87,8 @@ class ChatContentState extends State<ChatContent> {
           ),
         );
       });
+    } else if (_isBanned && mounted) {
+       _showBanDialog();
     } else {
       _loadHistory();
     }
@@ -98,6 +114,21 @@ class ChatContentState extends State<ChatContent> {
         });
       });
     }
+
+    // Check history length warning (40k chars ~= approx 4000 words)
+    int totalLength = _messages.fold(0, (sum, msg) => sum + (msg['content']?.length ?? 0));
+    if (totalLength > 40000) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+             content: const Text("Chat history is very long. Please Reset History for better responses."),
+             action: SnackBarAction(label: "Reset", onPressed: resetHistory),
+             duration: const Duration(seconds: 5),
+           )
+        );
+      });
+    }
+
     _scrollToBottom();
   }
 
@@ -145,8 +176,49 @@ class ChatContentState extends State<ChatContent> {
   }
 
   void _sendMessage() async {
+    if (_isBanned) {
+      _showBanDialog();
+      return;
+    }
+
     if (_controller.text.trim().isEmpty) return;
     String userMsg = _controller.text.trim();
+
+    // --- Spam & Moderation Checks ---
+    bool isViolation = false;
+    String violationReason = "";
+
+    // 1. Length Check (> 1000 chars)
+    if (userMsg.length > 1000) {
+      isViolation = true;
+      violationReason = "Message too long (>1000 chars).";
+    }
+
+    // 2. Repetition Check
+    if (_lastMessageContent == userMsg) {
+      isViolation = true;
+      violationReason = "Repeated message detected.";
+    }
+
+    // 3. Nudity/Inappropriate Content Check
+    final badWords = ["nude", "naked", "sex", "porn", "xxx", "nudity"]; // Basic list
+    bool hasBadWord = badWords.any((word) => userMsg.toLowerCase().contains(word));
+    if (hasBadWord) {
+      _nudityCount++;
+      if (_nudityCount > 5) {
+         isViolation = true;
+         violationReason = "Inappropriate content limit exceeded.";
+      }
+    }
+
+    if (isViolation) {
+      _handleStrike(violationReason);
+      return;
+    }
+
+    // Update last message
+    _lastMessageContent = userMsg;
+    // -------------------------------
 
     setState(() {
       _messages.add({'role': 'user', 'content': userMsg});
@@ -179,6 +251,78 @@ class ChatContentState extends State<ChatContent> {
         _scrollToBottom();
       }
     }
+  }
+
+  void _handleStrike(String reason) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _spamStrikes++;
+      // Persist state
+      prefs.setInt('spam_strikes', _spamStrikes);
+      prefs.setInt('nudity_count', _nudityCount);
+    });
+
+    if (_spamStrikes >= 4) {
+      setState(() {
+        _isBanned = true;
+      });
+      prefs.setBool('is_banned', true);
+      _showBanDialog();
+    } else {
+      _showWarningDialog(reason, 4 - _spamStrikes);
+    }
+  }
+
+  void _showWarningDialog(String reason, int attemptsLeft) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceColor,
+        title: const Text("Warning", style: TextStyle(color: Colors.red)),
+        content: Text(
+          "$reason\nYou have $attemptsLeft attempt(s) left before being banned.",
+          style: const TextStyle(color: AppColors.textPrimary)
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("I Understand", style: TextStyle(color: AppColors.primaryGold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBanDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceColor,
+        title: const Text("Account Banned", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "You have been banned due to repeated violations of our community guidelines.",
+              style: TextStyle(color: AppColors.textPrimary),
+            ),
+            SizedBox(height: 16),
+            Text(
+              "If you think this is a mistake, contact support:",
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            SizedBox(height: 8),
+            SelectableText(
+              "Aasheeshkatheriya@gmail.com",
+              style: TextStyle(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _listen() async {
@@ -273,10 +417,15 @@ class ChatContentState extends State<ChatContent> {
 
                       if (isUser) ...[
                         const SizedBox(width: 8),
-                        const CircleAvatar(
+                         CircleAvatar(
                           radius: 16,
                           backgroundColor: Colors.white24,
-                          child: Icon(Icons.person, color: Colors.white, size: 20),
+                          backgroundImage: _profileImagePath != null
+                             ? FileImage(File(_profileImagePath!)) as ImageProvider
+                             : null,
+                          child: _profileImagePath == null
+                             ? const Icon(Icons.person, color: Colors.white, size: 20)
+                             : null,
                         ),
                       ],
                     ],

@@ -62,10 +62,17 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
        lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
     }
 
+    // Generate a unique ID based on input to cache the AI result
+    // Using a simple composed string to avoid 'crypto' import if not strictly needed,
+    // but MD5 is better for file system safety. Assuming clean chars for prefs key is fine.
+    // Format: "Name_Day-Month-Year_Hour-Minute_Place"
+    final String uniqueId = "${widget.name}_${d.day}-${d.month}-${d.year}_${t.hour}-${t.minute}_${widget.place}".replaceAll(RegExp(r'\s+'), '');
+
     final rem = await RemedyService.getRemedies(
       List<String>.from(data['doshas']),
       data['summary'],
-      lang
+      lang,
+      birthDetailsKey: uniqueId, // Pass the key for caching
     );
 
     if (mounted) {
