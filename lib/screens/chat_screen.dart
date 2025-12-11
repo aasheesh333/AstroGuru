@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'dart:io';
 import '../logic/language_provider.dart';
@@ -267,9 +269,40 @@ class ChatContentState extends State<ChatContent> {
         _isBanned = true;
       });
       prefs.setBool('is_banned', true);
-      _showBanDialog();
+      _enforceBan();
     } else {
       _showWarningDialog(reason, 4 - _spamStrikes);
+    }
+  }
+
+  void _enforceBan() async {
+    // 1. Log to Firebase
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'banned': true,
+          'ban_reason': "Repeated violations (Spam/Inappropriate Content)",
+          'timestamp': FieldValue.serverTimestamp(),
+          'email': user.email,
+        }, SetOptions(merge: true));
+
+        await FirebaseAuth.instance.signOut();
+      } catch (e) {
+        // Fallback if network fails, local ban is already set
+        print("Error logging ban to Firebase: $e");
+      }
+    }
+
+    // 2. Clear Local Session
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('user_logged_in', false);
+    await prefs.remove('user_email');
+    await prefs.remove('user_name');
+
+    // 3. Show Dialog then Navigate
+    if (mounted) {
+       _showBanDialog(navigateAfter: true);
     }
   }
 
@@ -294,7 +327,7 @@ class ChatContentState extends State<ChatContent> {
     );
   }
 
-  void _showBanDialog() {
+  void _showBanDialog({bool navigateAfter = false}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -321,6 +354,21 @@ class ChatContentState extends State<ChatContent> {
             ),
           ],
         ),
+        actions: [
+          if (navigateAfter)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              },
+              child: const Text("Log Out & Exit", style: TextStyle(color: Colors.white)),
+            )
+        ],
       ),
     );
   }

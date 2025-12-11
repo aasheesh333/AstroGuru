@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/baba_avatar.dart';
@@ -195,6 +196,37 @@ class _LoginScreenState extends State<LoginScreen> {
                return;
              }
           }
+
+          // Check Ban Status in Firestore
+          final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          if (doc.exists && doc.data() != null && doc.data()!['banned'] == true) {
+             final reason = doc.data()!['ban_reason'] ?? "Internal Policy";
+             await auth.signOut();
+
+             if (mounted) {
+               showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF0E1016),
+                  title: const Text("Access Denied", style: TextStyle(color: Colors.red)),
+                  content: Text(
+                    "Username is banned due to internal policy.\nReason: $reason",
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                    ),
+                  ],
+                ),
+               );
+             }
+             setState(() => _isLoading = false);
+             return; // Stop processing
+          }
+
           await _onAuthSuccess(user);
         }
       }
