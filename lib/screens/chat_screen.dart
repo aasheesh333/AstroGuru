@@ -25,10 +25,10 @@ class ChatContent extends StatefulWidget {
   const ChatContent({super.key});
 
   @override
-  State<ChatContent> createState() => _ChatContentState();
+  State<ChatContent> createState() => ChatContentState();
 }
 
-class _ChatContentState extends State<ChatContent> {
+class ChatContentState extends State<ChatContent> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<Map<String, String>> _messages = [];
@@ -106,7 +106,7 @@ class _ChatContentState extends State<ChatContent> {
     prefs.setString('chat_history', jsonEncode(_messages));
   }
 
-  void _resetHistory() async {
+  void resetHistory() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -215,26 +215,15 @@ class _ChatContentState extends State<ChatContent> {
   @override
   Widget build(BuildContext context) {
     if (isGuest) {
-      return const Scaffold(
-        backgroundColor: AppColors.scaffoldBackgroundColor,
-        body: Center(child: CircularProgressIndicator())
+      return Container(
+        color: AppColors.scaffoldBackgroundColor,
+        child: const Center(child: CircularProgressIndicator())
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Ask AI Sage"),
-        backgroundColor: AppColors.primaryPurple, // Explicitly match nav
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: "Reset History",
-            onPressed: _resetHistory,
-          )
-        ],
-      ),
-      body: Column(
+    return Container(
+      color: AppColors.scaffoldBackgroundColor,
+      child: Column(
         children: [
           Expanded(
             child: ListView.builder(

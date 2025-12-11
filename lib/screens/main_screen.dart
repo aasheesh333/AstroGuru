@@ -15,14 +15,20 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  final GlobalKey<ChatContentState> _chatKey = GlobalKey<ChatContentState>();
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const HoroscopeContent(),
-    const KundliInputContent(),
-    const ChatContent(),
-    const ProfileContent(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const HomeScreen(),
+      const HoroscopeContent(),
+      const KundliInputContent(),
+      ChatContent(key: _chatKey),
+      const ProfileContent(),
+    ];
+  }
 
   PreferredSizeWidget? _buildAppBar() {
     Widget? titleWidget;
@@ -72,6 +78,13 @@ class _MainScreenState extends State<MainScreen> {
         break;
       case 3:
         titleWidget = const Text("Ask AI Sage");
+        actions = [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: "Reset History",
+            onPressed: () => _chatKey.currentState?.resetHistory(),
+          ),
+        ];
         break;
       case 4:
         titleWidget = const Text("Profile");
