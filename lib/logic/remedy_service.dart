@@ -5,12 +5,17 @@ import '../services/ai_service.dart';
 class RemedyService {
   // 50% Rule-based Remedies (Static Library)
   static const Map<String, String> _ruleBasedRemedies = {
-    'Mangal Dosh': "Recite Hanuman Chalisa daily. Offer red flowers to Lord Hanuman on Tuesdays.",
-    'Kaal Sarp Dosh': "Perform Rudrabhishek on Mondays. Chant 'Om Namah Shivaya' 108 times daily.",
-    'Guru Chandal Dosh': "Donate yellow pulses or clothes on Thursdays. Respect elders and teachers.",
-    'Surya Grahan Dosh': "Offer water to the rising Sun daily. Chant the Aditya Hridaya Stotram.",
-    'Chandra Grahan Dosh': "Donate white items (rice, milk) on Mondays. Meditate for mental peace.",
+    'Mangal': "Recite Hanuman Chalisa daily. Offer red flowers to Lord Hanuman on Tuesdays.",
+    'Mars': "Recite Hanuman Chalisa daily. Offer red flowers to Lord Hanuman on Tuesdays.",
+    'Kaal Sarp': "Perform Rudrabhishek on Mondays. Chant 'Om Namah Shivaya' 108 times daily.",
+    'Guru Chandal': "Donate yellow pulses or clothes on Thursdays. Respect elders and teachers.",
+    'Chandal': "Donate yellow pulses or clothes on Thursdays. Respect elders and teachers.",
+    'Surya Grahan': "Offer water to the rising Sun daily. Chant the Aditya Hridaya Stotram.",
+    'Sun Eclipse': "Offer water to the rising Sun daily. Chant the Aditya Hridaya Stotram.",
+    'Chandra Grahan': "Donate white items (rice, milk) on Mondays. Meditate for mental peace.",
+    'Moon Eclipse': "Donate white items (rice, milk) on Mondays. Meditate for mental peace.",
     'Sade Sati': "Light a mustard oil lamp under a Peepal tree on Saturdays. Recite Shani Chalisa.",
+    'Saturn': "Light a mustard oil lamp under a Peepal tree on Saturdays. Recite Shani Chalisa.",
   };
 
   static Future<String> getRemedies(List<String> doshas, String kundliSummary, String language, {String? birthDetailsKey}) async {
@@ -21,10 +26,28 @@ class RemedyService {
     if (doshas.isEmpty) {
       remedies.writeln("- No major doshas detected. Focus on strengthening your favorable planets.");
     } else {
+      bool foundAny = false;
       for (String dosha in doshas) {
-        if (_ruleBasedRemedies.containsKey(dosha)) {
-          remedies.writeln("- **$dosha**: ${_ruleBasedRemedies[dosha]}");
+        String? match;
+        // Robust case-insensitive partial matching
+        for (var key in _ruleBasedRemedies.keys) {
+           if (dosha.toLowerCase().contains(key.toLowerCase()) || key.toLowerCase().contains(dosha.toLowerCase())) {
+             match = _ruleBasedRemedies[key];
+             break;
+           }
         }
+
+        if (match != null) {
+           remedies.writeln("- **$dosha**: $match");
+           foundAny = true;
+        } else {
+           // List the dosha even if no specific static remedy is found, so user knows it was detected
+           remedies.writeln("- **$dosha**: Consult detailed AI analysis below for specific remedies.");
+           foundAny = true;
+        }
+      }
+      if (!foundAny) {
+         remedies.writeln("- No specific traditional remedies found for the detected conditions.");
       }
     }
 

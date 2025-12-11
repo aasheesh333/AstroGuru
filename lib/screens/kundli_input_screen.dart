@@ -68,22 +68,6 @@ class _KundliInputContentState extends State<KundliInputContent> {
       String name = _nameController.text.trim();
       String place = _placeController.text.trim();
 
-      // Name Validation: 2-50 chars, only letters/spaces
-      final nameRegExp = RegExp(r"^[a-zA-Z\s]{2,50}$");
-      if (!nameRegExp.hasMatch(name)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a valid name (letters only)."), backgroundColor: Colors.red),
-        );
-        return;
-      }
-      // Check for repeated characters (e.g., "aaaa")
-      if (RegExp(r"(.)\1{3,}").hasMatch(name)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a real name."), backgroundColor: Colors.red),
-        );
-        return;
-      }
-
       // Place Validation: 2-50 chars, letters/spaces/commas
       final placeRegExp = RegExp(r"^[a-zA-Z\s,]{2,50}$");
       if (!placeRegExp.hasMatch(place)) {
@@ -113,7 +97,7 @@ class _KundliInputContentState extends State<KundliInputContent> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF0E1016),
         title: const Text("Login Required", style: TextStyle(color: Color(0xFFD4AF37))),
-        content: const Text("Please log in with phone number to unlock detailed Kundli generation.", style: TextStyle(color: Colors.white)),
+        content: const Text("Please log in to unlock detailed Kundli generation.", style: TextStyle(color: Colors.white)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -151,20 +135,39 @@ class _KundliInputContentState extends State<KundliInputContent> {
             ),
             const SizedBox(height: 32),
 
-            _buildTextField('Full Name', Icons.person_outline, controller: _nameController),
+            _buildTextField(
+              'Full Name',
+              Icons.person_outline,
+              controller: _nameController,
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Please enter Full Name';
+                if (value.length > 100) return 'Name must be under 100 characters';
+                return null;
+              },
+            ),
             const SizedBox(height: 16),
             _buildTextField(
               'Date of Birth',
               Icons.calendar_today_outlined,
               isDate: true,
-              controller: _dateController
+              controller: _dateController,
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Please enter Date of Birth';
+                if (_selectedDate != null) {
+                  final threeMonthsAgo = DateTime.now().subtract(const Duration(days: 90));
+                  if (_selectedDate!.isAfter(threeMonthsAgo)) {
+                    return 'Date must be at least 3 months in the past';
+                  }
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             _buildTextField(
               'Time of Birth',
               Icons.access_time_outlined,
               isTime: true,
-              controller: _timeController
+              controller: _timeController,
             ),
             const SizedBox(height: 16),
             _buildTextField('Place of Birth', Icons.location_on_outlined, controller: _placeController),
@@ -180,12 +183,17 @@ class _KundliInputContentState extends State<KundliInputContent> {
     );
   }
 
-  Widget _buildTextField(String label, IconData icon, {bool isDate = false, bool isTime = false, required TextEditingController controller}) {
+  Widget _buildTextField(String label, IconData icon, {
+    bool isDate = false,
+    bool isTime = false,
+    required TextEditingController controller,
+    String? Function(String?)? validator,
+  }) {
     return TextFormField(
       controller: controller,
       style: const TextStyle(color: AppColors.textPrimary),
       readOnly: isDate || isTime,
-      validator: (value) {
+      validator: validator ?? (value) {
         if (value == null || value.isEmpty) {
           return 'Please enter $label';
         }

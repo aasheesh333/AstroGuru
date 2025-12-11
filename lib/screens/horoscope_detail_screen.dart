@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
@@ -57,12 +59,33 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
     });
   }
 
-  void _fetchDaily() async {
+  Future<void> _fetchDaily() async {
     setState(() => _isDailyLoading = true);
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final now = DateTime.now();
+    final dateKey = DateFormat('yyyy-MM-dd').format(now);
+    final cacheKey = 'horoscope_${lang}_${widget.signName}_daily_$dateKey';
+
     try {
-      final jsonStr = await AIService.getDailyHoroscope(widget.signName, DateTime.now(), lang);
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.containsKey(cacheKey)) {
+        final cachedJson = prefs.getString(cacheKey);
+        if (cachedJson != null) {
+          final data = jsonDecode(cachedJson);
+          if (mounted) {
+            setState(() {
+              _dailyData = data;
+              _isDailyLoading = false;
+            });
+          }
+          return;
+        }
+      }
+
+      final jsonStr = await AIService.getDailyHoroscope(widget.signName, now, lang);
       final data = jsonDecode(jsonStr);
+      await prefs.setString(cacheKey, jsonStr);
+
       if (mounted) {
         setState(() {
           _dailyData = data;
@@ -79,13 +102,34 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
     }
   }
 
-  void _fetchWeekly() async {
+  Future<void> _fetchWeekly() async {
     if (_isWeeklyLoading) return;
     setState(() => _isWeeklyLoading = true);
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final now = DateTime.now();
+    final weekKey = DateFormat('yyyy_w').format(now);
+    final cacheKey = 'horoscope_${lang}_${widget.signName}_weekly_$weekKey';
+
     try {
-      final jsonStr = await AIService.getWeeklyHoroscope(widget.signName, DateTime.now(), lang);
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.containsKey(cacheKey)) {
+        final cachedJson = prefs.getString(cacheKey);
+        if (cachedJson != null) {
+          final data = jsonDecode(cachedJson);
+          if (mounted) {
+            setState(() {
+              _weeklyData = data;
+              _isWeeklyLoading = false;
+            });
+          }
+          return;
+        }
+      }
+
+      final jsonStr = await AIService.getWeeklyHoroscope(widget.signName, now, lang);
       final data = jsonDecode(jsonStr);
+      await prefs.setString(cacheKey, jsonStr);
+
       if (mounted) {
         setState(() {
           _weeklyData = data;
@@ -102,13 +146,34 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
     }
   }
 
-  void _fetchMonthly() async {
+  Future<void> _fetchMonthly() async {
     if (_isMonthlyLoading) return;
     setState(() => _isMonthlyLoading = true);
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final now = DateTime.now();
+    final monthKey = DateFormat('yyyy_MM').format(now);
+    final cacheKey = 'horoscope_${lang}_${widget.signName}_monthly_$monthKey';
+
     try {
-      final jsonStr = await AIService.getMonthlyHoroscope(widget.signName, DateTime.now(), lang);
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.containsKey(cacheKey)) {
+        final cachedJson = prefs.getString(cacheKey);
+        if (cachedJson != null) {
+          final data = jsonDecode(cachedJson);
+          if (mounted) {
+            setState(() {
+              _monthlyData = data;
+              _isMonthlyLoading = false;
+            });
+          }
+          return;
+        }
+      }
+
+      final jsonStr = await AIService.getMonthlyHoroscope(widget.signName, now, lang);
       final data = jsonDecode(jsonStr);
+      await prefs.setString(cacheKey, jsonStr);
+
       if (mounted) {
         setState(() {
           _monthlyData = data;

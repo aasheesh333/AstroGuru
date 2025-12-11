@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
@@ -27,7 +28,10 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
   ];
 
   void _analyze() async {
-    if (_name1Controller.text.isEmpty || _name2Controller.text.isEmpty) {
+    final name1 = _name1Controller.text.trim();
+    final name2 = _name2Controller.text.trim();
+
+    if (name1.isEmpty || name2.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter both names")));
       return;
     }
@@ -36,22 +40,47 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
 
     try {
       final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+
+      // Generate a simple cache key
+      final cacheKey = "love_match_${lang}_${name1.toLowerCase()}_${_sign1}_${name2.toLowerCase()}_${_sign2}";
+      final prefs = await SharedPreferences.getInstance();
+
+      if (prefs.containsKey(cacheKey)) {
+        final cachedJson = prefs.getString(cacheKey);
+        if (cachedJson != null) {
+          final data = jsonDecode(cachedJson);
+          if (mounted) {
+            setState(() {
+              _result = data;
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+      }
+
       final response = await AIService.getLoveMatch(
-        _name1Controller.text,
+        name1,
         _sign1,
-        _name2Controller.text,
+        name2,
         _sign2,
         lang
       );
 
       final data = jsonDecode(response);
-      setState(() {
-        _result = data;
-        _isLoading = false;
-      });
+      await prefs.setString(cacheKey, response);
+
+      if (mounted) {
+        setState(() {
+          _result = data;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Analysis failed. Please try again.")));
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Analysis failed. Please try again.")));
+      }
     }
   }
 
