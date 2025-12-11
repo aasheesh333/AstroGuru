@@ -43,6 +43,7 @@ class ChatContentState extends State<ChatContent> {
   int _nudityCount = 0;
   bool _isBanned = false;
   String? _lastMessageContent;
+  bool _isTextTooLong = false;
 
   // Voice
   late stt.SpeechToText _speech;
@@ -52,7 +53,25 @@ class ChatContentState extends State<ChatContent> {
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+    _controller.addListener(_checkLength);
     _checkAccess();
+  }
+
+  void _checkLength() {
+    final tooLong = _controller.text.trim().length > 1000;
+    if (tooLong != _isTextTooLong) {
+      setState(() {
+        _isTextTooLong = tooLong;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_checkLength);
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _checkAccess() async {
@@ -183,6 +202,8 @@ class ChatContentState extends State<ChatContent> {
       return;
     }
 
+    if (_isTextTooLong) return; // UI should prevent this, but safety check.
+
     if (_controller.text.trim().isEmpty) return;
     String userMsg = _controller.text.trim();
 
@@ -190,13 +211,7 @@ class ChatContentState extends State<ChatContent> {
     bool isViolation = false;
     String violationReason = "";
 
-    // 1. Length Check (> 1000 chars)
-    if (userMsg.length > 1000) {
-      isViolation = true;
-      violationReason = "Message too long (>1000 chars).";
-    }
-
-    // 2. Repetition Check
+    // Repetition Check
     if (_lastMessageContent == userMsg) {
       isViolation = true;
       violationReason = "Repeated message detected.";
@@ -529,18 +544,26 @@ class ChatContentState extends State<ChatContent> {
 
                 // Send Icon
                 Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.primaryGold,
+                  decoration: BoxDecoration(
+                    color: _isTextTooLong ? Colors.grey : AppColors.primaryGold,
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.black),
-                    onPressed: _sendMessage,
+                    onPressed: _isTextTooLong ? null : _sendMessage,
                   ),
                 ),
               ],
             ),
           ),
+          if (_isTextTooLong)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Text(
+                "Message too long (${_controller.text.trim().length}/1000)",
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
         ],
       ),
     );
