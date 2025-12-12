@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/baba_avatar.dart';
+import '../utils/validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +17,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
@@ -106,10 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (_isSignUp) {
-      if (name.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter your full name")),
-        );
+      if (!_formKey.currentState!.validate()) {
         setState(() => _isLoading = false);
         return;
       }
@@ -369,51 +368,65 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const BabaAvatar(size: 100),
-                  const SizedBox(height: 24),
-                  Text(
-                    _isSignUp ? 'Create Account' : 'Welcome Back',
-                    style: Theme.of(context).textTheme.displayMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _isSignUp
-                      ? 'Sign up to unlock all features'
-                      : 'Log in with your email',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 32),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const BabaAvatar(size: 100),
+                    const SizedBox(height: 24),
+                    Text(
+                      _isSignUp ? 'Create Account' : 'Welcome Back',
+                      style: Theme.of(context).textTheme.displayMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isSignUp
+                        ? 'Sign up to unlock all features'
+                        : 'Log in with your email',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 32),
 
-                  if (_isSignUp) ...[
-                     TextField(
-                      controller: _nameController,
-                      keyboardType: TextInputType.name,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Full Name',
-                        hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
-                        labelStyle: const TextStyle(color: AppColors.textSecondary),
-                        prefixIcon: const Icon(Icons.person, color: AppColors.primaryGold),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: AppColors.textSecondary),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(color: AppColors.primaryGold),
-                          borderRadius: BorderRadius.circular(12),
+                    if (_isSignUp) ...[
+                       TextFormField(
+                        controller: _nameController,
+                        validator: AppValidators.validateName,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        keyboardType: TextInputType.name,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Full Name',
+                          hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                          labelStyle: const TextStyle(color: AppColors.textSecondary),
+                          prefixIcon: const Icon(Icons.person, color: AppColors.primaryGold),
+                          errorStyle: const TextStyle(color: Colors.redAccent),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: AppColors.textSecondary),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: AppColors.primaryGold),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: Colors.redAccent),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: Colors.redAccent),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                    // Date of Birth Input
-                    TextField(
-                      controller: _dobController,
-                      readOnly: true,
-                      style: const TextStyle(color: Colors.white),
+                      // Date of Birth Input
+                      TextFormField(
+                        controller: _dobController,
+                        validator: (val) => val == null || val.isEmpty ? "Date of Birth is required" : null,
+                        readOnly: true,
+                        style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         labelText: 'Date of Birth',
                         hintText: 'Select Date',
@@ -463,8 +476,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
 
                   // Email Input
-                  TextField(
+                  TextFormField(
                     controller: _emailController,
+                    validator: (val) => val == null || val.isEmpty ? "Email is required" : null,
                     keyboardType: TextInputType.emailAddress,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
@@ -473,12 +487,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
                       labelStyle: const TextStyle(color: AppColors.textSecondary),
                       prefixIcon: const Icon(Icons.email, color: AppColors.primaryGold),
+                      errorStyle: const TextStyle(color: Colors.redAccent),
                       enabledBorder: OutlineInputBorder(
                         borderSide: const BorderSide(color: AppColors.textSecondary),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderSide: const BorderSide(color: AppColors.primaryGold),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.redAccent),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.redAccent),
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
@@ -487,14 +510,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
 
                   // Password Input
-                  TextField(
+                  TextFormField(
                     controller: _passwordController,
+                    validator: (val) => val == null || val.isEmpty ? "Password is required" : null,
                     obscureText: true,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Password',
                       labelStyle: const TextStyle(color: AppColors.textSecondary),
                       prefixIcon: const Icon(Icons.lock, color: AppColors.primaryGold),
+                      errorStyle: const TextStyle(color: Colors.redAccent),
                       enabledBorder: OutlineInputBorder(
                         borderSide: const BorderSide(color: AppColors.textSecondary),
                         borderRadius: BorderRadius.circular(12),
@@ -503,16 +528,42 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderSide: const BorderSide(color: AppColors.primaryGold),
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      errorBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.redAccent),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.redAccent),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
 
                   const SizedBox(height: 32),
 
                   // Action Button
-                  GradientButton(
-                    text: _isSignUp ? 'Sign Up' : 'Log In',
-                    isLoading: _isLoading,
-                    onPressed: _submit,
+                  // ValueListenableBuilder to disable button visually if fields are invalid
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _emailController,
+                    builder: (context, emailValue, child) {
+                      return ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _passwordController,
+                        builder: (context, passValue, _) {
+                          // Basic empty check for button state visual, real validation happens in _submit via form key
+                          bool isDisabled = emailValue.text.isEmpty || passValue.text.isEmpty;
+                          if (_isSignUp) isDisabled = isDisabled || _nameController.text.isEmpty;
+
+                          return Opacity(
+                            opacity: isDisabled ? 0.5 : 1.0,
+                            child: GradientButton(
+                              text: _isSignUp ? 'Sign Up' : 'Log In',
+                              isLoading: _isLoading,
+                              onPressed: isDisabled ? () {} : _submit,
+                            ),
+                          );
+                        }
+                      );
+                    }
                   ),
 
                   const SizedBox(height: 16),
@@ -544,6 +595,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
+          ),
           ),
         ),
       ),

@@ -6,6 +6,7 @@ import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
+import '../utils/validators.dart';
 
 class LoveMatchScreen extends StatefulWidget {
   const LoveMatchScreen({super.key});
@@ -15,6 +16,7 @@ class LoveMatchScreen extends StatefulWidget {
 }
 
 class _LoveMatchScreenState extends State<LoveMatchScreen> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _name1Controller = TextEditingController();
   final TextEditingController _name2Controller = TextEditingController();
   String _sign1 = "Aries";
@@ -28,13 +30,12 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
   ];
 
   void _analyze() async {
+    if (!_formKey.currentState!.validate()) {
+       return;
+    }
+
     final name1 = _name1Controller.text.trim();
     final name2 = _name2Controller.text.trim();
-
-    if (name1.isEmpty || name2.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter both names")));
-      return;
-    }
 
     setState(() => _isLoading = true);
 
@@ -100,11 +101,13 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         decoration: const BoxDecoration(gradient: AppColors.mainGradient),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              if (_result == null) ...[
-                _buildInputCard("You", _name1Controller, (val) => setState(() => _sign1 = val), _sign1),
-                const SizedBox(height: 24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                if (_result == null) ...[
+                  _buildInputCard("You", _name1Controller, (val) => setState(() => _sign1 = val), _sign1),
+                  const SizedBox(height: 24),
                 const Icon(Icons.favorite, color: Colors.pinkAccent, size: 40),
                 const SizedBox(height: 24),
                 _buildInputCard("Partner", _name2Controller, (val) => setState(() => _sign2 = val), _sign2),
@@ -143,8 +146,10 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         children: [
           Text(title, style: const TextStyle(color: AppColors.primaryGold, fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          TextField(
+          TextFormField(
             controller: controller,
+            validator: AppValidators.validateName,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: "Enter Name",
@@ -152,6 +157,11 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
               filled: true,
               fillColor: Colors.black.withOpacity(0.3),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              errorStyle: const TextStyle(color: Colors.redAccent),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.redAccent),
+              ),
             ),
           ),
           const SizedBox(height: 16),

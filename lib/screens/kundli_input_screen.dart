@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_button.dart';
+import '../utils/validators.dart';
 import 'kundli_result_screen.dart';
 import 'login_screen.dart';
 
@@ -64,18 +65,9 @@ class _KundliInputContentState extends State<KundliInputContent> {
     }
 
     if (_formKey.currentState!.validate()) {
-      // Internal Validation to prevent spam
+      // Validation handled by Form/Validators
       String name = _nameController.text.trim();
       String place = _placeController.text.trim();
-
-      // Place Validation: 2-50 chars, letters/spaces/commas
-      final placeRegExp = RegExp(r"^[a-zA-Z\s,]{2,50}$");
-      if (!placeRegExp.hasMatch(place)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a valid location."), backgroundColor: Colors.red),
-        );
-        return;
-      }
 
       Navigator.push(
         context,
@@ -139,11 +131,7 @@ class _KundliInputContentState extends State<KundliInputContent> {
               'Full Name',
               Icons.person_outline,
               controller: _nameController,
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Please enter Full Name';
-                if (value.length > 100) return 'Name must be under 100 characters';
-                return null;
-              },
+              validator: AppValidators.validateName,
             ),
             const SizedBox(height: 16),
             _buildTextField(
@@ -170,7 +158,12 @@ class _KundliInputContentState extends State<KundliInputContent> {
               controller: _timeController,
             ),
             const SizedBox(height: 16),
-            _buildTextField('Place of Birth', Icons.location_on_outlined, controller: _placeController),
+            _buildTextField(
+              'Place of Birth',
+              Icons.location_on_outlined,
+              controller: _placeController,
+              validator: AppValidators.validateLocation,
+            ),
 
             const SizedBox(height: 48),
             GradientButton(
