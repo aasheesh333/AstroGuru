@@ -35,3 +35,17 @@ elif [ -n "$APP_FIREBASE_ANDROID_ID" ]; then
 else
     echo "Warning: No Firebase JSON base64 variable found. google-services.json might be missing."
 fi
+
+# Create key.properties and keystore
+if [ -n "$APP_KEYSTORE_BASE64" ]; then
+    echo "Decoding Keystore..."
+    echo "$APP_KEYSTORE_BASE64" | tr -d '\n' | base64 --decode > android/app/upload-keystore.jks
+
+    echo "Creating android/key.properties..."
+    echo "storePassword=$APP_KEYSTORE_PASSWORD" > android/key.properties
+    echo "keyPassword=$APP_KEY_PASSWORD" >> android/key.properties
+    echo "keyAlias=${APP_KEY_ALIAS:-mykey}" >> android/key.properties
+    echo "storeFile=upload-keystore.jks" >> android/key.properties
+else
+    echo "Warning: APP_KEYSTORE_BASE64 not found. Signed build will fail."
+fi

@@ -55,7 +55,6 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         if (cachedJson != null) {
           final data = jsonDecode(cachedJson);
           // Only use cache if the score roughly matches (or just trust cache)
-          // Since deterministic score is constant for same inputs, we can trust cache.
           if (mounted) {
             setState(() {
               _result = data;
@@ -118,18 +117,19 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
                 if (_result == null) ...[
                   _buildInputCard("You", _name1Controller, (val) => setState(() => _sign1 = val), _sign1),
                   const SizedBox(height: 24),
-                const Icon(Icons.favorite, color: Colors.pinkAccent, size: 40),
-                const SizedBox(height: 24),
-                _buildInputCard("Partner", _name2Controller, (val) => setState(() => _sign2 = val), _sign2),
-                const SizedBox(height: 40),
-                GradientButton(
-                  text: "Analyze Match",
-                  isLoading: _isLoading,
-                  onPressed: _analyze,
-                ),
-              ] else
-                _buildResultView(),
-            ],
+                  const Icon(Icons.favorite, color: Colors.pinkAccent, size: 40),
+                  const SizedBox(height: 24),
+                  _buildInputCard("Partner", _name2Controller, (val) => setState(() => _sign2 = val), _sign2),
+                  const SizedBox(height: 40),
+                  GradientButton(
+                    text: "Analyze Match",
+                    isLoading: _isLoading,
+                    onPressed: _analyze,
+                  ),
+                ] else
+                  _buildResultView(),
+              ],
+            ),
           ),
         ),
       ),

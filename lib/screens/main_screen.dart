@@ -77,7 +77,7 @@ class _MainScreenState extends State<MainScreen> {
         titleWidget = const Text("Generate Kundli");
         break;
       case 3:
-        titleWidget = const Text("Ask AI Sage");
+        titleWidget = const Text("AI Sage");
         actions = [
           IconButton(
             icon: const Icon(Icons.refresh),
