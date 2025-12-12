@@ -60,8 +60,11 @@ class AIService {
     return await getResponse(system, user, jsonMode: true);
   }
 
-  static Future<String> getLoveMatch(String name1, String sign1, String name2, String sign2, String language) async {
+  static Future<String> getLoveMatch(String name1, String sign1, String name2, String sign2, String language, {int? forcedScore}) async {
     String system = "You are an expert Astrologer specializing in relationship compatibility. Output language: $language. Return ONLY a JSON object with keys: 'score' (integer 0-100), 'summary' (short summary), 'detailed_analysis' (paragraph).";
+    if (forcedScore != null) {
+       system += " IMPORTANT: The calculated compatibility score is $forcedScore%. You MUST output exactly this score in the 'score' field. Write the summary and detailed analysis to match this score level (Low/Medium/High).";
+    }
     String user = "Analyze compatibility between $name1 ($sign1) and $name2 ($sign2).";
     return await getResponse(system, user, jsonMode: true);
   }

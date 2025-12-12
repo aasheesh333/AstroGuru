@@ -7,6 +7,7 @@ import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../utils/validators.dart';
+import '../logic/love_match_logic.dart';
 
 class LoveMatchScreen extends StatefulWidget {
   const LoveMatchScreen({super.key});
@@ -42,6 +43,9 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
     try {
       final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
 
+      // Calculate local score
+      final int matchScore = LoveMatchLogic.calculate(name1, _sign1, name2, _sign2);
+
       // Generate a simple cache key
       final cacheKey = "love_match_${lang}_${name1.toLowerCase()}_${_sign1}_${name2.toLowerCase()}_${_sign2}";
       final prefs = await SharedPreferences.getInstance();
@@ -50,6 +54,8 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         final cachedJson = prefs.getString(cacheKey);
         if (cachedJson != null) {
           final data = jsonDecode(cachedJson);
+          // Only use cache if the score roughly matches (or just trust cache)
+          // Since deterministic score is constant for same inputs, we can trust cache.
           if (mounted) {
             setState(() {
               _result = data;
@@ -65,11 +71,15 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         _sign1,
         name2,
         _sign2,
-        lang
+        lang,
+        forcedScore: matchScore,
       );
 
       final data = jsonDecode(response);
-      await prefs.setString(cacheKey, response);
+      // Ensure the displayed score matches our calculation if AI didn't respect it perfectly (fallback)
+      data['score'] = matchScore;
+
+      await prefs.setString(cacheKey, jsonEncode(data));
 
       if (mounted) {
         setState(() {
