@@ -304,6 +304,80 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter your email to reset password")),
+      );
+      return;
+    }
+
+    // Rate Limiting Logic
+    final prefs = await SharedPreferences.getInstance();
+    List<String> attempts = prefs.getStringList('forgot_password_attempts') ?? [];
+    DateTime now = DateTime.now();
+
+    // Filter attempts within last 24 hours
+    List<String> recentAttempts = attempts.where((ts) {
+      try {
+        DateTime attemptTime = DateTime.parse(ts);
+        return now.difference(attemptTime).inHours < 24;
+      } catch (e) {
+        return false;
+      }
+    }).toList();
+
+    if (recentAttempts.length >= 5) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF0E1016),
+            title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
+            content: const Text(
+              "You have exceeded the maximum number of password reset attempts. Please try again after 24 hours.",
+              style: TextStyle(color: Colors.white),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      // Record attempt
+      recentAttempts.add(now.toIso8601String());
+      await prefs.setStringList('forgot_password_attempts', recentAttempts);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Password reset email sent. Check your inbox.")),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = e.message ?? "Error sending reset email";
+      if (e.code == 'user-not-found') {
+        message = 'No user found with this email.';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
+  }
+
   Future<void> _storeUserData(String name, DateTime dob) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_dob', dob.toIso8601String());
@@ -539,7 +613,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  if (!_isSignUp)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _handleForgotPassword,
+                        child: const Text(
+                          "Forgot Password?",
+                          style: TextStyle(color: AppColors.primaryGold, fontSize: 12),
+                        ),
+                      ),
+                    ),
+
+                  SizedBox(height: _isSignUp ? 32 : 16),
 
                   // Action Button
                   // ValueListenableBuilder to disable button visually if fields are invalid

@@ -158,8 +158,12 @@ class _ProfileContentState extends State<ProfileContent> {
                 _buildProfileItem(
                   icon: Icons.edit,
                   title: "Edit Profile",
-                  onTap: isGuest ? _showLoginDialog : () {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Edit Profile logic not implemented yet.")));
+                  onTap: isGuest ? _showLoginDialog : () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                    );
+                    _loadProfile(); // Refresh data on return
                   },
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
