@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'dart:io';
 import '../logic/language_provider.dart';
+import '../logic/user_session.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/astro_text_parser.dart';
@@ -37,6 +38,7 @@ class ChatContentState extends State<ChatContent> {
   List<Map<String, String>> _messages = [];
   bool isGuest = false;
   String? _profileImagePath;
+  String? _profileImageBase64;
 
   // Moderation State
   int _spamStrikes = 0;
@@ -76,14 +78,23 @@ class ChatContentState extends State<ChatContent> {
 
   void _checkAccess() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      isGuest = prefs.getBool('guest_mode') ?? false;
-      _profileImagePath = prefs.getString('profile_image_path'); // Load profile image if set
 
-      // Load moderation state
-      _spamStrikes = prefs.getInt('spam_strikes') ?? 0;
-      _nudityCount = prefs.getInt('nudity_count') ?? 0;
-      _isBanned = prefs.getBool('is_banned') ?? false;
+    bool guest = prefs.getBool('guest_mode') ?? false;
+    String? path = await UserSession.getString('profile_image_path');
+    String? base64 = await UserSession.getString('profile_image_base64'); // Use session
+
+    // Load moderation state via session
+    int spam = await UserSession.getInt('spam_strikes') ?? 0;
+    int nudity = await UserSession.getInt('nudity_count') ?? 0;
+    bool banned = await UserSession.getBool('is_banned') ?? false;
+
+    setState(() {
+      isGuest = guest;
+      _profileImagePath = path;
+      _profileImageBase64 = base64;
+      _spamStrikes = spam;
+      _nudityCount = nudity;
+      _isBanned = banned;
     });
 
     if (isGuest && mounted) {
@@ -116,8 +127,7 @@ class ChatContentState extends State<ChatContent> {
   }
 
   void _loadHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? historyJson = prefs.getString('chat_history');
+    final String? historyJson = await UserSession.getString('chat_history'); // Session based
 
     if (historyJson != null) {
       final List<dynamic> decoded = jsonDecode(historyJson);
@@ -154,8 +164,7 @@ class ChatContentState extends State<ChatContent> {
   }
 
   void _saveHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setString('chat_history', jsonEncode(_messages));
+    await UserSession.setString('chat_history', jsonEncode(_messages));
   }
 
   void resetHistory() async {
@@ -271,19 +280,19 @@ class ChatContentState extends State<ChatContent> {
   }
 
   void _handleStrike(String reason) async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
       _spamStrikes++;
-      // Persist state
-      prefs.setInt('spam_strikes', _spamStrikes);
-      prefs.setInt('nudity_count', _nudityCount);
     });
+
+    // Persist state
+    await UserSession.setInt('spam_strikes', _spamStrikes);
+    await UserSession.setInt('nudity_count', _nudityCount);
 
     if (_spamStrikes >= 4) {
       setState(() {
         _isBanned = true;
       });
-      prefs.setBool('is_banned', true);
+      await UserSession.setBool('is_banned', true);
       _enforceBan();
     } else {
       _showWarningDialog(reason, 4 - _spamStrikes);
@@ -310,10 +319,10 @@ class ChatContentState extends State<ChatContent> {
     }
 
     // 2. Clear Local Session
+    await UserSession.clearSession(); // Handled by prefix logic
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('user_logged_in', false);
-    await prefs.remove('user_email');
-    await prefs.remove('user_name');
+    // We don't need to manually clear user_email/name as UserSession handles the data pointer
 
     // 3. Show Dialog then Navigate
     if (mounted) {
@@ -483,10 +492,10 @@ class ChatContentState extends State<ChatContent> {
                          CircleAvatar(
                           radius: 16,
                           backgroundColor: Colors.white24,
-                          backgroundImage: _profileImagePath != null
-                             ? FileImage(File(_profileImagePath!)) as ImageProvider
-                             : null,
-                          child: _profileImagePath == null
+                          backgroundImage: _profileImageBase64 != null
+                             ? MemoryImage(base64Decode(_profileImageBase64!))
+                             : (_profileImagePath != null ? FileImage(File(_profileImagePath!)) as ImageProvider : null),
+                          child: (_profileImageBase64 == null && _profileImagePath == null)
                              ? const Icon(Icons.person, color: Colors.white, size: 20)
                              : null,
                         ),
