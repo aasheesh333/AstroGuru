@@ -219,7 +219,23 @@ class _ProfileContentState extends State<ProfileContent> {
                               DropdownMenuItem(value: Locale('ur'), child: Text("Urdu")),
                             ],
                             onChanged: (val) {
-                              if (val != null) provider.setLocale(val);
+                              if (val != null) {
+                                provider.setLocale(val);
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    backgroundColor: AppColors.surfaceColor,
+                                    title: const Text("Language Changed", style: TextStyle(color: AppColors.primaryGold)),
+                                    content: const Text("Please restart the app for the changes to fully take effect.", style: TextStyle(color: Colors.white)),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
                             },
                           ),
                         );

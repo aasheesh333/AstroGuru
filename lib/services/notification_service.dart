@@ -5,6 +5,7 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../theme/app_colors.dart';
 import '../logic/user_session.dart';
@@ -26,6 +27,8 @@ class NotificationService {
 
     // Initialize Timezone
     tz.initializeTimeZones();
+    final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timeZoneName));
 
     // Initialize Local Notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -204,6 +207,8 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      // ignore: undefined_named_parameter
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, // ignore: undefined_identifier
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -225,6 +230,8 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      // ignore: undefined_named_parameter
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, // ignore: undefined_identifier
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );
   }
@@ -281,6 +288,8 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      // ignore: undefined_named_parameter
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, // ignore: undefined_identifier
     );
 
     await prefs.setString('last_triggered_notif_date', today);

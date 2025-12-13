@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async'; // Import for Timer
 import 'onboarding_screen.dart';
 import 'login_screen.dart';
+import 'language_selection_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,13 +28,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      final bool languageSelected = prefs.getBool('language_selected') ?? false;
       final bool onboardingSeen = prefs.getBool('onboarding_seen') ?? false;
       final bool userLoggedIn = prefs.getBool('user_logged_in') ?? false;
       final bool guestMode = prefs.getBool('guest_mode') ?? false;
 
       if (!mounted) return;
 
-      if (!onboardingSeen) {
+      if (!languageSelected) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()));
+      } else if (!onboardingSeen) {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OnboardingScreen()));
       } else if (userLoggedIn || guestMode) {
         // If logged in OR guest mode, go to Home
