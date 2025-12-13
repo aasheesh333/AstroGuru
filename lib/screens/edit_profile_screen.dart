@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../logic/image_helper.dart';
 import '../logic/user_session.dart';
-import '../logic/kundli_service.dart';
+import '../logic/user_provider.dart';
 import '../utils/validators.dart';
 import 'login_screen.dart';
 
@@ -28,6 +29,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _profileImageBase64;
   bool _isLoading = false;
 
+  // Rate Limiting
+  bool _canChangeName = true;
+  bool _canChangeDob = true;
+  String? _nameLimitMsg;
+  String? _dobLimitMsg;
+
   @override
   void initState() {
     super.initState();
@@ -36,24 +43,58 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   void _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      _emailController.text = user.email ?? "";
+    if (user == null) return;
 
-      // Load from Firestore or Prefs
-      String name = await UserSession.getUserName();
-      String dobStr = await UserSession.getUserDob();
-      String? img = await UserSession.getProfileImage();
+    // Check Limits from Firestore
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+         final data = doc.data()!;
+         final now = DateTime.now();
+         final windowStart = now.subtract(const Duration(days: 14));
 
-      if (mounted) {
-        setState(() {
-          _nameController.text = name;
-          _profileImageBase64 = img;
-          try {
-            _selectedDate = DateTime.parse(dobStr);
-            _dobController.text = "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}";
-          } catch (_) {}
-        });
+         // Check Name Limits
+         List<dynamic> nameHistory = data['name_change_history'] ?? [];
+         int nameChanges = nameHistory.where((ts) {
+            if (ts is Timestamp) return ts.toDate().isAfter(windowStart);
+            return false;
+         }).length;
+
+         if (nameChanges >= 3) {
+           _canChangeName = false;
+           _nameLimitMsg = "Limit reached: 3 changes in 14 days.";
+         }
+
+         // Check DOB Limits
+         List<dynamic> dobHistory = data['dob_change_history'] ?? [];
+         int dobChanges = dobHistory.where((ts) {
+            if (ts is Timestamp) return ts.toDate().isAfter(windowStart);
+            return false;
+         }).length;
+
+         if (dobChanges >= 2) {
+           _canChangeDob = false;
+           _dobLimitMsg = "Limit reached: 2 changes in 14 days.";
+         }
       }
+    } catch (e) {
+      print("Error loading limits: $e");
+    }
+
+    // Load Data from Provider for consistency
+    if (mounted) {
+      final provider = Provider.of<UserProvider>(context, listen: false);
+      setState(() {
+         _nameController.text = provider.name;
+         _emailController.text = provider.email;
+         _profileImageBase64 = provider.profileImageBase64;
+         if (provider.dob.isNotEmpty) {
+            try {
+              _selectedDate = DateTime.parse(provider.dob);
+              _dobController.text = "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}";
+            } catch (_) {}
+         }
+      });
     }
   }
 
@@ -72,31 +113,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
+      final provider = Provider.of<UserProvider>(context, listen: false);
+
       if (user != null) {
-        // 1. Update Firestore
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'name': _nameController.text.trim(),
-          'dob': _selectedDate?.toIso8601String(),
-          'email': user.email,
-          'profile_image_base64': _profileImageBase64,
-        }, SetOptions(merge: true));
+        bool nameChanged = _nameController.text.trim() != provider.name;
+        bool dobChanged = _selectedDate != null && (_selectedDate!.toIso8601String() != provider.dob);
+        bool imgChanged = _profileImageBase64 != provider.profileImageBase64;
 
-        // 2. Update Auth Display Name
-        if (user.displayName != _nameController.text.trim()) {
-           await user.updateDisplayName(_nameController.text.trim());
+        if (!nameChanged && !dobChanged && !imgChanged) {
+           Navigator.pop(context); // No changes
+           return;
         }
 
-        // 3. Update Local Session (SharedPreferences with Prefix)
-        await UserSession.setString('user_name', _nameController.text.trim());
-        if (_selectedDate != null) {
-          await UserSession.setString('user_dob', _selectedDate!.toIso8601String());
-          // Update Zodiac
-          String zodiac = KundliService.getSunSign(_selectedDate!);
-          await UserSession.setString('user_zodiac', zodiac);
+        // Update Change History in Firestore if changed
+        if (nameChanged) {
+           if (!_canChangeName) {
+             throw "Name update limit reached.";
+           }
+           await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+             'name_change_history': FieldValue.arrayUnion([Timestamp.now()])
+           });
         }
-        if (_profileImageBase64 != null) {
-          await UserSession.setString('profile_image_base64', _profileImageBase64!);
+        if (dobChanged) {
+           if (!_canChangeDob) {
+             throw "Date of Birth update limit reached.";
+           }
+           await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+             'dob_change_history': FieldValue.arrayUnion([Timestamp.now()])
+           });
         }
+
+        // Use Provider to Update Global State & Persistence
+        await provider.updateProfile(
+          newName: nameChanged ? _nameController.text.trim() : null,
+          newDob: dobChanged ? _selectedDate : null,
+          newImageBase64: imgChanged ? _profileImageBase64 : null,
+        );
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -108,7 +160,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error updating profile: $e")),
+          SnackBar(content: Text("Error: $e")),
         );
       }
     } finally {
@@ -272,16 +324,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 // Name
                 TextFormField(
                   controller: _nameController,
-                  style: const TextStyle(color: Colors.white),
+                  enabled: _canChangeName,
+                  style: TextStyle(color: _canChangeName ? Colors.white : Colors.grey),
                   validator: AppValidators.validateName,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: InputDecoration(
                     labelText: "Full Name",
+                    helperText: _nameLimitMsg,
+                    helperStyle: TextStyle(color: _canChangeName ? Colors.grey : Colors.red),
                     prefixIcon: const Icon(Icons.person, color: AppColors.primaryGold),
                     labelStyle: const TextStyle(color: AppColors.textSecondary),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Colors.white24),
+                    ),
+                    disabledBorder: OutlineInputBorder( // Greyed out
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.white10),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -295,21 +354,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 TextFormField(
                   controller: _dobController,
                   readOnly: true,
-                  style: const TextStyle(color: Colors.white),
+                  enabled: _canChangeDob,
+                  style: TextStyle(color: _canChangeDob ? Colors.white : Colors.grey),
                   decoration: InputDecoration(
                     labelText: "Date of Birth",
+                    helperText: _dobLimitMsg,
+                    helperStyle: TextStyle(color: _canChangeDob ? Colors.grey : Colors.red),
                     prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primaryGold),
                     labelStyle: const TextStyle(color: AppColors.textSecondary),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: Colors.white24),
                     ),
+                    disabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.white10),
+                    ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.primaryGold),
                     ),
                   ),
-                  onTap: () async {
+                  onTap: !_canChangeDob ? null : () async {
                     DateTime now = DateTime.now();
                     DateTime? picked = await showDatePicker(
                       context: context,

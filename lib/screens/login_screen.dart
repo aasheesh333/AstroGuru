@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
+import '../logic/user_provider.dart';
 import '../widgets/baba_avatar.dart';
 import '../utils/validators.dart';
 
@@ -243,34 +245,77 @@ class _LoginScreenState extends State<LoginScreen> {
              }
           }
 
-          // Check Ban Status in Firestore
+          // Check Ban Status and Deletion Request in Firestore
           final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-          if (doc.exists && doc.data() != null && doc.data()!['banned'] == true) {
-             final reason = doc.data()!['ban_reason'] ?? "Internal Policy";
-             await auth.signOut();
+          if (doc.exists && doc.data() != null) {
+            final data = doc.data()!;
 
-             if (mounted) {
-               showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF0E1016),
-                  title: const Text("Access Denied", style: TextStyle(color: Colors.red)),
-                  content: Text(
-                    "Username is banned due to internal policy.\nReason: $reason",
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+            // 1. Check Ban
+            if (data['banned'] == true) {
+               final reason = data['ban_reason'] ?? "Internal Policy";
+               await auth.signOut();
+
+               if (mounted) {
+                 showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF0E1016),
+                    title: const Text("Access Denied", style: TextStyle(color: Colors.red)),
+                    content: Text(
+                      "Username is banned due to internal policy.\nReason: $reason",
+                      style: const TextStyle(color: Colors.white),
                     ),
-                  ],
-                ),
-               );
-             }
-             setState(() => _isLoading = false);
-             return; // Stop processing
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                      ),
+                    ],
+                  ),
+                 );
+               }
+               setState(() => _isLoading = false);
+               return; // Stop processing
+            }
+
+            // 2. Check Deletion Request
+            if (data.containsKey('delete_requested_at')) {
+               bool regain = await showDialog(
+                 context: context,
+                 barrierDismissible: false,
+                 builder: (context) => AlertDialog(
+                   backgroundColor: const Color(0xFF0E1016),
+                   title: const Text("Account Scheduled for Deletion", style: TextStyle(color: Colors.red)),
+                   content: const Text(
+                     "You have previously requested to delete this account. You can regain access or cancel to continue deletion.",
+                     style: TextStyle(color: Colors.white),
+                   ),
+                   actions: [
+                     TextButton(
+                       onPressed: () => Navigator.pop(context, false), // Cancel Login
+                       child: const Text("Cancel Login", style: TextStyle(color: Colors.red)),
+                     ),
+                     ElevatedButton(
+                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
+                       onPressed: () => Navigator.pop(context, true), // Regain Access
+                       child: const Text("Regain Access"),
+                     ),
+                   ],
+                 ),
+               ) ?? false;
+
+               if (regain) {
+                 await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+                   'delete_requested_at': FieldValue.delete()
+                 });
+                 // Proceed to success
+               } else {
+                 await auth.signOut();
+                 setState(() => _isLoading = false);
+                 return;
+               }
+            }
           }
 
           await _onAuthSuccess(user);
@@ -426,8 +471,10 @@ class _LoginScreenState extends State<LoginScreen> {
       // But for this task, the requirement is mainly about the Sign Up flow.
     }
 
+    // Refresh Provider
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
+       await Provider.of<UserProvider>(context, listen: false).loadUserData();
+       Navigator.pushReplacementNamed(context, '/home');
     }
   }
 

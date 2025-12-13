@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../logic/language_provider.dart';
+import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import 'login_screen.dart';
@@ -24,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String quoteText = "The stars incline, but do not bind.";
   String quoteAuthor = "";
 
-  String userName = "User";
   bool isGuest = false;
 
   @override
@@ -39,12 +39,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
 
       bool guest = prefs.getBool('guest_mode') ?? false;
-      String fullName = prefs.getString('user_name') ?? "User";
-      String firstName = fullName.split(' ')[0];
 
       setState(() {
         isGuest = guest;
-        userName = guest ? "Guest" : firstName;
       });
 
       _checkDailyUpdates(prefs);
@@ -68,11 +65,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
 
-    // Fetch Horoscope
-    // Default sign for home preview or guest is generic (e.g., Aries or from profile)
-    // For now, we use "Libra" as a placeholder or fetch user's sign if available.
-    // In a real app, we'd store the user's sign in profile.
-    // I will assume a default "Aries" for now if not stored.
     String sign = "Aries";
 
     try {
@@ -169,21 +161,51 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Greeting
-          Text(
-            "Namaste, $userName!",
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white
-            ),
-          ),
-          const SizedBox(height: 4),
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        String displayName = isGuest ? "Guest" : userProvider.name.split(' ')[0];
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Greeting Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                   Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       Text(
+                         "Namaste, $displayName!",
+                         style: const TextStyle(
+                           fontSize: 28,
+                           fontWeight: FontWeight.bold,
+                           color: Colors.white
+                         ),
+                       ),
+                     ],
+                   ),
+
+                   // Profile Icon Small
+                   if (!isGuest && userProvider.profileImageBase64 != null)
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundImage: MemoryImage(base64Decode(userProvider.profileImageBase64!)),
+                        backgroundColor: Colors.transparent,
+                      )
+                   else if (!isGuest)
+                      const CircleAvatar(
+                        radius: 24,
+                        child: Icon(Icons.person),
+                      )
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Daily Horoscope Card
           const Text(
             "What do the stars have for you today?",
             style: TextStyle(
@@ -333,9 +355,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          const SizedBox(height: 20),
-        ],
-      ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      }
     );
   }
 

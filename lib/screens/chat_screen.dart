@@ -6,9 +6,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
-import 'dart:io';
 import '../logic/language_provider.dart';
 import '../logic/user_session.dart';
+import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/astro_text_parser.dart';
@@ -37,8 +37,8 @@ class ChatContentState extends State<ChatContent> {
   final ScrollController _scrollController = ScrollController();
   List<Map<String, String>> _messages = [];
   bool isGuest = false;
-  String? _profileImagePath;
-  String? _profileImageBase64;
+  // String? _profileImagePath; // Removed local state for Provider
+  // String? _profileImageBase64; // Removed local state for Provider
 
   // Moderation State
   int _spamStrikes = 0;
@@ -80,22 +80,21 @@ class ChatContentState extends State<ChatContent> {
     final prefs = await SharedPreferences.getInstance();
 
     bool guest = prefs.getBool('guest_mode') ?? false;
-    String? path = await UserSession.getString('profile_image_path');
-    String? base64 = await UserSession.getString('profile_image_base64'); // Use session
+    // Provider handles user data now
 
     // Load moderation state via session
     int spam = await UserSession.getInt('spam_strikes') ?? 0;
     int nudity = await UserSession.getInt('nudity_count') ?? 0;
     bool banned = await UserSession.getBool('is_banned') ?? false;
 
-    setState(() {
-      isGuest = guest;
-      _profileImagePath = path;
-      _profileImageBase64 = base64;
-      _spamStrikes = spam;
-      _nudityCount = nudity;
-      _isBanned = banned;
-    });
+    if (mounted) {
+      setState(() {
+        isGuest = guest;
+        _spamStrikes = spam;
+        _nudityCount = nudity;
+        _isBanned = banned;
+      });
+    }
 
     if (isGuest && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -253,9 +252,15 @@ class ChatContentState extends State<ChatContent> {
     _saveHistory();
     _scrollToBottom();
 
-    String lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
-    // In a real scenario, we would retrieve the stored Kundli summary here.
-    String kundliSummary = "General Query (No specific Kundli context available).";
+    final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final provider = Provider.of<UserProvider>(context, listen: false);
+
+    // Build context with latest user details
+    String kundliSummary = "User Name: ${provider.name}. ";
+    if (provider.dob.isNotEmpty) {
+      kundliSummary += "DOB: ${provider.dob}. Zodiac: ${provider.zodiac}. ";
+    }
+    kundliSummary += "General Query.";
 
     try {
       // Pass history (excluding the message we just added effectively, handled by logic but passing all for context)
@@ -489,15 +494,21 @@ class ChatContentState extends State<ChatContent> {
 
                       if (isUser) ...[
                         const SizedBox(width: 8),
-                         CircleAvatar(
-                          radius: 16,
-                          backgroundColor: Colors.white24,
-                          backgroundImage: _profileImageBase64 != null
-                             ? MemoryImage(base64Decode(_profileImageBase64!))
-                             : (_profileImagePath != null ? FileImage(File(_profileImagePath!)) as ImageProvider : null),
-                          child: (_profileImageBase64 == null && _profileImagePath == null)
-                             ? const Icon(Icons.person, color: Colors.white, size: 20)
-                             : null,
+                        Consumer<UserProvider>(
+                          builder: (context, provider, child) {
+                             ImageProvider? img;
+                             if (provider.profileImageBase64 != null) {
+                               img = MemoryImage(base64Decode(provider.profileImageBase64!));
+                             }
+                             return CircleAvatar(
+                               radius: 16,
+                               backgroundColor: Colors.white24,
+                               backgroundImage: img,
+                               child: img == null
+                                 ? const Icon(Icons.person, color: Colors.white, size: 20)
+                                 : null,
+                             );
+                          }
                         ),
                       ],
                     ],

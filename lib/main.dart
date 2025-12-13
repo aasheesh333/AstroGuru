@@ -9,6 +9,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'logic/language_provider.dart';
+import 'logic/user_provider.dart';
 import 'logic/kundli_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/kundli_input_screen.dart'; // Import Input Screen
@@ -75,6 +76,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: const AstroPrernaApp(),
     ),

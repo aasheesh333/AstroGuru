@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../logic/language_provider.dart';
+import '../logic/user_provider.dart';
 import 'login_screen.dart';
 import 'edit_profile_screen.dart';
 import '../widgets/gradient_button.dart';
@@ -30,32 +32,26 @@ class ProfileContent extends StatefulWidget {
 }
 
 class _ProfileContentState extends State<ProfileContent> {
-  String userName = "Loading...";
-  String userIdentifier = ""; // Phone or Email
+  // String userName = "Loading...";
+  // String userIdentifier = ""; // Phone or Email
   bool isGuest = false;
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _checkGuest();
   }
 
-  void _loadProfile() async {
+  void _checkGuest() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      isGuest = prefs.getBool('guest_mode') ?? false;
-      if (isGuest) {
-        userName = "Guest User";
-        userIdentifier = "";
-      } else {
-        userName = prefs.getString('user_name') ?? "User";
-        // Prefer email, fallback to phone
-        String email = prefs.getString('user_email') ?? "";
-        String phone = prefs.getString('user_phone') ?? "";
-        userIdentifier = email.isNotEmpty ? email : phone;
-      }
-    });
+    if (mounted) {
+       setState(() {
+         isGuest = prefs.getBool('guest_mode') ?? false;
+       });
+       if (!isGuest) {
+         Provider.of<UserProvider>(context, listen: false).loadUserData();
+       }
+    }
   }
 
   void _handleLogout() async {
@@ -119,29 +115,54 @@ class _ProfileContentState extends State<ProfileContent> {
             ),
             child: Column(
               children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surfaceColor,
-                    border: Border.all(color: AppColors.primaryGold, width: 2),
-                  ),
-                  child: const Icon(Icons.person, size: 50, color: AppColors.textPrimary),
+                Consumer<UserProvider>(
+                  builder: (context, provider, child) {
+                    ImageProvider? img;
+                    if (provider.profileImageBase64 != null) {
+                       img = MemoryImage(base64Decode(provider.profileImageBase64!));
+                    }
+
+                    return Column(
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.surfaceColor,
+                            border: Border.all(color: AppColors.primaryGold, width: 2),
+                            image: img != null ? DecorationImage(image: img, fit: BoxFit.cover) : null,
+                          ),
+                          child: img == null ? const Icon(Icons.person, size: 50, color: AppColors.textPrimary) : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Auto-scaling, centered, single-line name
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              isGuest ? "Guest User" : provider.name,
+                              style: Theme.of(context).textTheme.displayMedium,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+
+                        if (!isGuest)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              provider.email,
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ),
+                      ],
+                    );
+                  }
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  userName,
-                  style: Theme.of(context).textTheme.displayMedium,
-                ),
-                if (!isGuest && userIdentifier.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      userIdentifier,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -164,7 +185,7 @@ class _ProfileContentState extends State<ProfileContent> {
                       context,
                       MaterialPageRoute(builder: (context) => const EditProfileScreen()),
                     );
-                    _loadProfile(); // Refresh data on return
+                    // Provider updates automatically via EditProfileScreen logic
                   },
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),

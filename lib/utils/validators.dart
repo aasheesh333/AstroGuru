@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 class AppValidators {
   // Regex covering English + 12 Indian Scripts (Devanagari, Bengali, Gurmukhi, Gujarati, Oriya, Tamil, Telugu, Kannada, Malayalam, Urdu/Arabic)
   // \u0900-\u097F : Devanagari (Hindi, Marathi)
