@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../logic/user_provider.dart';
 import '../theme/app_colors.dart';
 import 'home_screen.dart';
 import 'horoscope_screen.dart';
@@ -44,13 +47,29 @@ class _MainScreenState extends State<MainScreen> {
           },
           child: Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primaryGold, width: 2),
-                color: AppColors.surfaceColor,
-              ),
-              child: const Icon(Icons.person, color: AppColors.primaryGold, size: 20),
+            child: Consumer<UserProvider>(
+              builder: (context, userProvider, child) {
+                if (userProvider.profileImageBase64 != null) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.primaryGold, width: 2),
+                      image: DecorationImage(
+                        image: MemoryImage(base64Decode(userProvider.profileImageBase64!)),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                }
+                return Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primaryGold, width: 2),
+                    color: AppColors.surfaceColor,
+                  ),
+                  child: const Icon(Icons.person, color: AppColors.primaryGold, size: 20),
+                );
+              },
             ),
           ),
         );

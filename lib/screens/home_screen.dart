@@ -172,7 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Greeting Row
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                    Column(
                      crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,19 +186,6 @@ class _HomeScreenState extends State<HomeScreen> {
                        ),
                      ],
                    ),
-
-                   // Profile Icon Small
-                   if (!isGuest && userProvider.profileImageBase64 != null)
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundImage: MemoryImage(base64Decode(userProvider.profileImageBase64!)),
-                        backgroundColor: Colors.transparent,
-                      )
-                   else if (!isGuest)
-                      const CircleAvatar(
-                        radius: 24,
-                        child: Icon(Icons.person),
-                      )
                 ],
               ),
 
