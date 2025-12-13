@@ -1,3 +1,4 @@
+import '../logic/security_service.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -125,22 +126,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
            return;
         }
 
+        // Validate Age if DOB changed
+        if (dobChanged && _selectedDate != null) {
+          final age = DateTime.now().difference(_selectedDate!).inDays / 365;
+          if (age < 10 || age > 150) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: const Color(0xFF0E1016),
+                title: const Text("Age Restriction", style: TextStyle(color: Color(0xFFD4AF37))),
+                content: const Text(
+                  "You must be between 10 and 150 years old.",
+                  style: TextStyle(color: Colors.white),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                  ),
+                ],
+              ),
+            );
+            setState(() => _isLoading = false);
+            return;
+          }
+        }
+
         // Update Change History in Firestore if changed
         if (nameChanged) {
            if (!_canChangeName) {
              throw "Name update limit reached.";
            }
-           await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
              'name_change_history': FieldValue.arrayUnion([Timestamp.now()])
-           });
+           }, SetOptions(merge: true));
         }
         if (dobChanged) {
            if (!_canChangeDob) {
              throw "Date of Birth update limit reached.";
            }
-           await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
              'dob_change_history': FieldValue.arrayUnion([Timestamp.now()])
-           });
+           }, SetOptions(merge: true));
         }
 
         // Use Provider to Update Global State & Persistence
@@ -171,11 +198,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _resetPassword() async {
     if (_emailController.text.isEmpty) return;
     try {
+      await SecurityService.checkPasswordResetLimit(_emailController.text);
+
       await FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Password reset email sent. Check your inbox.")),
         );
+      }
+    } on String catch (e) {
+      if (mounted) {
+         showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF0E1016),
+              title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
+              content: Text(
+                e,
+                style: const TextStyle(color: Colors.white),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                ),
+              ],
+            ),
+         );
       }
     } catch (e) {
       if (mounted) {

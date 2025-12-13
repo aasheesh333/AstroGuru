@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import 'login_screen.dart';
 import 'horoscope_detail_screen.dart';
 import 'love_match_screen.dart';
+import '../utils/zodiac_utils.dart';
 
 // HomeScreen Content Widget
 class HomeScreen extends StatefulWidget {
@@ -26,11 +27,26 @@ class _HomeScreenState extends State<HomeScreen> {
   String quoteAuthor = "";
 
   bool isGuest = false;
+  String? _lastKnownZodiac;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final userProvider = Provider.of<UserProvider>(context);
+
+    // If zodiac changed (e.g. after profile edit), reload data
+    if (_lastKnownZodiac != null && _lastKnownZodiac != userProvider.zodiac) {
+       _lastKnownZodiac = userProvider.zodiac;
+       _loadData();
+    } else if (_lastKnownZodiac == null) {
+       _lastKnownZodiac = userProvider.zodiac;
+    }
   }
 
   void _loadData() async {
@@ -64,8 +80,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchNewData(SharedPreferences prefs, String today) async {
     if (!mounted) return;
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-    String sign = "Aries";
+    String sign = isGuest ? "Aries" : userProvider.zodiac;
 
     try {
       String horoscopeJson = await AIService.getDailyHoroscope(sign, DateTime.now(), lang);
@@ -147,9 +164,11 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const LoveMatchScreen()));
       } else if (route == 'HoroscopeDetail') {
         if (horoscopeData != null) {
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          final signName = isGuest ? "Aries" : userProvider.zodiac;
           Navigator.push(context, MaterialPageRoute(builder: (_) => HoroscopeDetailScreen(
-            signName: "Daily Forecast",
-            signIcon: Icons.auto_awesome,
+            signName: signName,
+            signIcon: ZodiacUtils.getIcon(signName),
             data: horoscopeData!
           )));
         }
@@ -164,6 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         String displayName = isGuest ? "Guest" : userProvider.name.split(' ')[0];
+        String signName = isGuest ? "Aries" : userProvider.zodiac;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -232,14 +252,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           shape: BoxShape.circle,
                           color: AppColors.primaryGold.withOpacity(0.1),
                         ),
-                        child: const Icon(Icons.balance, color: AppColors.primaryGold, size: 32), // Libra Icon
+                        child: Icon(ZodiacUtils.getIcon(signName), color: AppColors.primaryGold, size: 32),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text("Today's Forecast", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text("$signName Forecast", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 4),
                             Text(
                               horoscopeSummary,

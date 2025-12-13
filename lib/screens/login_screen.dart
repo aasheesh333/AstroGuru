@@ -1,3 +1,4 @@
+import '../logic/security_service.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -122,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       final age = DateTime.now().difference(_selectedDate!).inDays / 365;
-      if (age < 10) {
+      if (age < 10 || age > 150) {
         if (mounted) {
           showDialog(
             context: context,
@@ -130,13 +131,13 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: const Color(0xFF0E1016),
               title: const Text("Age Restriction", style: TextStyle(color: Color(0xFFD4AF37))),
               content: const Text(
-                "You must be at least 10 years old to sign up. Please use a guardian's account or wait until you are older.",
+                "You must be between 10 and 150 years old to use this app.",
                 style: TextStyle(color: Colors.white),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("OK"),
+                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
                 ),
               ],
             ),
@@ -358,55 +359,43 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Rate Limiting Logic
-    final prefs = await SharedPreferences.getInstance();
-    List<String> attempts = prefs.getStringList('forgot_password_attempts') ?? [];
-    DateTime now = DateTime.now();
-
-    // Filter attempts within last 24 hours
-    List<String> recentAttempts = attempts.where((ts) {
-      try {
-        DateTime attemptTime = DateTime.parse(ts);
-        return now.difference(attemptTime).inHours < 24;
-      } catch (e) {
-        return false;
-      }
-    }).toList();
-
-    if (recentAttempts.length >= 5) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF0E1016),
-            title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
-            content: const Text(
-              "You have exceeded the maximum number of password reset attempts. Please try again after 24 hours.",
-              style: TextStyle(color: Colors.white),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
-              ),
-            ],
-          ),
-        );
-      }
-      return;
-    }
-
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      // Server-side Rate Limiting
+      await SecurityService.checkPasswordResetLimit(email);
 
-      // Record attempt
-      recentAttempts.add(now.toIso8601String());
-      await prefs.setStringList('forgot_password_attempts', recentAttempts);
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Password reset email sent. Check your inbox.")),
         );
+      }
+    } on String catch (e) {
+      // Check for custom limit exceeded message
+      if (e.contains("Limit Exceeded")) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF0E1016),
+              title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
+              content: Text(
+                e,
+                style: const TextStyle(color: Colors.white),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e)));
+        }
       }
     } on FirebaseAuthException catch (e) {
       String message = e.message ?? "Error sending reset email";
