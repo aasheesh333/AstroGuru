@@ -5,6 +5,7 @@ import '../widgets/astro_card.dart';
 import '../logic/kundli_service.dart';
 import '../logic/remedy_service.dart';
 import '../logic/language_provider.dart';
+import '../services/notification_service.dart';
 
 class KundliResultScreen extends StatefulWidget {
   final String name;
@@ -74,6 +75,9 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
       lang,
       birthDetailsKey: uniqueId, // Pass the key for caching
     );
+
+    // Trigger Notification Logic
+    NotificationService().onKundliGenerated();
 
     if (mounted) {
       setState(() {

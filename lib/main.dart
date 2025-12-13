@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:developer' as developer;
 import 'dart:io';
@@ -11,6 +10,7 @@ import 'dart:io';
 import 'logic/language_provider.dart';
 import 'logic/user_provider.dart';
 import 'logic/kundli_service.dart';
+import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/kundli_input_screen.dart'; // Import Input Screen
 import 'screens/chat_screen.dart';
@@ -60,16 +60,11 @@ void main() async {
     developer.log("Error initializing AdMob: $e");
   }
 
-  // OneSignal
+  // Notification Service (Handles OneSignal + Local)
   try {
-    String oneSignalAppId = dotenv.env['APP_ONESIGNAL_APP_ID'] ?? '';
-    if (oneSignalAppId.isNotEmpty) {
-      OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-      OneSignal.initialize(oneSignalAppId);
-      OneSignal.Notifications.requestPermission(true);
-    }
+    await NotificationService().init();
   } catch (e) {
-    developer.log("Error initializing OneSignal: $e");
+    developer.log("Error initializing NotificationService: $e");
   }
 
   runApp(

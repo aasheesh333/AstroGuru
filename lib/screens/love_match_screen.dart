@@ -8,6 +8,7 @@ import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../utils/validators.dart';
 import '../logic/love_match_logic.dart';
+import '../services/notification_service.dart';
 
 class LoveMatchScreen extends StatefulWidget {
   const LoveMatchScreen({super.key});
@@ -79,6 +80,9 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
       data['score'] = matchScore;
 
       await prefs.setString(cacheKey, jsonEncode(data));
+
+      // Trigger Notification Logic
+      NotificationService().onLoveMatchGenerated();
 
       if (mounted) {
         setState(() {

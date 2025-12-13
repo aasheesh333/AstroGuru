@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../logic/user_provider.dart';
 import '../theme/app_colors.dart';
+import '../services/notification_service.dart';
 import 'home_screen.dart';
 import 'horoscope_screen.dart';
 import 'kundli_input_screen.dart';
 import 'chat_screen.dart';
 import 'profile_screen.dart';
+import 'notification_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -31,6 +33,11 @@ class _MainScreenState extends State<MainScreen> {
       ChatContent(key: _chatKey),
       const ProfileContent(),
     ];
+
+    // Check Notification Permissions
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService().checkPermissions(context);
+    });
   }
 
   PreferredSizeWidget? _buildAppBar() {
@@ -79,13 +86,39 @@ class _MainScreenState extends State<MainScreen> {
         );
         centerTitle = true;
         actions = [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("No new notifications")),
+          ValueListenableBuilder<int>(
+            valueListenable: NotificationService().unreadCount,
+            builder: (context, count, child) {
+              return IconButton(
+                icon: Stack(
+                  children: [
+                    const Icon(Icons.notifications),
+                    if (count > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 8,
+                            minHeight: 8,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NotificationScreen())
+                  );
+                },
               );
-            },
+            }
           ),
         ];
         break;
