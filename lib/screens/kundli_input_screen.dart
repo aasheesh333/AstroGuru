@@ -15,9 +15,17 @@ class KundliInputScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Generate Kundli'),
-        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+        ),
       ),
-      body: const KundliInputContent(),
+      body: Container(
+        height: double.infinity,
+        decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+        child: const KundliInputContent(),
+      ),
     );
   }
 }
