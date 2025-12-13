@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../logic/language_provider.dart';
 import 'login_screen.dart';
+import 'edit_profile_screen.dart';
 import '../widgets/gradient_button.dart';
 import '../theme/app_colors.dart';
 
