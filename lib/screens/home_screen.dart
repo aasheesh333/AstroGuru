@@ -84,26 +84,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _checkDailyUpdates(SharedPreferences prefs, bool forceRefresh) async {
+    final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
     String today = DateTime.now().toIso8601String().split('T')[0];
-    String lastDate = prefs.getString('last_fetch_date') ?? "";
+    // Cache invalidation logic relies on date AND language
+    String lastDateKey = 'last_fetch_date_$lang';
+    String lastDate = prefs.getString(lastDateKey) ?? "";
 
     if (forceRefresh || lastDate != today) {
-       await _fetchNewData(prefs, today);
+       await _fetchNewData(prefs, today, lang, lastDateKey);
     } else {
-       _loadFromPrefs(prefs);
+       _loadFromPrefs(prefs, lang);
     }
   }
 
-  Future<void> _fetchNewData(SharedPreferences prefs, String today) async {
+  Future<void> _fetchNewData(SharedPreferences prefs, String today, String lang, String lastDateKey) async {
     if (!mounted) return;
-    final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
     final userProvider = Provider.of<UserProvider>(context, listen: false);
 
     String sign = isGuest ? "Aries" : userProvider.zodiac;
 
     try {
       String horoscopeJson = await AIService.getDailyHoroscope(sign, DateTime.now(), lang);
-      await prefs.setString('daily_horoscope_json', horoscopeJson);
+      await prefs.setString('daily_horoscope_json_$lang', horoscopeJson);
     } catch (e) {
       // Keep old or default
     }
@@ -111,18 +113,18 @@ class _HomeScreenState extends State<HomeScreen> {
     // Fetch Quote
     try {
       String quoteJson = await AIService.getDailyQuote(isGuest ? null : sign, lang);
-      await prefs.setString('daily_quote_json', quoteJson);
+      await prefs.setString('daily_quote_json_$lang', quoteJson);
     } catch (e) {
       // Keep old
     }
 
-    await prefs.setString('last_fetch_date', today);
-    _loadFromPrefs(prefs);
+    await prefs.setString(lastDateKey, today);
+    _loadFromPrefs(prefs, lang);
   }
 
-  void _loadFromPrefs(SharedPreferences prefs) {
-    String? hJson = prefs.getString('daily_horoscope_json');
-    String? qJson = prefs.getString('daily_quote_json');
+  void _loadFromPrefs(SharedPreferences prefs, String lang) {
+    String? hJson = prefs.getString('daily_horoscope_json_$lang');
+    String? qJson = prefs.getString('daily_quote_json_$lang');
 
     if (hJson != null) {
       try {

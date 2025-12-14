@@ -10,6 +10,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../logic/user_provider.dart';
+import '../logic/user_session.dart';
+import '../logic/language_provider.dart';
 import '../widgets/baba_avatar.dart';
 import '../utils/validators.dart';
 
@@ -414,13 +416,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _storeUserData(String name, DateTime dob) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_dob', dob.toIso8601String());
+    await UserSession.setString('user_dob', dob.toIso8601String());
 
     // Calculate Zodiac
     String zodiac = _getZodiacSign(dob);
-    await prefs.setString('user_zodiac', zodiac);
-    await prefs.setString('user_name', name);
+    await UserSession.setString('user_zodiac', zodiac);
+    await UserSession.setString('user_name', name);
   }
 
   String _getZodiacSign(DateTime date) {
@@ -446,19 +447,20 @@ class _LoginScreenState extends State<LoginScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('user_logged_in', true);
     await prefs.setBool('guest_mode', false);
-    await prefs.setString('user_email', user?.email ?? "");
-    await prefs.setString('user_phone', user?.phoneNumber ?? ""); // Keep for consistency if needed later
+
+    // Store user data in UserSession (Authenticated Isolation)
+    await UserSession.setString('user_email', user?.email ?? "");
+    await UserSession.setString('user_phone', user?.phoneNumber ?? "");
 
     // Store Name
     String displayName = user?.displayName ?? _nameController.text;
     if (displayName.isEmpty) displayName = "User";
-    await prefs.setString('user_name', displayName);
+    await UserSession.setString('user_name', displayName);
 
-    // Check if zodiac/DOB is missing (for existing users or login flow)
-    if (!prefs.containsKey('user_zodiac') && mounted) {
-      // In a real app we might prompt them, but for now we default or check firestore if implemented
-      // If this was a fresh login, we might not have the DOB locally.
-      // But for this task, the requirement is mainly about the Sign Up flow.
+    // Persist Language for User
+    if (mounted) {
+       final langCode = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+       await UserSession.setUserLanguage(langCode);
     }
 
     // Refresh Provider

@@ -72,6 +72,14 @@ class UserSession {
     return await getString('profile_image_base64');
   }
 
+  static Future<String?> getUserLanguage() async {
+    return await getString('user_language');
+  }
+
+  static Future<void> setUserLanguage(String languageCode) async {
+    await setString('user_language', languageCode);
+  }
+
   static Future<void> clearSession() async {
     // We do NOT clear SharedPreferences entirely, only the 'current' pointers if any.
     // But since we use prefixes, logging out essentially switches the prefix to "" (guest).
