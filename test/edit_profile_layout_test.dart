@@ -78,6 +78,14 @@ void main() {
     expect(textField.enabled, isFalse);
     expect(textField.readOnly, isTrue);
 
+    // Verify Forgot Password Button exists
+    final forgotPasswordFinder = find.text('Forgot Password?');
+    expect(forgotPasswordFinder, findsOneWidget);
+
+    // Verify Position (Below Email)
+    final forgotPos = tester.getCenter(forgotPasswordFinder);
+    expect(emailPos.dy, lessThan(forgotPos.dy), reason: "Forgot Password should be below Email");
+
     // Clean up
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

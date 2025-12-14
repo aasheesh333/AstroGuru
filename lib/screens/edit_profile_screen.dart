@@ -10,6 +10,7 @@ import '../logic/image_helper.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../logic/security_service.dart';
 import 'login_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -120,6 +121,68 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email is required for password reset")),
+      );
+      return;
+    }
+
+    try {
+      // Server-side Rate Limiting
+      await SecurityService.checkPasswordResetLimit(email);
+
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Password reset email sent. ${AppLocalizations.of(context)!.checkSpamFolder}")),
+        );
+      }
+    } on String catch (e) {
+      // Check for custom limit exceeded message
+      if (e.contains("Limit Exceeded")) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF0E1016),
+              title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
+              content: Text(
+                e,
+                style: const TextStyle(color: Colors.white),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e)));
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = e.message ?? "Error sending reset email";
+      if (e.code == 'user-not-found') {
+        message = 'No user found with this email.';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     }
   }
 
@@ -280,7 +343,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ),
-                const SizedBox(height: 40),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _handleForgotPassword,
+                    child: Text(
+                      AppLocalizations.of(context)!.forgotPassword,
+                      style: const TextStyle(color: AppColors.primaryGold, fontSize: 12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
 
                 GradientButton(
                   text: AppLocalizations.of(context)!.saveChanges,
