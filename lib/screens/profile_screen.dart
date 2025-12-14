@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -18,7 +19,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Profile")),
+      appBar: AppBar(title: Text(AppLocalizations.of(context)!.profile)),
       body: const ProfileContent(),
     );
   }
@@ -86,16 +87,16 @@ class _ProfileContentState extends State<ProfileContent> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF0E1016),
-        title: const Text("Login Required", style: TextStyle(color: Color(0xFFD4AF37))),
-        content: const Text("Please log in to unlock this feature.", style: TextStyle(color: Colors.white)),
+        title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: Color(0xFFD4AF37))),
+        content: Text(AppLocalizations.of(context)!.loginRequiredMsg, style: const TextStyle(color: Colors.white)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
             },
-            child: const Text("Log in Now"),
+            child: Text(AppLocalizations.of(context)!.loginNow),
           ),
         ],
       ),
@@ -143,7 +144,7 @@ class _ProfileContentState extends State<ProfileContent> {
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              isGuest ? "Guest User" : provider.name,
+                              isGuest ? AppLocalizations.of(context)!.guestUser : provider.name,
                               style: Theme.of(context).textTheme.displayMedium,
                               maxLines: 1,
                               textAlign: TextAlign.center,
@@ -179,7 +180,7 @@ class _ProfileContentState extends State<ProfileContent> {
               children: [
                 _buildProfileItem(
                   icon: Icons.edit,
-                  title: "Edit Profile",
+                  title: AppLocalizations.of(context)!.editProfile,
                   onTap: isGuest ? _showLoginDialog : () async {
                     await Navigator.push(
                       context,
@@ -191,7 +192,7 @@ class _ProfileContentState extends State<ProfileContent> {
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
                   icon: Icons.language,
-                  title: "Language Settings",
+                  title: AppLocalizations.of(context)!.languageSettings,
                   trailing: SizedBox(
                     width: 120,
                     child: Consumer<LanguageProvider>(
@@ -225,12 +226,12 @@ class _ProfileContentState extends State<ProfileContent> {
                                   context: context,
                                   builder: (ctx) => AlertDialog(
                                     backgroundColor: AppColors.surfaceColor,
-                                    title: const Text("Language Changed", style: TextStyle(color: AppColors.primaryGold)),
-                                    content: const Text("Please restart the app for the changes to fully take effect.", style: TextStyle(color: Colors.white)),
+                                    title: Text(AppLocalizations.of(context)!.languageChanged, style: const TextStyle(color: AppColors.primaryGold)),
+                                    content: Text(AppLocalizations.of(context)!.restartMsg, style: const TextStyle(color: Colors.white)),
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(ctx),
-                                        child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                                        child: Text(AppLocalizations.of(context)!.ok, style: const TextStyle(color: AppColors.primaryGold)),
                                       ),
                                     ],
                                   ),
@@ -246,19 +247,19 @@ class _ProfileContentState extends State<ProfileContent> {
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
                   icon: Icons.star_rate_rounded,
-                  title: "Rate App",
+                  title: AppLocalizations.of(context)!.rateApp,
                   onTap: () {},
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
                   icon: Icons.privacy_tip_outlined,
-                  title: "Privacy Policy",
+                  title: AppLocalizations.of(context)!.privacyPolicy,
                   onTap: () {},
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
                   icon: Icons.headset_mic_outlined,
-                  title: "Help & Support",
+                  title: AppLocalizations.of(context)!.helpSupport,
                   onTap: () {},
                 ),
               ],
@@ -270,7 +271,7 @@ class _ProfileContentState extends State<ProfileContent> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: GradientButton(
-              text: isGuest ? "Log in to unlock full features" : "Log Out",
+              text: isGuest ? AppLocalizations.of(context)!.loginToUnlock : AppLocalizations.of(context)!.logout,
               onPressed: _handleLogout,
             ),
           ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
@@ -157,12 +158,12 @@ class _HomeScreenState extends State<HomeScreen> {
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF0E1016),
-          title: const Text("Login Required", style: TextStyle(color: Color(0xFFD4AF37))),
-          content: const Text("Please log in to unlock this feature.", style: TextStyle(color: Colors.white)),
+          title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: Color(0xFFD4AF37))),
+          content: Text(AppLocalizations.of(context)!.loginRequiredMsg, style: const TextStyle(color: Colors.white)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
@@ -170,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
               },
-              child: const Text("Log in Now"),
+              child: Text(AppLocalizations.of(context)!.loginNow),
             ),
           ],
         ),
@@ -213,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
                      crossAxisAlignment: CrossAxisAlignment.start,
                      children: [
                        Text(
-                         "Namaste, $displayName!",
+                         "${AppLocalizations.of(context)!.greeting}, $displayName!",
                          style: const TextStyle(
                            fontSize: 28,
                            fontWeight: FontWeight.bold,
@@ -228,9 +229,9 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
 
               // Daily Horoscope Card
-          const Text(
-            "What do the stars have for you today?",
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context)!.homeSubtitle,
+            style: const TextStyle(
               fontSize: 16,
               color: Colors.grey
             ),
@@ -253,9 +254,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text("Daily Horoscope", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      Icon(Icons.arrow_forward_ios, color: AppColors.primaryGold, size: 16),
+                    children: [
+                      Text(AppLocalizations.of(context)!.dailyHoroscopeTitle, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Icon(Icons.arrow_forward_ios, color: AppColors.primaryGold, size: 16),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -275,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("$signName Forecast", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text("$signName ${AppLocalizations.of(context)!.forecast}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 4),
                             Text(
                               horoscopeSummary,
@@ -308,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 elevation: 4,
                 shadowColor: AppColors.primaryGold.withOpacity(0.4),
               ),
-              child: const Text("Ask AI Sage", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(AppLocalizations.of(context)!.askAiSageBtn, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
 
@@ -319,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Expanded(
                 child: _buildGridCard(
-                  title: "Generate Kundli",
+                  title: AppLocalizations.of(context)!.generateKundliBtn,
                   icon: Icons.auto_awesome, // Sparkle icon
                   iconColor: const Color(0xFF1DE9B6), // Teal accent
                   onTap: () => _checkAccess('/kundli'),
@@ -328,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 16),
               Expanded(
                 child: _buildGridCard(
-                  title: "Love Match",
+                  title: AppLocalizations.of(context)!.loveMatchBtn,
                   icon: Icons.favorite, // Heart icon
                   iconColor: const Color(0xFFFF4081), // Pink accent
                   onTap: () => _checkAccess('LoveMatch'),

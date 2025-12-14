@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
@@ -486,14 +487,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     const BabaAvatar(size: 100),
                     const SizedBox(height: 24),
                     Text(
-                      _isSignUp ? 'Create Account' : 'Welcome Back',
+                      _isSignUp ? AppLocalizations.of(context)!.createAccount : AppLocalizations.of(context)!.welcomeBack,
                       style: Theme.of(context).textTheme.displayMedium,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       _isSignUp
-                        ? 'Sign up to unlock all features'
-                        : 'Log in with your email',
+                        ? AppLocalizations.of(context)!.signUpSubtitle
+                        : AppLocalizations.of(context)!.loginSubtitle,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 32),
@@ -506,7 +507,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.name,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: 'Full Name',
+                          labelText: AppLocalizations.of(context)!.name,
                           hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
                           labelStyle: const TextStyle(color: AppColors.textSecondary),
                           prefixIcon: const Icon(Icons.person, color: AppColors.primaryGold),
@@ -538,7 +539,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         readOnly: true,
                         style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        labelText: 'Date of Birth',
+                        labelText: AppLocalizations.of(context)!.dateOfBirth,
                         hintText: 'Select Date',
                         hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
                         labelStyle: const TextStyle(color: AppColors.textSecondary),
@@ -592,7 +593,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     keyboardType: TextInputType.emailAddress,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: 'Email Address',
+                      labelText: AppLocalizations.of(context)!.emailLabel,
                       hintText: 'you@example.com',
                       hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
                       labelStyle: const TextStyle(color: AppColors.textSecondary),
@@ -626,7 +627,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: true,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: AppLocalizations.of(context)!.passwordLabel,
                       labelStyle: const TextStyle(color: AppColors.textSecondary),
                       prefixIcon: const Icon(Icons.lock, color: AppColors.primaryGold),
                       errorStyle: const TextStyle(color: Colors.redAccent),
@@ -654,9 +655,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: _handleForgotPassword,
-                        child: const Text(
-                          "Forgot Password?",
-                          style: TextStyle(color: AppColors.primaryGold, fontSize: 12),
+                        child: Text(
+                          AppLocalizations.of(context)!.forgotPassword,
+                          style: const TextStyle(color: AppColors.primaryGold, fontSize: 12),
                         ),
                       ),
                     ),
@@ -678,7 +679,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           return Opacity(
                             opacity: isDisabled ? 0.5 : 1.0,
                             child: GradientButton(
-                              text: _isSignUp ? 'Sign Up' : 'Log In',
+                              text: _isSignUp ? AppLocalizations.of(context)!.signUpBtn : AppLocalizations.of(context)!.loginBtn,
                               isLoading: _isLoading,
                               onPressed: isDisabled ? () {} : _submit,
                             ),
@@ -698,7 +699,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       });
                     },
                     child: Text(
-                      _isSignUp ? "Already have an account? Log In" : "Don't have an account? Sign Up",
+                      _isSignUp ? AppLocalizations.of(context)!.alreadyHaveAccount : AppLocalizations.of(context)!.dontHaveAccount,
                       style: const TextStyle(color: AppColors.primaryGold),
                     ),
                   ),
@@ -709,9 +710,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (!_isSignUp)
                     TextButton(
                       onPressed: _skipLogin,
-                      child: const Text(
-                        'Skip for Now',
-                        style: TextStyle(color: AppColors.textSecondary),
+                      child: Text(
+                        AppLocalizations.of(context)!.skipBtn,
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                     ),
                 ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
@@ -14,7 +15,7 @@ class KundliInputScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Generate Kundli'),
+        title: Text(AppLocalizations.of(context)!.generateKundliBtn),
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
@@ -96,19 +97,19 @@ class _KundliInputContentState extends State<KundliInputContent> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF0E1016),
-        title: const Text("Login Required", style: TextStyle(color: Color(0xFFD4AF37))),
-        content: const Text("Please log in to unlock detailed Kundli generation.", style: TextStyle(color: Colors.white)),
+        title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: Color(0xFFD4AF37))),
+        content: Text(AppLocalizations.of(context)!.loginRequiredMsg, style: const TextStyle(color: Colors.white)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
             },
-            child: const Text("Log in Now"),
+            child: Text(AppLocalizations.of(context)!.loginNow),
           ),
         ],
       ),
@@ -125,34 +126,34 @@ class _KundliInputContentState extends State<KundliInputContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Enter Birth Details',
+              AppLocalizations.of(context)!.enterDetails,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
             Text(
-              'Accurate details ensure precise predictions.',
+              AppLocalizations.of(context)!.enterDetailsSubtitle,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 32),
 
             _buildTextField(
-              'Full Name',
+              AppLocalizations.of(context)!.name,
               Icons.person_outline,
               controller: _nameController,
               validator: AppValidators.validateName,
             ),
             const SizedBox(height: 16),
             _buildTextField(
-              'Date of Birth',
+              AppLocalizations.of(context)!.dateOfBirth,
               Icons.calendar_today_outlined,
               isDate: true,
               controller: _dateController,
               validator: (value) {
-                if (value == null || value.isEmpty) return 'Please enter Date of Birth';
+                if (value == null || value.isEmpty) return AppLocalizations.of(context)!.error; // Fallback
                 if (_selectedDate != null) {
                   final threeMonthsAgo = DateTime.now().subtract(const Duration(days: 90));
                   if (_selectedDate!.isAfter(threeMonthsAgo)) {
-                    return 'Date must be at least 3 months in the past';
+                    return 'Date must be at least 3 months in the past'; // Hardcoded check msg for now
                   }
                 }
                 return null;
@@ -160,14 +161,14 @@ class _KundliInputContentState extends State<KundliInputContent> {
             ),
             const SizedBox(height: 16),
             _buildTextField(
-              'Time of Birth',
+              AppLocalizations.of(context)!.timeOfBirth,
               Icons.access_time_outlined,
               isTime: true,
               controller: _timeController,
             ),
             const SizedBox(height: 16),
             _buildTextField(
-              'Place of Birth',
+              AppLocalizations.of(context)!.placeOfBirth,
               Icons.location_on_outlined,
               controller: _placeController,
               validator: AppValidators.validateLocation,
@@ -175,7 +176,7 @@ class _KundliInputContentState extends State<KundliInputContent> {
 
             const SizedBox(height: 48),
             GradientButton(
-              text: 'Generate Kundli',
+              text: AppLocalizations.of(context)!.generateKundliBtn,
               onPressed: _handleGenerate,
             ),
           ],

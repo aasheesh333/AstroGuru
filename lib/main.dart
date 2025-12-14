@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -95,15 +96,25 @@ class AstroPrernaApp extends StatelessWidget {
           ),
           locale: provider.locale,
           localizationsDelegates: const [
+             AppLocalizations.delegate,
              GlobalMaterialLocalizations.delegate,
              GlobalWidgetsLocalizations.delegate,
              GlobalCupertinoLocalizations.delegate,
-             // AppLocalizations.delegate, // Generated delegate
           ],
           supportedLocales: const [
             Locale('en'),
             Locale('hi'),
-            // Add others
+            Locale('bn'),
+            Locale('mr'),
+            Locale('ta'),
+            Locale('te'),
+            Locale('gu'),
+            Locale('pa'),
+            Locale('kn'),
+            Locale('ml'),
+            Locale('or'),
+            Locale('as'),
+            Locale('ur'),
           ],
           initialRoute: '/',
           routes: {

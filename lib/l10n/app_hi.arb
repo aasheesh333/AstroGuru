@@ -1,25 +1,88 @@
 {
   "@@locale": "hi",
-  "appTitle": "AstroPrerna",
-  "dashboardTitle": "Dashboard",
-  "dailyHoroscope": "Daily Horoscope",
-  "kundli": "Kundli",
-  "matchmaking": "Matchmaking",
-  "chatWithSage": "Chat with Sage",
-  "profile": "Profile",
-  "language": "Language",
-  "selectLanguage": "Select Language",
-  "enterDetails": "Enter Birth Details",
-  "name": "Name",
-  "dateOfBirth": "Date of Birth",
-  "timeOfBirth": "Time of Birth",
-  "placeOfBirth": "Place of Birth",
-  "submit": "Submit",
-  "result": "Result",
-  "planets": "Planets",
-  "doshas": "Doshas",
-  "remedies": "Remedies",
-  "aiChat": "AI Sage",
-  "askQuestion": "Ask a question...",
-  "poweredBy": "Powered by Groq AI"
+  "appTitle": "एस्ट्रोप्रेरणा",
+  "dashboardTitle": "डैशबोर्ड",
+  "dailyHoroscope": "दैनिक राशिफल",
+  "kundli": "कुंडली",
+  "matchmaking": "गुण मिलान",
+  "chatWithSage": "ऋषि से बात करें",
+  "profile": "प्रोफ़ाइल",
+  "language": "भाषा",
+  "selectLanguage": "भाषा चुनें",
+  "enterDetails": "जन्म विवरण दर्ज करें",
+  "name": "नाम",
+  "dateOfBirth": "जन्म की तारीख",
+  "timeOfBirth": "जन्म का समय",
+  "placeOfBirth": "जन्म स्थान",
+  "submit": "जमा करें",
+  "result": "परिणाम",
+  "planets": "ग्रह",
+  "doshas": "दोष",
+  "remedies": "उपाय",
+  "aiChat": "एआई ऋषि",
+  "askQuestion": "प्रश्न पूछें...",
+  "poweredBy": "Groq AI द्वारा संचालित",
+  "navHome": "होम",
+  "navKundli": "कुंडली",
+  "navChat": "एआई ऋषि",
+  "navProfile": "प्रोफ़ाइल",
+  "greeting": "नमस्ते",
+  "askAiSageBtn": "एआई ऋषि से पूछें",
+  "generateKundliBtn": "कुंडली बनाएं",
+  "loveMatchBtn": "लव मैच",
+  "dailyHoroscopeTitle": "दैनिक राशिफल",
+  "forecast": "भविष्यवाणी",
+  "tabDaily": "दैनिक",
+  "tabWeekly": "साप्ताहिक",
+  "tabMonthly": "मासिक",
+  "metricLove": "प्रेम",
+  "metricCareer": "करियर",
+  "metricHealth": "स्वास्थ्य",
+  "metricLuck": "भाग्य",
+  "loginTitle": "लॉग इन",
+  "signUpTitle": "साइन अप",
+  "welcomeBack": "वापसी पर स्वागत है",
+  "createAccount": "खाता बनाएं",
+  "emailLabel": "ईमेल पता",
+  "passwordLabel": "पासवर्ड",
+  "forgotPassword": "पासवर्ड भूल गए?",
+  "skipBtn": "अभी के लिए छोड़ें",
+  "loginBtn": "लॉग इन",
+  "signUpBtn": "साइन अप",
+  "editProfile": "प्रोफ़ाइल संपादित करें",
+  "saveChanges": "बदलाव सहेजें",
+  "deleteAccount": "खाता हटाएं",
+  "logout": "लॉग आउट",
+  "guestUser": "अतिथि उपयोगकर्ता",
+  "cancel": "रद्द करें",
+  "ok": "ठीक है",
+  "loading": "लोड हो रहा है...",
+  "error": "त्रुटि",
+  "ageRestrictionTitle": "आयु सीमा",
+  "ageRestrictionMsg": "आपकी आयु कम से कम 10 वर्ष होनी चाहिए।",
+  "loginRequiredTitle": "लॉगिन आवश्यक",
+  "loginRequiredMsg": "इस सुविधा को अनलॉक करने के लिए कृपया लॉग इन करें।",
+  "loginNow": "अभी लॉग इन करें"
+  ,"navHoroscope": "राशिफल"
+  ,"homeSubtitle": "आज सितारे आपके लिए क्या लेकर आए हैं?"
+  ,"rateApp": "ऐप को रेट करें"
+  ,"privacyPolicy": "गोपनीयता नीति"
+  ,"helpSupport": "मदद और समर्थन"
+  ,"languageSettings": "भाषा सेटिंग्स"
+  ,"loginToUnlock": "पूरी सुविधाएं अनलॉक करने के लिए लॉग इन करें"
+  ,"languageChanged": "भाषा बदल दी गई"
+  ,"restartMsg": "परिवर्तनों को पूरी तरह से प्रभावी होने के लिए कृपया ऐप को फिर से शुरू करें।"
+  ,"loginSubtitle": "अपने ईमेल से लॉग इन करें"
+  ,"signUpSubtitle": "सभी सुविधाओं को अनलॉक करने के लिए साइन अप करें"
+  ,"alreadyHaveAccount": "क्या आपके पास पहले से एक खाता है? लॉग इन करें"
+  ,"dontHaveAccount": "क्या आपका खाता नहीं है? साइन अप करें"
+  ,"onboardingTitle1": "एक टैप में दैनिक राशिफल"
+  ,"onboardingDesc1": "अपनी राशि के आधार पर सटीक दैनिक भविष्यवाणियां प्राप्त करें।"
+  ,"onboardingTitle2": "एआई-संचालित ज्योतिष चैट"
+  ,"onboardingDesc2": "हमारे एआई ऋषि से अपने भविष्य और जीवन पथ के बारे में कुछ भी पूछें।"
+  ,"onboardingTitle3": "तुरंत अपनी कुंडली बनाएं"
+  ,"onboardingDesc3": "दशा और उपायों के साथ विस्तृत कुंडली निर्माण।"
+  ,"next": "अगला"
+  ,"getStarted": "शुरू करें"
+  ,"enterDetailsSubtitle": "सटीक विवरण सटीक भविष्यवाणियां सुनिश्चित करते हैं। "
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../logic/user_provider.dart';
 import '../theme/app_colors.dart';
 import '../services/notification_service.dart';
@@ -80,9 +81,9 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         );
-        titleWidget = const Text(
-          "AstroPrerna",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)
+        titleWidget = Text(
+          AppLocalizations.of(context)!.appTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22)
         );
         centerTitle = true;
         actions = [
@@ -123,13 +124,13 @@ class _MainScreenState extends State<MainScreen> {
         ];
         break;
       case 1:
-        titleWidget = const Text("Horoscope");
+        titleWidget = Text(AppLocalizations.of(context)!.dailyHoroscopeTitle);
         break;
       case 2:
-        titleWidget = const Text("Generate Kundli");
+        titleWidget = Text(AppLocalizations.of(context)!.generateKundliBtn);
         break;
       case 3:
-        titleWidget = const Text("AI Sage");
+        titleWidget = Text(AppLocalizations.of(context)!.aiChat);
         actions = [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -139,7 +140,7 @@ class _MainScreenState extends State<MainScreen> {
         ];
         break;
       case 4:
-        titleWidget = const Text("Profile");
+        titleWidget = Text(AppLocalizations.of(context)!.profile);
         break;
       default:
         return null;
@@ -183,26 +184,26 @@ class _MainScreenState extends State<MainScreen> {
           backgroundColor: const Color(0xFF05060A), // Match scaffold background or surface
           selectedItemColor: AppColors.primaryGold,
           unselectedItemColor: Colors.grey,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_filled),
-              label: 'Home',
+              icon: const Icon(Icons.home_filled),
+              label: AppLocalizations.of(context)!.navHome,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.star),
-              label: 'Horoscope',
+              icon: const Icon(Icons.star),
+              label: AppLocalizations.of(context)!.navHoroscope,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.auto_awesome),
-              label: 'Kundli',
+              icon: const Icon(Icons.auto_awesome),
+              label: AppLocalizations.of(context)!.navKundli,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble),
-              label: 'Chat',
+              icon: const Icon(Icons.chat_bubble),
+              label: AppLocalizations.of(context)!.navChat,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
+              icon: const Icon(Icons.person),
+              label: AppLocalizations.of(context)!.navProfile,
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../logic/language_provider.dart';
@@ -244,10 +245,10 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
           indicatorColor: AppColors.primaryGold,
           labelColor: AppColors.primaryGold,
           unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: 'Daily'),
-            Tab(text: 'Weekly'),
-            Tab(text: 'Monthly'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.tabDaily),
+            Tab(text: AppLocalizations.of(context)!.tabWeekly),
+            Tab(text: AppLocalizations.of(context)!.tabMonthly),
           ],
         ),
       ),
@@ -259,9 +260,9 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
           child: TabBarView(
             controller: _tabController,
             children: [
-              _buildForecastContent(_dailyData, _isDailyLoading, "Today's Forecast"),
-              _buildForecastContent(_weeklyData, _isWeeklyLoading, "Weekly Forecast"),
-              _buildForecastContent(_monthlyData, _isMonthlyLoading, "Monthly Forecast"),
+              _buildForecastContent(_dailyData, _isDailyLoading, "${AppLocalizations.of(context)!.tabDaily} ${AppLocalizations.of(context)!.forecast}"),
+              _buildForecastContent(_weeklyData, _isWeeklyLoading, "${AppLocalizations.of(context)!.tabWeekly} ${AppLocalizations.of(context)!.forecast}"),
+              _buildForecastContent(_monthlyData, _isMonthlyLoading, "${AppLocalizations.of(context)!.tabMonthly} ${AppLocalizations.of(context)!.forecast}"),
             ],
           ),
         ),
@@ -327,10 +328,10 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
             mainAxisSpacing: 16,
             childAspectRatio: 1.3,
             children: [
-              _DetailCard(title: 'Love', icon: Icons.favorite, content: data['love'] ?? "Good", color: Colors.pinkAccent),
-              _DetailCard(title: 'Career', icon: Icons.work, content: data['career'] ?? "Steady", color: Colors.blueAccent),
-              _DetailCard(title: 'Health', icon: Icons.favorite_border, content: data['health'] ?? "Stable", color: Colors.greenAccent),
-              _DetailCard(title: 'Luck', icon: Icons.auto_awesome, content: "Color: ${data['lucky_color'] ?? '-'}\nNum: ${data['lucky_number'] ?? '-'}", color: Colors.amberAccent),
+              _DetailCard(title: AppLocalizations.of(context)!.metricLove, icon: Icons.favorite, content: data['love'] ?? "Good", color: Colors.pinkAccent),
+              _DetailCard(title: AppLocalizations.of(context)!.metricCareer, icon: Icons.work, content: data['career'] ?? "Steady", color: Colors.blueAccent),
+              _DetailCard(title: AppLocalizations.of(context)!.metricHealth, icon: Icons.favorite_border, content: data['health'] ?? "Stable", color: Colors.greenAccent),
+              _DetailCard(title: AppLocalizations.of(context)!.metricLuck, icon: Icons.auto_awesome, content: "${data['lucky_color'] ?? '-'}\n${data['lucky_number'] ?? '-'}", color: Colors.amberAccent),
             ],
           ),
         ],

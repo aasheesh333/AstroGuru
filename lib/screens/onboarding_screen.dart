@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
@@ -15,23 +16,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<Map<String, String>> _slides = [
-    {
-      'title': 'Daily Horoscope in One Tap',
-      'desc': 'Get accurate daily predictions based on your zodiac sign.',
-    },
-    {
-      'title': 'AI-Powered Astrology Chat',
-      'desc': 'Ask our AI Sage anything about your future and life path.',
-    },
-    {
-      'title': 'Generate Your Kundli Instantly',
-      'desc': 'Detailed Kundli generation with Dasha and Remedies.',
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final List<Map<String, String>> slides = [
+      {
+        'title': AppLocalizations.of(context)!.onboardingTitle1,
+        'desc': AppLocalizations.of(context)!.onboardingDesc1,
+      },
+      {
+        'title': AppLocalizations.of(context)!.onboardingTitle2,
+        'desc': AppLocalizations.of(context)!.onboardingDesc2,
+      },
+      {
+        'title': AppLocalizations.of(context)!.onboardingTitle3,
+        'desc': AppLocalizations.of(context)!.onboardingDesc3,
+      },
+    ];
+
     return Scaffold(
       body: Stack(
         children: [
@@ -46,9 +47,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: PageView.builder(
                   controller: _pageController,
                   onPageChanged: (value) => setState(() => _currentPage = value),
-                  itemCount: _slides.length,
+                  itemCount: slides.length,
                   itemBuilder: (context, index) {
-                    final slide = _slides[index];
+                    final slide = slides[index];
                     return Padding(
                       padding: const EdgeInsets.all(32.0),
                       child: Column(
@@ -94,7 +95,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
-                        _slides.length,
+                        slides.length,
                         (index) => Container(
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           width: _currentPage == index ? 24 : 8,
@@ -110,9 +111,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     const SizedBox(height: 32),
                     GradientButton(
-                      text: _currentPage == _slides.length - 1 ? 'Get Started' : 'Next',
+                      text: _currentPage == slides.length - 1 ? AppLocalizations.of(context)!.getStarted : AppLocalizations.of(context)!.next,
                       onPressed: () async {
-                        if (_currentPage == _slides.length - 1) {
+                        if (_currentPage == slides.length - 1) {
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setBool('onboarding_seen', true);
                           if (mounted) {
