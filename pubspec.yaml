@@ -26,6 +26,7 @@ dependencies:
   provider: ^6.1.5+1
   firebase_core: ^4.2.1
   firebase_auth: ^6.1.2
+  google_sign_in: ^6.2.1
   cloud_firestore: ^6.1.0
   image_picker: ^1.1.2
   flutter_image_compress: ^2.3.0

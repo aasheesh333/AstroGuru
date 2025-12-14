@@ -112,4 +112,7 @@
   ,"analyzeAnother": "Analyze Another"
   ,"matchScore": "Match"
   ,"enterName": "Enter Name"
+  ,"checkSpamFolder": "Check spam or promotional tab."
+  ,"continueWithGoogle": "Continue with Google"
+  ,"googleSignInError": "Google Sign-In failed"
 }
