@@ -218,25 +218,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Email Field (Read Only)
-                TextFormField(
-                  controller: _emailController,
-                  readOnly: true,
-                  enabled: false,
-                  style: const TextStyle(color: Colors.grey),
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.emailLabel,
-                    prefixIcon: const Icon(Icons.email, color: Colors.grey),
-                    suffixIcon: const Icon(Icons.lock, color: Colors.grey, size: 20),
-                    filled: true,
-                    fillColor: AppColors.surfaceColor.withOpacity(0.5),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    helperText: AppLocalizations.of(context)!.emailImmutable,
-                    helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _nameController,
                   validator: (val) => AppValidators.validateName(val, context),
@@ -279,6 +260,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       });
                     }
                   },
+                ),
+                const SizedBox(height: 16),
+
+                // Email Field (Read Only)
+                TextFormField(
+                  controller: _emailController,
+                  readOnly: true,
+                  enabled: false,
+                  style: const TextStyle(color: Colors.grey),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.emailLabel,
+                    prefixIcon: const Icon(Icons.email, color: Colors.grey),
+                    suffixIcon: const Icon(Icons.lock, color: Colors.grey, size: 20),
+                    filled: true,
+                    fillColor: AppColors.surfaceColor.withOpacity(0.5),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    helperText: AppLocalizations.of(context)!.emailImmutable,
+                    helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                 ),
                 const SizedBox(height: 40),
 

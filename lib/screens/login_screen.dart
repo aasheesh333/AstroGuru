@@ -37,7 +37,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSignUp = false;
   bool _isLoading = false;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'https://www.googleapis.com/auth/user.birthday.read'],
+  );
 
   @override
   void dispose() {
@@ -64,6 +66,38 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/home');
     }
+  }
+
+  Future<DateTime?> _fetchGoogleBirthday(String? accessToken) async {
+    if (accessToken == null) return null;
+    try {
+      final response = await http.get(
+        Uri.parse('https://people.googleapis.com/v1/people/me?personFields=birthdays'),
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final birthdays = data['birthdays'] as List<dynamic>?;
+        if (birthdays != null && birthdays.isNotEmpty) {
+          // Look for a birthday with year, month, and day
+          for (var b in birthdays) {
+             final date = b['date'];
+             if (date != null) {
+               final year = date['year'];
+               final month = date['month'];
+               final day = date['day'];
+               if (year != null && month != null && day != null) {
+                 return DateTime(year, month, day);
+               }
+             }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching birthday: $e");
+    }
+    return null;
   }
 
   Future<FirebaseAuth?> _ensureAuthInitialized() async {
@@ -113,6 +147,71 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Validate Age
+      final DateTime? googleDob = await _fetchGoogleBirthday(googleAuth.accessToken);
+
+      if (googleDob == null) {
+         await _googleSignIn.signOut();
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text("Could not verify age from Google Account. Please ensure your birthday is set publicly.")),
+           );
+         }
+         setState(() => _isLoading = false);
+         return;
+      }
+
+      final now = DateTime.now();
+      int age = now.year - googleDob.year;
+      if (now.month < googleDob.month || (now.month == googleDob.month && now.day < googleDob.day)) {
+        age--;
+      }
+
+      if (age < 10) {
+         await _googleSignIn.signOut();
+         if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: const Color(0xFF0E1016),
+                title: const Text("Age Restriction", style: TextStyle(color: Color(0xFFD4AF37))),
+                content: const Text("You must be at least 10 years old to use this app.", style: TextStyle(color: Colors.white)),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("OK", style: TextStyle(color: AppColors.primaryGold))
+                  )
+                ],
+              ),
+            );
+         }
+         setState(() => _isLoading = false);
+         return;
+      }
+
+      if (age > 150) {
+         await _googleSignIn.signOut();
+         if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: const Color(0xFF0E1016),
+                title: const Text("Invalid Account", style: TextStyle(color: Colors.red)),
+                content: const Text("Date of birth invalid.", style: TextStyle(color: Colors.white)),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("OK", style: TextStyle(color: AppColors.primaryGold))
+                  )
+                ],
+              ),
+            );
+         }
+         setState(() => _isLoading = false);
+         return;
+      }
+
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -213,14 +312,13 @@ class _LoginScreenState extends State<LoginScreen> {
             await docRef.set({
               'name': name,
               'email': email,
+              'dob': googleDob.toIso8601String(), // Store Google DOB
               'created_at': Timestamp.now(),
               if (base64Image != null) 'profile_image_base64': base64Image,
-              // DOB is usually not available from Google Sign In unless specific scopes requested,
-              // and even then it's restricted. We'll leave DOB empty for user to fill later.
             }, SetOptions(merge: true));
 
             await UserSession.setString('user_name', name);
-            // We don't have DOB, so Zodiac defaults to Aries until user edits profile.
+            await _storeUserData(name, googleDob); // Calculate Zodiac and store
          }
 
          await _onAuthSuccess(user);
