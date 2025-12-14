@@ -504,7 +504,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (_isSignUp) ...[
                        TextFormField(
                         controller: _nameController,
-                        validator: AppValidators.validateName,
+                        validator: (val) => AppValidators.validateName(val, context),
                         autovalidateMode: AutovalidateMode.onUserInteraction,
                         keyboardType: TextInputType.name,
                         style: const TextStyle(color: Colors.white),

@@ -1,16 +1,15 @@
-import '../logic/security_service.dart';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
-import '../logic/image_helper.dart';
-import '../logic/user_session.dart';
 import '../logic/user_provider.dart';
+import 'package:provider/provider.dart';
 import '../utils/validators.dart';
+import '../logic/image_helper.dart';
+import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'login_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -23,301 +22,151 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
-
   DateTime? _selectedDate;
-  String? _profileImageBase64;
   bool _isLoading = false;
-
-  // Rate Limiting
-  bool _canChangeName = true;
-  bool _canChangeDob = true;
-  String? _nameLimitMsg;
-  String? _dobLimitMsg;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-  }
-
-  void _loadUserData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    // Check Limits from Firestore
-    try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (doc.exists && doc.data() != null) {
-         final data = doc.data()!;
-         final now = DateTime.now();
-         final windowStart = now.subtract(const Duration(days: 14));
-
-         // Check Name Limits
-         List<dynamic> nameHistory = data['name_change_history'] ?? [];
-         int nameChanges = nameHistory.where((ts) {
-            if (ts is Timestamp) return ts.toDate().isAfter(windowStart);
-            return false;
-         }).length;
-
-         if (nameChanges >= 3) {
-           _canChangeName = false;
-           _nameLimitMsg = "Limit reached: 3 changes in 14 days.";
-         }
-
-         // Check DOB Limits
-         List<dynamic> dobHistory = data['dob_change_history'] ?? [];
-         int dobChanges = dobHistory.where((ts) {
-            if (ts is Timestamp) return ts.toDate().isAfter(windowStart);
-            return false;
-         }).length;
-
-         if (dobChanges >= 2) {
-           _canChangeDob = false;
-           _dobLimitMsg = "Limit reached: 2 changes in 14 days.";
-         }
+    // Pre-fill data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      _nameController.text = userProvider.name; // Fixed getter name
+      if (userProvider.dob.isNotEmpty) {
+        try {
+          _selectedDate = DateTime.parse(userProvider.dob);
+          _dobController.text = "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}";
+        } catch (_) {}
       }
-    } catch (e) {
-      print("Error loading limits: $e");
-    }
-
-    // Load Data from Provider for consistency
-    if (mounted) {
-      final provider = Provider.of<UserProvider>(context, listen: false);
-      setState(() {
-         _nameController.text = provider.name;
-         _emailController.text = provider.email;
-         _profileImageBase64 = provider.profileImageBase64;
-         if (provider.dob.isNotEmpty) {
-            try {
-              _selectedDate = DateTime.parse(provider.dob);
-              _dobController.text = "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}";
-            } catch (_) {}
-         }
-      });
-    }
+    });
   }
 
-  Future<void> _pickImage() async {
-    String? base64Img = await ImageHelper.pickAndCompressImage();
-    if (base64Img != null) {
-      setState(() {
-        _profileImageBase64 = base64Img;
-      });
-    }
-  }
-
-  Future<void> _saveProfile() async {
+  Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      final provider = Provider.of<UserProvider>(context, listen: false);
+      if (user == null) throw "No user logged in";
 
-      if (user != null) {
-        bool nameChanged = _nameController.text.trim() != provider.name;
-        bool dobChanged = _selectedDate != null && (_selectedDate!.toIso8601String() != provider.dob);
-        bool imgChanged = _profileImageBase64 != provider.profileImageBase64;
+      // Rate Limiting Logic (Firestore)
+      final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final docSnapshot = await docRef.get();
 
-        if (!nameChanged && !dobChanged && !imgChanged) {
-           Navigator.pop(context); // No changes
-           return;
+      List<dynamic> nameChanges = [];
+      List<dynamic> dobChanges = [];
+
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data();
+        if (data != null) {
+          nameChanges = List.from(data['name_changes'] ?? []);
+          dobChanges = List.from(data['dob_changes'] ?? []);
         }
+      }
 
-        // Validate Age if DOB changed
-        if (dobChanged && _selectedDate != null) {
-          final age = DateTime.now().difference(_selectedDate!).inDays / 365;
-          if (age < 10 || age > 150) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: const Color(0xFF0E1016),
-                title: const Text("Age Restriction", style: TextStyle(color: Color(0xFFD4AF37))),
-                content: const Text(
-                  "You must be at least 10 years old.",
-                  style: TextStyle(color: Colors.white),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
-                  ),
-                ],
-              ),
-            );
-            setState(() => _isLoading = false);
-            return;
-          }
-        }
+      // Filter last 14 days
+      final now = DateTime.now();
+      final fourteenDaysAgo = now.subtract(const Duration(days: 14));
 
-        // Update Change History in Firestore if changed
-        if (nameChanged) {
-           if (!_canChangeName) {
-             throw "Name update limit reached.";
-           }
-           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-             'name_change_history': FieldValue.arrayUnion([Timestamp.now()])
-           }, SetOptions(merge: true));
-        }
-        if (dobChanged) {
-           if (!_canChangeDob) {
-             throw "Date of Birth update limit reached.";
-           }
-           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-             'dob_change_history': FieldValue.arrayUnion([Timestamp.now()])
-           }, SetOptions(merge: true));
-        }
+      nameChanges.retainWhere((ts) => (ts as Timestamp).toDate().isAfter(fourteenDaysAgo));
+      dobChanges.retainWhere((ts) => (ts as Timestamp).toDate().isAfter(fourteenDaysAgo));
 
-        // Use Provider to Update Global State & Persistence
-        await provider.updateProfile(
-          newName: nameChanged ? _nameController.text.trim() : null,
-          newDob: dobChanged ? _selectedDate : null,
-          newImageBase64: imgChanged ? _profileImageBase64 : null,
-        );
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      bool nameChanged = _nameController.text.trim() != userProvider.name;
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Profile Updated Successfully!")),
-          );
-          Navigator.pop(context);
+      DateTime? currentDob;
+      try {
+         if (userProvider.dob.isNotEmpty) currentDob = DateTime.parse(userProvider.dob);
+      } catch (_) {}
+
+      bool dobChanged = _selectedDate != null && _selectedDate != currentDob;
+
+      if (nameChanged) {
+        if (nameChanges.length >= 3) {
+          throw AppLocalizations.of(context)!.rateLimitError;
         }
+        nameChanges.add(Timestamp.now());
+      }
+
+      if (dobChanged) {
+        if (dobChanges.length >= 2) {
+          throw AppLocalizations.of(context)!.rateLimitError;
+        }
+        dobChanges.add(Timestamp.now());
+      }
+
+      // Update Firestore
+      await docRef.set({
+        'name_changes': nameChanges,
+        'dob_changes': dobChanges,
+      }, SetOptions(merge: true));
+
+      // Update Provider & Firebase Auth (Fixed parameter names)
+      await userProvider.updateProfile(
+        newName: _nameController.text.trim(),
+        newDob: _selectedDate
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.profileUpdated)));
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _resetPassword() async {
-    if (_emailController.text.isEmpty) return;
-    try {
-      await SecurityService.checkPasswordResetLimit(_emailController.text);
-
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password reset email sent. Check your inbox.")),
-        );
-      }
-    } on String catch (e) {
-      if (mounted) {
-         showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF0E1016),
-              title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
-              content: Text(
-                e,
-                style: const TextStyle(color: Colors.white),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
-                ),
-              ],
-            ),
-         );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
-      }
-    }
-  }
-
   Future<void> _deleteAccount() async {
-    bool confirmed = await showDialog(
+    // Soft Delete: Mark for deletion in 24 hours
+    bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surfaceColor,
-        title: const Text("Delete Account", style: TextStyle(color: Colors.red)),
-        content: const Text(
-          "Are you sure you want to delete your account?\n\nThis will schedule your account for deletion. If you do not log in within 24 hours, your data will be permanently removed.",
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
+        backgroundColor: const Color(0xFF0E1016),
+        title: Text(AppLocalizations.of(context)!.deleteAccount, style: const TextStyle(color: Colors.red)),
+        content: Text(AppLocalizations.of(context)!.softDeleteMsg, style: const TextStyle(color: Colors.white)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(
-             onPressed: () => Navigator.pop(context, true),
-             child: const Text("Delete", style: TextStyle(color: Colors.red))
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppLocalizations.of(context)!.cancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(AppLocalizations.of(context)!.deleteAccount, style: const TextStyle(color: Colors.red))),
         ],
       ),
     ) ?? false;
 
-    if (confirmed) {
-       final user = FirebaseAuth.instance.currentUser;
-       if (user != null) {
-         try {
-           // Set flag in Firestore
-           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-             'delete_requested_at': FieldValue.serverTimestamp(),
-           }, SetOptions(merge: true));
-
+    if (confirm) {
+      setState(() => _isLoading = true);
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+            'delete_requested_at': Timestamp.now()
+          });
+          await FirebaseAuth.instance.signOut();
            if (mounted) {
-             showDialog(
-               context: context,
-               barrierDismissible: false,
-               builder: (context) => AlertDialog(
-                 backgroundColor: AppColors.surfaceColor,
-                 title: const Text("Request Processed", style: TextStyle(color: AppColors.primaryGold)),
-                 content: const Text(
-                   "Your account deletion request has been processed.\n\nYour account will be deleted in 24 hours.\n\nIf you log in within 24 hours, you can regain access.",
-                   style: TextStyle(color: AppColors.textPrimary)
-                 ),
-                 actions: [
-                   ElevatedButton(
-                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
-                     onPressed: () async {
-                       await FirebaseAuth.instance.signOut();
-                       await UserSession.clearSession(); // Logic handled by prefix switch
-                       final prefs = await SharedPreferences.getInstance();
-                       await prefs.setBool('user_logged_in', false); // Global flag
-
-                       if (mounted) {
-                         Navigator.pop(context);
-                         Navigator.pushAndRemoveUntil(
-                           context,
-                           MaterialPageRoute(builder: (_) => const LoginScreen()),
-                           (route) => false
-                         );
-                       }
-                     },
-                     child: const Text("OK"),
-                   )
-                 ],
-               ),
-             );
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (Route<dynamic> route) => false,
+            );
            }
-         } catch (e) {
-           if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-           }
-         }
-       }
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    ImageProvider? imageProvider;
-    if (_profileImageBase64 != null) {
-      imageProvider = MemoryImage(base64Decode(_profileImageBase64!));
-    }
+    final userProvider = Provider.of<UserProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Edit Profile"),
+        title: Text(AppLocalizations.of(context)!.editProfile),
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
@@ -333,118 +182,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             key: _formKey,
             child: Column(
               children: [
-                // Profile Image
                 GestureDetector(
-                  onTap: _pickImage,
+                  onTap: () async {
+                    final base64String = await ImageHelper.pickAndCompressImage();
+                    if (base64String != null) {
+                       await userProvider.updateProfile(newImageBase64: base64String);
+                    }
+                  },
                   child: Stack(
+                    alignment: Alignment.bottomRight,
                     children: [
                       Container(
-                        width: 120,
-                        height: 120,
+                        width: 100,
+                        height: 100,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(color: AppColors.primaryGold, width: 2),
-                          image: imageProvider != null
-                             ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                          image: userProvider.profileImageBase64 != null
+                             ? DecorationImage(image: MemoryImage(base64Decode(userProvider.profileImageBase64!)), fit: BoxFit.cover)
                              : null,
-                          color: Colors.white10,
                         ),
-                        child: imageProvider == null
-                           ? const Icon(Icons.person, size: 60, color: Colors.white54)
+                        child: userProvider.profileImageBase64 == null
+                           ? const Icon(Icons.person, size: 50, color: AppColors.textSecondary)
                            : null,
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primaryGold,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.camera_alt, color: Colors.black, size: 20),
-                        ),
-                      ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: AppColors.primaryGold, shape: BoxShape.circle),
+                        child: const Icon(Icons.edit, size: 16, color: Colors.black),
+                      )
                     ],
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // Name
                 TextFormField(
                   controller: _nameController,
-                  enabled: _canChangeName,
-                  style: TextStyle(color: _canChangeName ? Colors.white : Colors.grey),
-                  validator: AppValidators.validateName,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: (val) => AppValidators.validateName(val, context),
+                  style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: "Full Name",
-                    helperText: _nameLimitMsg,
-                    helperStyle: TextStyle(color: _canChangeName ? Colors.grey : Colors.red),
+                    labelText: AppLocalizations.of(context)!.name,
                     prefixIcon: const Icon(Icons.person, color: AppColors.primaryGold),
-                    labelStyle: const TextStyle(color: AppColors.textSecondary),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white24),
-                    ),
-                    disabledBorder: OutlineInputBorder( // Greyed out
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white10),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.primaryGold),
-                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // DOB
                 TextFormField(
                   controller: _dobController,
                   readOnly: true,
-                  enabled: _canChangeDob,
-                  style: TextStyle(color: _canChangeDob ? Colors.white : Colors.grey),
+                  style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: "Date of Birth",
-                    helperText: _dobLimitMsg,
-                    helperStyle: TextStyle(color: _canChangeDob ? Colors.grey : Colors.red),
+                    labelText: AppLocalizations.of(context)!.dateOfBirth,
                     prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primaryGold),
-                    labelStyle: const TextStyle(color: AppColors.textSecondary),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white24),
-                    ),
-                    disabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white10),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.primaryGold),
-                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onTap: !_canChangeDob ? null : () async {
-                    DateTime now = DateTime.now();
+                  onTap: () async {
                     DateTime? picked = await showDatePicker(
                       context: context,
-                      initialDate: _selectedDate ?? DateTime(now.year - 20),
+                      initialDate: _selectedDate ?? DateTime.now(),
                       firstDate: DateTime(1900),
-                      lastDate: now,
+                      lastDate: DateTime.now(),
                        builder: (context, child) {
-                            return Theme(
-                              data: ThemeData.dark().copyWith(
-                                colorScheme: const ColorScheme.dark(
-                                  primary: AppColors.primaryGold,
-                                  onPrimary: Colors.black,
-                                  surface: AppColors.surfaceColor,
-                                  onSurface: Colors.white,
-                                ),
-                                dialogBackgroundColor: AppColors.scaffoldBackgroundColor,
-                              ),
-                              child: child!,
-                            );
-                       }
+                        return Theme(data: ThemeData.dark(), child: child!);
+                      },
                     );
                     if (picked != null) {
                       setState(() {
@@ -454,59 +259,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 20),
-
-                // Email (Read Only)
-                TextFormField(
-                  controller: _emailController,
-                  readOnly: true,
-                  style: const TextStyle(color: Colors.grey),
-                  decoration: InputDecoration(
-                    labelText: "Email Address",
-                    prefixIcon: const Icon(Icons.email, color: Colors.grey),
-                    labelStyle: const TextStyle(color: Colors.grey),
-                    filled: true,
-                    fillColor: Colors.white10,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _resetPassword,
-                    child: const Text("Forgot Password?", style: TextStyle(color: AppColors.primaryGold)),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                GradientButton(
-                  text: "Save Changes",
-                  isLoading: _isLoading,
-                  onPressed: _saveProfile,
-                ),
-
                 const SizedBox(height: 40),
 
-                GestureDetector(
-                  onTap: _deleteAccount,
-                  child: const Text(
-                    "Delete Account",
-                    style: TextStyle(
-                      color: Colors.red,
-                      decoration: TextDecoration.underline,
-                      decorationColor: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                GradientButton(
+                  text: AppLocalizations.of(context)!.saveChanges,
+                  isLoading: _isLoading,
+                  onPressed: _updateProfile,
+                ),
+                const SizedBox(height: 16),
+                 TextButton(
+                  onPressed: _deleteAccount,
+                  child: Text(AppLocalizations.of(context)!.deleteAccount, style: const TextStyle(color: Colors.red)),
                 ),
               ],
             ),

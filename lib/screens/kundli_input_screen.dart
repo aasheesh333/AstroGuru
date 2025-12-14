@@ -140,7 +140,7 @@ class _KundliInputContentState extends State<KundliInputContent> {
               AppLocalizations.of(context)!.name,
               Icons.person_outline,
               controller: _nameController,
-              validator: AppValidators.validateName,
+              validator: (val) => AppValidators.validateName(val, context),
             ),
             const SizedBox(height: 16),
             _buildTextField(
@@ -149,11 +149,17 @@ class _KundliInputContentState extends State<KundliInputContent> {
               isDate: true,
               controller: _dateController,
               validator: (value) {
-                if (value == null || value.isEmpty) return AppLocalizations.of(context)!.error; // Fallback
+                if (value == null || value.isEmpty) return AppLocalizations.of(context)!.error; // Generic Error fallback
                 if (_selectedDate != null) {
+                  // Only allow up to today (handled by DatePicker), but maybe logical check
+                  if (_selectedDate!.isAfter(DateTime.now())) {
+                    return AppLocalizations.of(context)!.errorDateFuture;
+                  }
+
+                  // Optional: Min age check or '3 months past' check?
                   final threeMonthsAgo = DateTime.now().subtract(const Duration(days: 90));
                   if (_selectedDate!.isAfter(threeMonthsAgo)) {
-                    return 'Date must be at least 3 months in the past'; // Hardcoded check msg for now
+                    return AppLocalizations.of(context)!.errorDateRecent;
                   }
                 }
                 return null;
@@ -171,7 +177,7 @@ class _KundliInputContentState extends State<KundliInputContent> {
               AppLocalizations.of(context)!.placeOfBirth,
               Icons.location_on_outlined,
               controller: _placeController,
-              validator: AppValidators.validateLocation,
+              validator: (val) => AppValidators.validateLocation(val, context),
             ),
 
             const SizedBox(height: 48),
@@ -197,7 +203,9 @@ class _KundliInputContentState extends State<KundliInputContent> {
       readOnly: isDate || isTime,
       validator: validator ?? (value) {
         if (value == null || value.isEmpty) {
-          return 'Please enter $label';
+          // Use localized error string
+          // Note: This fallback might need a generic "Required" message if not covered by AppValidators
+          return "$label ${AppLocalizations.of(context)!.error}";
         }
         return null;
       },

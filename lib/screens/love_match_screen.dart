@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
@@ -102,7 +103,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Love Compatibility"),
+        title: Text(AppLocalizations.of(context)!.loveCompatibility),
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
@@ -119,14 +120,14 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
             child: Column(
               children: [
                 if (_result == null) ...[
-                  _buildInputCard("You", _name1Controller, (val) => setState(() => _sign1 = val), _sign1),
+                  _buildInputCard(AppLocalizations.of(context)!.you, _name1Controller, (val) => setState(() => _sign1 = val), _sign1),
                   const SizedBox(height: 24),
                   const Icon(Icons.favorite, color: Colors.pinkAccent, size: 40),
                   const SizedBox(height: 24),
-                  _buildInputCard("Partner", _name2Controller, (val) => setState(() => _sign2 = val), _sign2),
+                  _buildInputCard(AppLocalizations.of(context)!.partner, _name2Controller, (val) => setState(() => _sign2 = val), _sign2),
                   const SizedBox(height: 40),
                   GradientButton(
-                    text: "Analyze Match",
+                    text: AppLocalizations.of(context)!.analyzeMatch,
                     isLoading: _isLoading,
                     onPressed: _analyze,
                   ),
@@ -162,11 +163,11 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
           const SizedBox(height: 16),
           TextFormField(
             controller: controller,
-            validator: AppValidators.validateName,
+            validator: (val) => AppValidators.validateName(val, context),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              hintText: "Enter Name",
+              hintText: AppLocalizations.of(context)!.enterName,
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
               filled: true,
               fillColor: Colors.black.withOpacity(0.3),
@@ -225,7 +226,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
           child: Column(
             children: [
               Text("$score%", style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white)),
-              const Text("Match", style: TextStyle(color: Colors.grey)),
+              Text(AppLocalizations.of(context)!.matchScore, style: const TextStyle(color: Colors.grey)),
             ],
           ),
         ),
@@ -249,7 +250,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         ),
         const SizedBox(height: 32),
         GradientButton(
-          text: "Analyze Another",
+          text: AppLocalizations.of(context)!.analyzeAnother,
           onPressed: () => setState(() {
             _result = null;
             _name1Controller.clear();
