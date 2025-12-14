@@ -22,7 +22,9 @@ class NotificationService {
   final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
 
   Future<void> init() async {
-    _updateUnreadCount();
+    // 1. Initial Load of Unread Count from Storage
+    await _updateUnreadCount();
+
     if (_initialized) return;
 
     // Initialize Timezone
@@ -34,8 +36,6 @@ class NotificationService {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // Note: iOS settings omitted as per context (focus on Android/General logic)
-    // but good practice to include empty iOS settings if needed later.
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
     );
@@ -43,8 +43,7 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Handle notification tap
-        // In a real app, navigate to specific screen
+        // Handle local notification tap if needed
       },
     );
 
@@ -53,22 +52,21 @@ class NotificationService {
     if (oneSignalAppId != null && oneSignalAppId.isNotEmpty) {
       OneSignal.initialize(oneSignalAppId);
 
+      // Listener 1: Foreground
+      // Fires when app is open and notification arrives
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {
-        // Save notification to local storage when received in foreground
-        // event.notification.display(); // Depending on requirement, might suppress
         _saveOneSignalNotification(event.notification);
+        // event.notification.display(); // Default is to display
       });
 
+      // Listener 2: Click (Opened via Notification)
+      // This effectively captures the "last received" notification that the user interacted with
       OneSignal.Notifications.addClickListener((event) {
-         // Handle OneSignal tap
+        _saveOneSignalNotification(event.notification);
       });
     }
 
     _initialized = true;
-
-    // Schedule recurring notifications if permissions granted
-    // We check permission status first to avoid errors
-    // scheduleDailyNotifications(); // Called separately or after checks
   }
 
   // --- Permission Flow ---
@@ -77,26 +75,14 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     bool? asked = prefs.getBool('notification_permission_asked');
 
-    // If we haven't asked politely yet, do so.
-    // Or if we asked but they said "Not Now" (we might want to ask again after some time,
-    // but for now let's strict to "asked" flag or just check system status).
-    // The requirement says: "dismiss and ask again later (not repeatedly)".
-
-    // Check actual system permission
     bool enabled = await _isSystemPermissionGranted();
     if (enabled) {
-      // Already enabled, ensure scheduling is active
       scheduleDailyNotifications();
       return;
     }
 
-    if (asked == true) {
-      // Already asked politely. Maybe check if enough time passed?
-      // For now, let's respect the user's decision or reliance on system settings.
-      return;
-    }
+    if (asked == true) return;
 
-    // Show Polite Popup
     if (context.mounted) {
       showDialog(
         context: context,
@@ -113,7 +99,6 @@ class NotificationService {
               onPressed: () async {
                 Navigator.pop(ctx);
                 await prefs.setBool('notification_permission_asked', true);
-                // "Not Now" behavior
               },
               child: const Text("Not Now", style: TextStyle(color: Colors.grey)),
             ),
@@ -133,19 +118,11 @@ class NotificationService {
   }
 
   Future<bool> _isSystemPermissionGranted() async {
-    // Check OneSignal or Local status
-    // Local:
-    final platform = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    if (platform != null) {
-       // Android 13+ needs explicit check, simpler to just rely on request return or OneSignal
-    }
     return OneSignal.Notifications.permission;
   }
 
   Future<void> _requestSystemPermission() async {
-    // Use OneSignal to request permission as it handles both
     await OneSignal.Notifications.requestPermission(true);
-    // After request, schedule if granted
     if (await _isSystemPermissionGranted()) {
       scheduleDailyNotifications();
     }
@@ -159,18 +136,14 @@ class NotificationService {
     String? eveningTitle,
     String? eveningBody,
   }) async {
-    // Clear existing to avoid duplicates
     await flutterLocalNotificationsPlugin.cancelAll();
 
     final prefs = await SharedPreferences.getInstance();
     bool guestMode = prefs.getBool('guest_mode') ?? false;
 
-    // Defaults if not provided (fallback or initial run before l10n)
     final String dTitle = dailyTitle ?? "🌞 Aaj ka rashifal ready hai";
     final String dBody = dailyBody ?? "Jaaniye aaj ka shubh samay aur din ka haal.";
 
-    // 1. Daily Morning Horoscope (Every Day, 6:30 - 8:30 AM)
-    // We'll pick 7:30 AM fixed
     await _scheduleDaily(
       id: 101,
       title: dTitle,
@@ -179,82 +152,51 @@ class NotificationService {
       minute: 30,
     );
 
-    if (guestMode) return; // Guests only get Morning
+    if (guestMode) return;
 
-    // Defaults for evening
     final String eTitle = eveningTitle ?? "✨ Aaj ki shaam ka vishesh sandesh";
     final String eBody = eveningBody ?? "Aapke rishton aur bhavnao ke liye kya kehte hain sitare?";
 
-    // 2. Evening Engagement (Limited: 3-4 times/week, 7:30 - 10:00 PM)
-    // We'll pick Mon, Wed, Fri, Sat at 8:30 PM
     List<int> eveningDays = [DateTime.monday, DateTime.wednesday, DateTime.friday, DateTime.saturday];
     for (int day in eveningDays) {
       await _scheduleWeekly(
-        id: 200 + day, // Unique ID per day
+        id: 200 + day,
         title: eTitle,
         body: eBody,
         day: day,
-        hour: 20, // 8 PM
+        hour: 20,
         minute: 30,
       );
     }
-
-    // Festival/User-triggered are event based, not recurring schedules here
   }
 
   Future<void> scheduleDynamicNotifications(List<String> messages) async {
-    // 1. Cancel the specific "Recurring Daily" notification (ID 101) to avoid conflict
-    // We leave the evening ones (200+) alone as they are distinct
     await flutterLocalNotificationsPlugin.cancel(101);
 
-    // 2. Schedule "One Shot" notifications for the next N days
-    // Start from tomorrow morning to give them fresh content
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
 
     for (int i = 0; i < messages.length; i++) {
-      // Logic: Day 1 = Tomorrow, Day 2 = Day after...
-      // Time: 7:30 AM fixed
       tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 7, 30)
           .add(Duration(days: i + 1));
 
-      // If for some reason we are scheduling for "Today" and it's already past 7:30,
-      // the .add(days: i+1) handles it (starting tomorrow).
-
       await flutterLocalNotificationsPlugin.zonedSchedule(
-        1000 + i, // IDs 1000, 1001, 1002...
-        "✨ AstroPrerna Insight", // Dynamic Title? Or keep standard? Let's use standard title for consistency or use part of message?
-                                // Prompt asked for "messages". Let's use a standard title with Emoji.
+        1000 + i,
+        "✨ AstroPrerna Insight",
         messages[i],
         scheduledDate,
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            'daily_channel', // Re-use channel so user settings apply
+            'daily_channel',
             'Daily Horoscope',
             importance: Importance.max,
             priority: Priority.high,
-            styleInformation: BigTextStyleInformation(''), // Expandable
+            styleInformation: BigTextStyleInformation(''),
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
     }
-
-    // 3. Re-schedule the "Fallback" Recurring notification to start AFTER the dynamic batch
-    // So if batch is 5 days, fallback starts on Day 6.
-    tz.TZDateTime fallbackDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 7, 30)
-        .add(Duration(days: messages.length + 1));
-
-    // We use the same ID 101 so it overwrites any previous 101 if it existed (though we cancelled it)
-    // But zonedSchedule with matchDateTimeComponents usually schedules "next instance matching components".
-    // It's tricky to say "Start recurring from date X".
-    // Workaround: We don't schedule the recurring one *yet*. We rely on the app being opened again within 5 days.
-    // OR: We schedule a one-off for Day 6, Day 7...
-    // BUT: To be safe, let's just schedule a standard recurring one for "Next Week" if supported.
-    // flutter_local_notifications doesn't easily support "Recurring starting from future date".
-    // Plan B: Just rely on the dynamic batch. If they don't open app for 7 days, they lose notifications.
-    // This is actually good for "churned" users (less spam).
-    // The "Pre-scheduling" strategy implies we rely on app opens.
   }
 
   Future<void> _scheduleDaily({required int id, required String title, required String body, required int hour, required int minute}) async {
@@ -323,19 +265,14 @@ class NotificationService {
     bool guestMode = prefs.getBool('guest_mode') ?? false;
     if (guestMode) return;
 
-    // Cap check: Max 1 user-triggered per day
     String today = DateTime.now().toIso8601String().split('T')[0];
     String lastTrigger = prefs.getString('last_triggered_notif_date') ?? "";
-    if (lastTrigger == today) {
-      // Already triggered one today
-      return;
-    }
+    if (lastTrigger == today) return;
 
-    // Schedule for 2 hours later
     final tz.TZDateTime scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(hours: 2));
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      300 + idOffset, // dynamic ID
+      300 + idOffset,
       title,
       body,
       scheduledDate,
@@ -351,7 +288,6 @@ class NotificationService {
     );
 
     await prefs.setString('last_triggered_notif_date', today);
-
     await _saveNotificationToStorage(title, body, "Local", false);
   }
 
@@ -374,34 +310,46 @@ class NotificationService {
   // --- Storage Logic ---
 
   Future<void> _saveOneSignalNotification(OSNotification notification) async {
-    await _saveNotificationToStorage(
-      notification.title ?? "New Notification",
-      notification.body ?? "",
-      "OneSignal",
-      true
-    );
+    // Check duplication (simple check by ID or Title+Body)
+    String title = notification.title ?? "New Notification";
+    String body = notification.body ?? "";
+
+    // Prevent duplicates if click listener fires after foreground listener
+    List<Map<String, dynamic>> existing = await getNotifications();
+    bool exists = existing.any((n) => n['title'] == title && n['body'] == body && n['timestamp'] != null && DateTime.now().difference(DateTime.parse(n['timestamp'])).inMinutes < 1);
+
+    if (!exists) {
+      await _saveNotificationToStorage(
+        title,
+        body,
+        "OneSignal",
+        true // Important
+      );
+    }
   }
 
   Future<void> _saveNotificationToStorage(String title, String body, String source, bool isImportant) async {
-    // Loading existing
     List<Map<String, dynamic>> notifications = await getNotifications();
 
-    // Add new
     notifications.insert(0, {
       'id': DateTime.now().millisecondsSinceEpoch.toString(),
       'title': title,
       'body': body,
       'timestamp': DateTime.now().toIso8601String(),
-      'read': false, // Unread by default
+      'read': false,
       'source': source,
       'importance': isImportant ? 'high' : 'normal',
     });
 
-    // Save
+    // Limit storage to last 50
+    if (notifications.length > 50) {
+      notifications = notifications.sublist(0, 50);
+    }
+
     String jsonStr = jsonEncode(notifications);
     await UserSession.setString('notifications_list', jsonStr);
 
-    _updateUnreadCount();
+    await _updateUnreadCount();
   }
 
   Future<List<Map<String, dynamic>>> getNotifications() async {
@@ -417,16 +365,26 @@ class NotificationService {
 
   Future<void> markAllAsRead() async {
     List<Map<String, dynamic>> notifications = await getNotifications();
+    bool changed = false;
     for (var n in notifications) {
-      n['read'] = true;
+      if (n['read'] == false) {
+        n['read'] = true;
+        changed = true;
+      }
     }
-    String jsonStr = jsonEncode(notifications);
-    await UserSession.setString('notifications_list', jsonStr);
-    _updateUnreadCount();
+
+    if (changed) {
+      String jsonStr = jsonEncode(notifications);
+      await UserSession.setString('notifications_list', jsonStr);
+      await _updateUnreadCount();
+    }
   }
 
   Future<void> _updateUnreadCount() async {
     List<Map<String, dynamic>> notifications = await getNotifications();
-    unreadCount.value = notifications.where((n) => n['read'] == false).length;
+    int count = notifications.where((n) => n['read'] == false).length;
+
+    // Force UI update
+    unreadCount.value = count;
   }
 }
