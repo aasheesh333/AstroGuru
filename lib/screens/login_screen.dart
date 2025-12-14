@@ -1,4 +1,5 @@
 import '../logic/security_service.dart';
+import 'dart:convert'; // For Base64
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http; // Added http
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../logic/user_provider.dart';
@@ -106,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        // User canceled
         setState(() => _isLoading = false);
         return;
       }
@@ -121,8 +122,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final User? user = userCredential.user;
 
       if (user != null) {
-         // Check Ban and Deletion Status (Reuse Logic)
-         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+         // Check Ban Status
+         final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+         final doc = await docRef.get();
+
          if (doc.exists && doc.data() != null) {
             final data = doc.data()!;
             if (data['banned'] == true) {
@@ -151,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                setState(() => _isLoading = false);
                return;
             }
-             // 2. Check Deletion Request
+            // Check Deletion
             if (data.containsKey('delete_requested_at')) {
                bool regain = await showDialog(
                  context: context,
@@ -165,12 +168,12 @@ class _LoginScreenState extends State<LoginScreen> {
                    ),
                    actions: [
                      TextButton(
-                       onPressed: () => Navigator.pop(context, false), // Cancel Login
+                       onPressed: () => Navigator.pop(context, false),
                        child: const Text("Cancel Login", style: TextStyle(color: Colors.red)),
                      ),
                      ElevatedButton(
                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
-                       onPressed: () => Navigator.pop(context, true), // Regain Access
+                       onPressed: () => Navigator.pop(context, true),
                        child: const Text("Regain Access"),
                      ),
                    ],
@@ -178,10 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                ) ?? false;
 
                if (regain) {
-                 await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-                   'delete_requested_at': FieldValue.delete()
-                 });
-                 // Proceed
+                 await docRef.update({'delete_requested_at': FieldValue.delete()});
                } else {
                  await auth.signOut();
                  setState(() => _isLoading = false);
@@ -190,41 +190,68 @@ class _LoginScreenState extends State<LoginScreen> {
             }
          }
 
-         // Populate UserSession
-         String displayName = user.displayName ?? "User";
-         String email = user.email ?? "";
-         String? photoUrl = user.photoURL;
+         // Handle New User Data (Sync Google Profile)
+         if (userCredential.additionalUserInfo?.isNewUser == true) {
+            String name = user.displayName ?? "User";
+            String email = user.email ?? "";
+            String? photoUrl = user.photoURL;
+            String? base64Image;
 
-         // Check if profile image exists in Firestore, if not use Google's
-         if (photoUrl != null) {
-            // Need to download and convert to base64?
-            // Or just store URL?
-            // UserProvider logic prefers Base64 but can handle URL if we update it.
-            // However, UserProvider prioritizes Base64 from UserSession.
-            // Let's rely on standard Profile image update flow for Base64,
-            // or just let UserProvider fallback to standard auth photoURL?
-            // The current UserProvider implementation prioritizes `profileImageBase64` from session/firestore.
-            // If that is null, it displays a default icon.
-            // To support Google Image seamlessly without downloading/converting here (which is heavy),
-            // We might need to update UserProvider to accept photoURL, OR we just let it be for now
-            // as user said "get name, email address, date of birth don't modify ui".
-            // Actually, user said: "get direct user profile if user Google account has profile photo in there account"
-            // This implies we should try to use it.
-            // Since we can't easily fetch and convert to Base64 without network calls (which might be flaky or slow here),
-            // We will leave it to the user to set a custom profile picture later or
-            // Update UserProvider later to support network images.
-            // BUT, the existing `MainScreen` uses `MemoryImage(base64Decode(...))`
-            // So we MUST convert it if we want it to show up, OR update MainScreen to handle network images.
-            // "Don't modify ui" suggests keeping MainScreen as is.
-            // So we skip the image for now to avoid complexity/bugs,
-            // OR we accept that "profile photo" requirement might be best effort.
-            // Wait, if I can't change UI, I can't change MainScreen to use NetworkImage.
-            // So I would have to download and base64 encode it.
-            // I'll skip automatic photo sync to avoid breakage, as `http` might not be available or permitted in all contexts easily without more code.
-            // Actually, `http` is in pubspec.
+            if (photoUrl != null) {
+               try {
+                 final response = await http.get(Uri.parse(photoUrl));
+                 if (response.statusCode == 200) {
+                   base64Image = base64Encode(response.bodyBytes);
+                   await UserSession.setString('profile_image_base64', base64Image);
+                 }
+               } catch (e) {
+                 print("Error fetching Google profile image: $e");
+               }
+            }
+
+            // Save to Firestore
+            await docRef.set({
+              'name': name,
+              'email': email,
+              'created_at': Timestamp.now(),
+              if (base64Image != null) 'profile_image_base64': base64Image,
+              // DOB is usually not available from Google Sign In unless specific scopes requested,
+              // and even then it's restricted. We'll leave DOB empty for user to fill later.
+            }, SetOptions(merge: true));
+
+            await UserSession.setString('user_name', name);
+            // We don't have DOB, so Zodiac defaults to Aries until user edits profile.
          }
 
          await _onAuthSuccess(user);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'account-exists-with-different-credential') {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF0E1016),
+              title: const Text("Account Exists", style: TextStyle(color: AppColors.primaryGold)),
+              content: Text(
+                AppLocalizations.of(context)!.accountExistsWithDifferentCredential,
+                style: const TextStyle(color: Colors.white),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("${AppLocalizations.of(context)!.googleSignInError}: ${e.message}")),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

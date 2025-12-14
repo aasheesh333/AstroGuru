@@ -23,6 +23,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController(); // Added email controller
   DateTime? _selectedDate;
   bool _isLoading = false;
 
@@ -32,7 +33,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     // Pre-fill data
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      _nameController.text = userProvider.name; // Fixed getter name
+      _nameController.text = userProvider.name;
+      _emailController.text = userProvider.email; // Fill email
       if (userProvider.dob.isNotEmpty) {
         try {
           _selectedDate = DateTime.parse(userProvider.dob);
@@ -215,6 +217,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
+
+                // Email Field (Read Only)
+                TextFormField(
+                  controller: _emailController,
+                  readOnly: true,
+                  enabled: false,
+                  style: const TextStyle(color: Colors.grey),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.emailLabel,
+                    prefixIcon: const Icon(Icons.email, color: Colors.grey),
+                    suffixIcon: const Icon(Icons.lock, color: Colors.grey, size: 20),
+                    filled: true,
+                    fillColor: AppColors.surfaceColor.withOpacity(0.5),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    helperText: AppLocalizations.of(context)!.emailImmutable,
+                    helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 TextFormField(
                   controller: _nameController,
