@@ -203,6 +203,8 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, userProvider, child) {
         String displayName = isGuest ? "Guest" : userProvider.name.split(' ')[0];
         String signName = isGuest ? "Aries" : userProvider.zodiac;
+        // Localize Sign Name
+        String localizedSignName = ZodiacUtils.getLocalizedName(context, signName);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -278,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("$signName ${AppLocalizations.of(context)!.forecast}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text("$localizedSignName ${AppLocalizations.of(context)!.forecast}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 4),
                             Text(
                               horoscopeSummary,

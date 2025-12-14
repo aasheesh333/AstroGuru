@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/zodiac_utils.dart'; // Added import
 
 class HoroscopeDetailScreen extends StatefulWidget {
   final String signName;
@@ -233,10 +234,13 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
+    // Localize Sign Name
+    String localizedSignName = ZodiacUtils.getLocalizedName(context, widget.signName);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.signName),
+        title: Text(localizedSignName), // Use localized name
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
