@@ -207,8 +207,6 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      // ignore: undefined_named_parameter
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, // ignore: undefined_identifier
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -230,8 +228,6 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      // ignore: undefined_named_parameter
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, // ignore: undefined_identifier
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );
   }
@@ -288,8 +284,6 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      // ignore: undefined_named_parameter
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, // ignore: undefined_identifier
     );
 
     await prefs.setString('last_triggered_notif_date', today);
