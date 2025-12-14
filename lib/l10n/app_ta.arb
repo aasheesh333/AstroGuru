@@ -1,13 +1,12 @@
 {
-  "@@locale": "ta",
   "appTitle": "AstroPrerna",
   "dashboardTitle": "Dashboard",
   "dailyHoroscope": "Daily Horoscope",
   "kundli": "Kundli",
   "matchmaking": "Matchmaking",
   "chatWithSage": "Chat with Sage",
-  "profile": "Profile",
-  "language": "Language",
+  "profile": "சுயவிவரம்",
+  "language": "மொழி",
   "selectLanguage": "Select Language",
   "enterDetails": "Enter Birth Details",
   "name": "Name",
@@ -22,19 +21,19 @@
   "aiChat": "AI Sage",
   "askQuestion": "Ask a question...",
   "poweredBy": "Powered by Groq AI",
-  "navHome": "Home",
-  "navKundli": "Kundli",
-  "navChat": "AI Sage",
-  "navProfile": "Profile",
-  "greeting": "Namaste",
-  "askAiSageBtn": "Ask AI Sage",
-  "generateKundliBtn": "Generate Kundli",
-  "loveMatchBtn": "Love Match",
-  "dailyHoroscopeTitle": "Daily Horoscope",
+  "navHome": "முகப்பு",
+  "navKundli": "ஜாதகம்",
+  "navChat": "AI முனிவர்",
+  "navProfile": "சுயவிவரம்",
+  "greeting": "வணக்கம்",
+  "askAiSageBtn": "AI முனிவரிடம் கேளுங்கள்",
+  "generateKundliBtn": "ஜாதகம் கணிக்கவும்",
+  "loveMatchBtn": "திருமண பொருத்தம்",
+  "dailyHoroscopeTitle": "தினசரி ராசிபலன்",
   "forecast": "Forecast",
-  "tabDaily": "Daily",
-  "tabWeekly": "Weekly",
-  "tabMonthly": "Monthly",
+  "tabDaily": "தினசரி",
+  "tabWeekly": "வாராந்திர",
+  "tabMonthly": "மாதாந்திர",
   "metricLove": "Love",
   "metricCareer": "Career",
   "metricHealth": "Health",
@@ -47,13 +46,13 @@
   "passwordLabel": "Password",
   "forgotPassword": "Forgot Password?",
   "skipBtn": "Skip for Now",
-  "loginBtn": "Log In",
-  "signUpBtn": "Sign Up",
-  "editProfile": "Edit Profile",
+  "loginBtn": "உள்நுழைக",
+  "signUpBtn": "பதிவு செய்க",
+  "editProfile": "சுயவிவரத்தைத் திருத்து",
   "saveChanges": "Save Changes",
   "deleteAccount": "Delete Account",
-  "logout": "Log Out",
-  "guestUser": "Guest User",
+  "logout": "வெளியேறு",
+  "guestUser": "விருந்தினர்",
   "cancel": "Cancel",
   "ok": "OK",
   "loading": "Loading...",
@@ -62,27 +61,28 @@
   "ageRestrictionMsg": "You must be at least 10 years old.",
   "loginRequiredTitle": "Login Required",
   "loginRequiredMsg": "Please log in to unlock this feature.",
-  "loginNow": "Log in Now"
-  ,"navHoroscope": "Horoscope"
-  ,"homeSubtitle": "What do the stars have for you today?"
-  ,"rateApp": "Rate App"
-  ,"privacyPolicy": "Privacy Policy"
-  ,"helpSupport": "Help & Support"
-  ,"languageSettings": "Language Settings"
-  ,"loginToUnlock": "Log in to unlock full features"
-  ,"languageChanged": "Language Changed"
-  ,"restartMsg": "Please restart the app for the changes to fully take effect."
-  ,"loginSubtitle": "Log in with your email"
-  ,"signUpSubtitle": "Sign up to unlock all features"
-  ,"alreadyHaveAccount": "Already have an account? Log In"
-  ,"dontHaveAccount": "Don't have an account? Sign Up"
-  ,"onboardingTitle1": "Daily Horoscope in One Tap"
-  ,"onboardingDesc1": "Get accurate daily predictions based on your zodiac sign."
-  ,"onboardingTitle2": "AI-Powered Astrology Chat"
-  ,"onboardingDesc2": "Ask our AI Sage anything about your future and life path."
-  ,"onboardingTitle3": "Generate Your Kundli Instantly"
-  ,"onboardingDesc3": "Detailed Kundli generation with Dasha and Remedies."
-  ,"next": "Next"
-  ,"getStarted": "Get Started"
-  ,"enterDetailsSubtitle": "Accurate details ensure precise predictions."
+  "loginNow": "Log in Now",
+  "navHoroscope": "ராசிபலன்",
+  "homeSubtitle": "What do the stars have for you today?",
+  "rateApp": "Rate App",
+  "privacyPolicy": "Privacy Policy",
+  "helpSupport": "Help & Support",
+  "languageSettings": "Language Settings",
+  "loginToUnlock": "Log in to unlock full features",
+  "languageChanged": "Language Changed",
+  "restartMsg": "Please restart the app for the changes to fully take effect.",
+  "loginSubtitle": "Log in with your email",
+  "signUpSubtitle": "Sign up to unlock all features",
+  "alreadyHaveAccount": "Already have an account? Log In",
+  "dontHaveAccount": "Don't have an account? Sign Up",
+  "onboardingTitle1": "Daily Horoscope in One Tap",
+  "onboardingDesc1": "Get accurate daily predictions based on your zodiac sign.",
+  "onboardingTitle2": "AI-Powered Astrology Chat",
+  "onboardingDesc2": "Ask our AI Sage anything about your future and life path.",
+  "onboardingTitle3": "Generate Your Kundli Instantly",
+  "onboardingDesc3": "Detailed Kundli generation with Dasha and Remedies.",
+  "next": "Next",
+  "getStarted": "Get Started",
+  "enterDetailsSubtitle": "Accurate details ensure precise predictions.",
+  "@@locale": "ta"
 }
