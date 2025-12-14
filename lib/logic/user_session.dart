@@ -1,12 +1,20 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class UserSession {
 
   static Future<String> _getPrefix() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      return "${user.uid}_";
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          return "${user.uid}_";
+        }
+      }
+    } catch (e) {
+      // Fallback for tests or uninitialized state
+      return "";
     }
     return ""; // Guest or fallback
   }

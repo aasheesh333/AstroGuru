@@ -37,8 +37,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSignUp = false;
   bool _isLoading = false;
 
+  // Google Auth Completion State
+  bool _isGoogleAuth = false;
+  User? _pendingGoogleUser;
+  String? _pendingGooglePhotoUrl;
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'https://www.googleapis.com/auth/user.birthday.read'],
+    scopes: ['email'],
   );
 
   @override
@@ -66,38 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/home');
     }
-  }
-
-  Future<DateTime?> _fetchGoogleBirthday(String? accessToken) async {
-    if (accessToken == null) return null;
-    try {
-      final response = await http.get(
-        Uri.parse('https://people.googleapis.com/v1/people/me?personFields=birthdays'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final birthdays = data['birthdays'] as List<dynamic>?;
-        if (birthdays != null && birthdays.isNotEmpty) {
-          // Look for a birthday with year, month, and day
-          for (var b in birthdays) {
-             final date = b['date'];
-             if (date != null) {
-               final year = date['year'];
-               final month = date['month'];
-               final day = date['day'];
-               if (year != null && month != null && day != null) {
-                 return DateTime(year, month, day);
-               }
-             }
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint("Error fetching birthday: $e");
-    }
-    return null;
   }
 
   Future<FirebaseAuth?> _ensureAuthInitialized() async {
@@ -148,70 +121,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Validate Age
-      final DateTime? googleDob = await _fetchGoogleBirthday(googleAuth.accessToken);
-
-      if (googleDob == null) {
-         await _googleSignIn.signOut();
-         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text("Could not verify age from Google Account. Please ensure your birthday is set publicly.")),
-           );
-         }
-         setState(() => _isLoading = false);
-         return;
-      }
-
-      final now = DateTime.now();
-      int age = now.year - googleDob.year;
-      if (now.month < googleDob.month || (now.month == googleDob.month && now.day < googleDob.day)) {
-        age--;
-      }
-
-      if (age < 10) {
-         await _googleSignIn.signOut();
-         if (mounted) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: const Color(0xFF0E1016),
-                title: const Text("Age Restriction", style: TextStyle(color: Color(0xFFD4AF37))),
-                content: const Text("You must be at least 10 years old to use this app.", style: TextStyle(color: Colors.white)),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("OK", style: TextStyle(color: AppColors.primaryGold))
-                  )
-                ],
-              ),
-            );
-         }
-         setState(() => _isLoading = false);
-         return;
-      }
-
-      if (age > 150) {
-         await _googleSignIn.signOut();
-         if (mounted) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: const Color(0xFF0E1016),
-                title: const Text("Invalid Account", style: TextStyle(color: Colors.red)),
-                content: const Text("Date of birth invalid.", style: TextStyle(color: Colors.white)),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("OK", style: TextStyle(color: AppColors.primaryGold))
-                  )
-                ],
-              ),
-            );
-         }
-         setState(() => _isLoading = false);
-         return;
-      }
-
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -227,9 +136,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
          if (doc.exists && doc.data() != null) {
             final data = doc.data()!;
+
+            // 1. Check Ban
             if (data['banned'] == true) {
                final reason = data['ban_reason'] ?? "Internal Policy";
                await auth.signOut();
+               await _googleSignIn.signOut();
                if (mounted) {
                  showDialog(
                   context: context,
@@ -253,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                setState(() => _isLoading = false);
                return;
             }
-            // Check Deletion
+            // 2. Check Deletion
             if (data.containsKey('delete_requested_at')) {
                bool regain = await showDialog(
                  context: context,
@@ -283,45 +195,44 @@ class _LoginScreenState extends State<LoginScreen> {
                  await docRef.update({'delete_requested_at': FieldValue.delete()});
                } else {
                  await auth.signOut();
+                 await _googleSignIn.signOut();
                  setState(() => _isLoading = false);
                  return;
                }
             }
-         }
 
-         // Handle New User Data (Sync Google Profile)
-         if (userCredential.additionalUserInfo?.isNewUser == true) {
-            String name = user.displayName ?? "User";
-            String email = user.email ?? "";
-            String? photoUrl = user.photoURL;
-            String? base64Image;
-
-            if (photoUrl != null) {
-               try {
-                 final response = await http.get(Uri.parse(photoUrl));
-                 if (response.statusCode == 200) {
-                   base64Image = base64Encode(response.bodyBytes);
-                   await UserSession.setString('profile_image_base64', base64Image);
-                 }
-               } catch (e) {
-                 print("Error fetching Google profile image: $e");
-               }
+            // 3. Check for Date of Birth (Required for Login)
+            if (data.containsKey('dob') && data['dob'] != null) {
+              await _onAuthSuccess(user);
+              return;
             }
-
-            // Save to Firestore
-            await docRef.set({
-              'name': name,
-              'email': email,
-              'dob': googleDob.toIso8601String(), // Store Google DOB
-              'created_at': Timestamp.now(),
-              if (base64Image != null) 'profile_image_base64': base64Image,
-            }, SetOptions(merge: true));
-
-            await UserSession.setString('user_name', name);
-            await _storeUserData(name, googleDob); // Calculate Zodiac and store
          }
 
-         await _onAuthSuccess(user);
+         // --- Handle New or Incomplete Google User ---
+         // If we are here, either the doc doesn't exist OR dob is missing.
+         // We must get the user to complete their profile (DOB).
+
+         setState(() {
+           _isSignUp = true;
+           _isGoogleAuth = true;
+           _pendingGoogleUser = user;
+           _pendingGooglePhotoUrl = user.photoURL; // Store to fetch later
+
+           // Pre-fill Fields
+           _nameController.text = user.displayName ?? "";
+           _emailController.text = user.email ?? "";
+
+           // Clear password just in case
+           _passwordController.clear();
+
+           _isLoading = false;
+         });
+
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text("Please complete your profile details.")),
+           );
+         }
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'account-exists-with-different-credential') {
@@ -351,14 +262,14 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       }
+      setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("${AppLocalizations.of(context)!.googleSignInError}: $e")),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -375,9 +286,19 @@ class _LoginScreenState extends State<LoginScreen> {
     String password = _passwordController.text.trim();
     String name = _nameController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    // Basic Validation
+    if (!_isGoogleAuth && (email.isEmpty || password.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter email and password")),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // For Google Auth, Password is NOT required
+    if (_isGoogleAuth && email.isEmpty) {
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email is missing. Please try signing in again.")),
       );
       setState(() => _isLoading = false);
       return;
@@ -395,8 +316,11 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
         return;
       }
+
       final age = DateTime.now().difference(_selectedDate!).inDays / 365;
-      if (age < 10 || age > 150) {
+
+      // Strict Age Validation
+      if (age < 10) {
         if (mounted) {
           showDialog(
             context: context,
@@ -420,59 +344,136 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Password Complexity Check
-      if (password.length < 6 || !password.contains(RegExp(r'[A-Za-z]')) || !password.contains(RegExp(r'[0-9]'))) {
-         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Password must be at least 6 characters and contain both letters and numbers.")),
-        );
+      if (age > 150) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF0E1016),
+              title: const Text("Invalid Date", style: TextStyle(color: Colors.red)),
+              content: const Text(
+                "Please enter a valid date of birth.",
+                style: TextStyle(color: Colors.white),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                ),
+              ],
+            ),
+          );
+        }
         setState(() => _isLoading = false);
         return;
+      }
+
+      // Password Complexity Check (Only for Standard Signup)
+      if (!_isGoogleAuth) {
+        if (password.length < 6 || !password.contains(RegExp(r'[A-Za-z]')) || !password.contains(RegExp(r'[0-9]'))) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Password must be at least 6 characters and contain both letters and numbers.")),
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
       }
     }
 
     try {
       if (_isSignUp) {
-        // Sign Up
-        UserCredential userCredential = await auth.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
+        User? user;
 
-        User? user = userCredential.user;
-        if (user != null) {
-          await user.updateDisplayName(name);
-          await user.sendEmailVerification();
+        if (_isGoogleAuth) {
+           // --- Handle Google Completion ---
+           user = auth.currentUser;
+           // If for some reason auth is lost, try to use the pending one or re-login
+           if (user == null && _pendingGoogleUser != null) {
+             user = _pendingGoogleUser;
+           }
 
-          await _storeUserData(name, _selectedDate!);
+           if (user == null) {
+              // Fatal Error state
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Authentication session lost. Please try again.")),
+              );
+              setState(() {
+                _isLoading = false;
+                _isGoogleAuth = false;
+                _isSignUp = false;
+              });
+              return;
+           }
 
-          if (mounted) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: const Color(0xFF0E1016),
-                title: const Text("Verify Email", style: TextStyle(color: Color(0xFFD4AF37))),
-                content: Text(
-                  "A verification link has been sent to your email. Please verify it and then log in.\n\n${AppLocalizations.of(context)!.checkSpamFolder}",
-                  style: const TextStyle(color: Colors.white),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      setState(() {
-                        _isSignUp = false; // Switch to login mode
-                        _passwordController.clear();
-                      });
-                    },
-                    child: const Text("OK"),
+           // Fetch and Convert Profile Image if available
+           String? base64Image;
+           if (_pendingGooglePhotoUrl != null) {
+             try {
+               final response = await http.get(Uri.parse(_pendingGooglePhotoUrl!));
+               if (response.statusCode == 200) {
+                 base64Image = base64Encode(response.bodyBytes);
+                 await UserSession.setString('profile_image_base64', base64Image);
+               }
+             } catch (e) {
+               debugPrint("Error fetching Google profile image: $e");
+             }
+           }
+
+           // Update Firestore
+           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+              'name': name,
+              'email': email,
+              'dob': _selectedDate!.toIso8601String(),
+              'created_at': Timestamp.now(),
+              if (base64Image != null) 'profile_image_base64': base64Image,
+           }, SetOptions(merge: true));
+
+           await _storeUserData(name, _selectedDate!);
+           await _onAuthSuccess(user);
+
+        } else {
+          // --- Standard Email/Password Sign Up ---
+          UserCredential userCredential = await auth.createUserWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+
+          user = userCredential.user;
+          if (user != null) {
+            await user.updateDisplayName(name);
+            await user.sendEmailVerification();
+
+            await _storeUserData(name, _selectedDate!);
+
+            if (mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF0E1016),
+                  title: const Text("Verify Email", style: TextStyle(color: Color(0xFFD4AF37))),
+                  content: Text(
+                    "A verification link has been sent to your email. Please verify it and then log in.\n\n${AppLocalizations.of(context)!.checkSpamFolder}",
+                    style: const TextStyle(color: Colors.white),
                   ),
-                ],
-              ),
-            );
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context); // Close dialog
+                        setState(() {
+                          _isSignUp = false; // Switch to login mode
+                          _passwordController.clear();
+                        });
+                      },
+                      child: const Text("OK"),
+                    ),
+                  ],
+                ),
+              );
+            }
           }
         }
       } else {
-        // Log In
+        // --- Standard Log In ---
         UserCredential userCredential = await auth.signInWithEmailAndPassword(
           email: email,
           password: password,
@@ -481,7 +482,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (user != null) {
           if (!user.emailVerified) {
-             await user.reload(); // Refresh user data to check verification status again
+             await user.reload();
              if (!auth.currentUser!.emailVerified) {
                if (mounted) {
                 showDialog(
@@ -519,7 +520,7 @@ class _LoginScreenState extends State<LoginScreen> {
              }
           }
 
-          // Check Ban Status and Deletion Request in Firestore
+          // Check Ban/Deletion/Data (similar to google sign in checks)
           final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
           if (doc.exists && doc.data() != null) {
             final data = doc.data()!;
@@ -528,7 +529,6 @@ class _LoginScreenState extends State<LoginScreen> {
             if (data['banned'] == true) {
                final reason = data['ban_reason'] ?? "Internal Policy";
                await auth.signOut();
-
                if (mounted) {
                  showDialog(
                   context: context,
@@ -550,10 +550,10 @@ class _LoginScreenState extends State<LoginScreen> {
                  );
                }
                setState(() => _isLoading = false);
-               return; // Stop processing
+               return;
             }
 
-            // 2. Check Deletion Request
+            // 2. Check Deletion
             if (data.containsKey('delete_requested_at')) {
                bool regain = await showDialog(
                  context: context,
@@ -567,12 +567,12 @@ class _LoginScreenState extends State<LoginScreen> {
                    ),
                    actions: [
                      TextButton(
-                       onPressed: () => Navigator.pop(context, false), // Cancel Login
+                       onPressed: () => Navigator.pop(context, false),
                        child: const Text("Cancel Login", style: TextStyle(color: Colors.red)),
                      ),
                      ElevatedButton(
                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
-                       onPressed: () => Navigator.pop(context, true), // Regain Access
+                       onPressed: () => Navigator.pop(context, true),
                        child: const Text("Regain Access"),
                      ),
                    ],
@@ -583,7 +583,6 @@ class _LoginScreenState extends State<LoginScreen> {
                  await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
                    'delete_requested_at': FieldValue.delete()
                  });
-                 // Proceed to success
                } else {
                  await auth.signOut();
                  setState(() => _isLoading = false);
@@ -591,7 +590,6 @@ class _LoginScreenState extends State<LoginScreen> {
                }
             }
           }
-
           await _onAuthSuccess(user);
         }
       }
@@ -633,18 +631,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      // Server-side Rate Limiting
       await SecurityService.checkPasswordResetLimit(email);
-
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Password reset email sent. ${AppLocalizations.of(context)!.checkSpamFolder}")),
         );
       }
     } on String catch (e) {
-      // Check for custom limit exceeded message
       if (e.contains("Limit Exceeded")) {
         if (mounted) {
           showDialog(
@@ -652,10 +646,7 @@ class _LoginScreenState extends State<LoginScreen> {
             builder: (context) => AlertDialog(
               backgroundColor: const Color(0xFF0E1016),
               title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
-              content: Text(
-                e,
-                style: const TextStyle(color: Colors.white),
-              ),
+              content: Text(e, style: const TextStyle(color: Colors.white)),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -666,29 +657,19 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e)));
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e)));
       }
     } on FirebaseAuthException catch (e) {
       String message = e.message ?? "Error sending reset email";
-      if (e.code == 'user-not-found') {
-        message = 'No user found with this email.';
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-      }
+      if (e.code == 'user-not-found') message = 'No user found with this email.';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
   Future<void> _storeUserData(String name, DateTime dob) async {
     await UserSession.setString('user_dob', dob.toIso8601String());
-
-    // Calculate Zodiac
     String zodiac = _getZodiacSign(dob);
     await UserSession.setString('user_zodiac', zodiac);
     await UserSession.setString('user_name', name);
@@ -718,22 +699,18 @@ class _LoginScreenState extends State<LoginScreen> {
     await prefs.setBool('user_logged_in', true);
     await prefs.setBool('guest_mode', false);
 
-    // Store user data in UserSession (Authenticated Isolation)
     await UserSession.setString('user_email', user?.email ?? "");
     await UserSession.setString('user_phone', user?.phoneNumber ?? "");
 
-    // Store Name
     String displayName = user?.displayName ?? _nameController.text;
     if (displayName.isEmpty) displayName = "User";
     await UserSession.setString('user_name', displayName);
 
-    // Persist Language for User
     if (mounted) {
        final langCode = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
        await UserSession.setUserLanguage(langCode);
     }
 
-    // Refresh Provider
     if (mounted) {
        await Provider.of<UserProvider>(context, listen: false).loadUserData();
        Navigator.pushReplacementNamed(context, '/home');
@@ -810,12 +787,68 @@ class _LoginScreenState extends State<LoginScreen> {
                         validator: (val) => val == null || val.isEmpty ? "Date of Birth is required" : null,
                         readOnly: true,
                         style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.dateOfBirth,
+                          hintText: 'Select Date',
+                          hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                          labelStyle: const TextStyle(color: AppColors.textSecondary),
+                          prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primaryGold),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: AppColors.textSecondary),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: AppColors.primaryGold),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onTap: () async {
+                          DateTime now = DateTime.now();
+                          DateTime? picked = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime(now.year - 10, now.month, now.day),
+                            firstDate: DateTime(1900),
+                            lastDate: now,
+                            builder: (context, child) {
+                              return Theme(
+                                data: ThemeData.dark().copyWith(
+                                  colorScheme: const ColorScheme.dark(
+                                    primary: AppColors.primaryGold,
+                                    onPrimary: Colors.black,
+                                    surface: AppColors.surfaceColor,
+                                    onSurface: Colors.white,
+                                  ),
+                                  dialogBackgroundColor: AppColors.scaffoldBackgroundColor,
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              _selectedDate = picked;
+                              _dobController.text = "${picked.day}/${picked.month}/${picked.year}";
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Email Input
+                    TextFormField(
+                      controller: _emailController,
+                      validator: (val) => val == null || val.isEmpty ? "Email is required" : null,
+                      keyboardType: TextInputType.emailAddress,
+                      readOnly: _isGoogleAuth, // Read-only if in Google Auth mode
+                      style: TextStyle(color: _isGoogleAuth ? Colors.grey : Colors.white),
                       decoration: InputDecoration(
-                        labelText: AppLocalizations.of(context)!.dateOfBirth,
-                        hintText: 'Select Date',
+                        labelText: AppLocalizations.of(context)!.emailLabel,
+                        hintText: 'you@example.com',
                         hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
                         labelStyle: const TextStyle(color: AppColors.textSecondary),
-                        prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primaryGold),
+                        prefixIcon: const Icon(Icons.email, color: AppColors.primaryGold),
+                        errorStyle: const TextStyle(color: Colors.redAccent),
                         enabledBorder: OutlineInputBorder(
                           borderSide: const BorderSide(color: AppColors.textSecondary),
                           borderRadius: BorderRadius.circular(12),
@@ -824,190 +857,156 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderSide: const BorderSide(color: AppColors.primaryGold),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                      onTap: () async {
-                        DateTime now = DateTime.now();
-                        DateTime? picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime(now.year - 10, now.month, now.day),
-                          firstDate: DateTime(1900),
-                          lastDate: now,
-                          builder: (context, child) {
-                            return Theme(
-                              data: ThemeData.dark().copyWith(
-                                colorScheme: const ColorScheme.dark(
-                                  primary: AppColors.primaryGold,
-                                  onPrimary: Colors.black,
-                                  surface: AppColors.surfaceColor,
-                                  onSurface: Colors.white,
-                                ),
-                                dialogBackgroundColor: AppColors.scaffoldBackgroundColor,
-                              ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _selectedDate = picked;
-                            _dobController.text = "${picked.day}/${picked.month}/${picked.year}";
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Email Input
-                  TextFormField(
-                    controller: _emailController,
-                    validator: (val) => val == null || val.isEmpty ? "Email is required" : null,
-                    keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.emailLabel,
-                      hintText: 'you@example.com',
-                      hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
-                      labelStyle: const TextStyle(color: AppColors.textSecondary),
-                      prefixIcon: const Icon(Icons.email, color: AppColors.primaryGold),
-                      errorStyle: const TextStyle(color: Colors.redAccent),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: AppColors.textSecondary),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: AppColors.primaryGold),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.redAccent),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.redAccent),
-                        borderRadius: BorderRadius.circular(12),
+                        errorBorder: OutlineInputBorder(
+                          borderSide: const BorderSide(color: Colors.redAccent),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderSide: const BorderSide(color: Colors.redAccent),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        // Add lock icon suffix if read-only
+                        suffixIcon: _isGoogleAuth
+                           ? const Icon(Icons.lock_outline, color: AppColors.textSecondary)
+                           : null,
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 16),
-
-                  // Password Input
-                  TextFormField(
-                    controller: _passwordController,
-                    validator: (val) => val == null || val.isEmpty ? "Password is required" : null,
-                    obscureText: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.passwordLabel,
-                      labelStyle: const TextStyle(color: AppColors.textSecondary),
-                      prefixIcon: const Icon(Icons.lock, color: AppColors.primaryGold),
-                      errorStyle: const TextStyle(color: Colors.redAccent),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: AppColors.textSecondary),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: AppColors.primaryGold),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.redAccent),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.redAccent),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-
-                  if (!_isSignUp)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _handleForgotPassword,
-                        child: Text(
-                          AppLocalizations.of(context)!.forgotPassword,
-                          style: const TextStyle(color: AppColors.primaryGold, fontSize: 12),
+                    // Password Input - Hidden in Google Auth Mode
+                    if (!_isGoogleAuth) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        validator: (val) => val == null || val.isEmpty ? "Password is required" : null,
+                        obscureText: true,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.passwordLabel,
+                          labelStyle: const TextStyle(color: AppColors.textSecondary),
+                          prefixIcon: const Icon(Icons.lock, color: AppColors.primaryGold),
+                          errorStyle: const TextStyle(color: Colors.redAccent),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: AppColors.textSecondary),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: AppColors.primaryGold),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: Colors.redAccent),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderSide: const BorderSide(color: Colors.redAccent),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
-                    ),
 
-                  SizedBox(height: _isSignUp ? 32 : 16),
-
-                  // Action Button
-                  // ValueListenableBuilder to disable button visually if fields are invalid
-                  ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: _emailController,
-                    builder: (context, emailValue, child) {
-                      return ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: _passwordController,
-                        builder: (context, passValue, _) {
-                          // Basic empty check for button state visual, real validation happens in _submit via form key
-                          bool isDisabled = emailValue.text.isEmpty || passValue.text.isEmpty;
-                          if (_isSignUp) isDisabled = isDisabled || _nameController.text.isEmpty;
-
-                          return Opacity(
-                            opacity: isDisabled ? 0.5 : 1.0,
-                            child: GradientButton(
-                              text: _isSignUp ? AppLocalizations.of(context)!.signUpBtn : AppLocalizations.of(context)!.loginBtn,
-                              isLoading: _isLoading,
-                              onPressed: isDisabled ? () {} : _submit,
+                      if (!_isSignUp)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _handleForgotPassword,
+                            child: Text(
+                              AppLocalizations.of(context)!.forgotPassword,
+                              style: const TextStyle(color: AppColors.primaryGold, fontSize: 12),
                             ),
-                          );
-                        }
-                      );
-                    }
-                  ),
+                          ),
+                        ),
+                    ],
 
-                  // Google Sign-In Button
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _handleGoogleSignIn,
-                    icon: Image.asset('assets/images/google_logo.png', height: 24, width: 24,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.login, color: Colors.white)),
-                    label: Text(
-                      AppLocalizations.of(context)!.continueWithGoogle,
-                      style: const TextStyle(color: Colors.white),
+                    SizedBox(height: _isSignUp ? 32 : 16),
+
+                    // Action Button
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _emailController,
+                      builder: (context, emailValue, child) {
+                        return ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _passwordController,
+                          builder: (context, passValue, _) {
+                             // Logic adjusted for Google Auth
+                            bool isDisabled = emailValue.text.isEmpty;
+                            if (!_isGoogleAuth && passValue.text.isEmpty) isDisabled = true;
+                            if (_isSignUp) isDisabled = isDisabled || _nameController.text.isEmpty;
+
+                            return Opacity(
+                              opacity: isDisabled ? 0.5 : 1.0,
+                              child: GradientButton(
+                                text: _isSignUp ? AppLocalizations.of(context)!.signUpBtn : AppLocalizations.of(context)!.loginBtn,
+                                isLoading: _isLoading,
+                                onPressed: isDisabled ? () {} : _submit,
+                              ),
+                            );
+                          }
+                        );
+                      }
                     ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.textSecondary),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
 
-                  const SizedBox(height: 16),
+                    // Google Sign-In Button (Hide if already in Google completion mode)
+                    if (!_isGoogleAuth) ...[
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: _isLoading ? null : _handleGoogleSignIn,
+                        icon: Image.asset('assets/images/google_logo.png', height: 24, width: 24,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.login, color: Colors.white)),
+                        label: Text(
+                          AppLocalizations.of(context)!.continueWithGoogle,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.textSecondary),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
 
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _isSignUp = !_isSignUp;
-                        // Clear controllers when switching? Maybe not for UX.
-                      });
-                    },
-                    child: Text(
-                      _isSignUp ? AppLocalizations.of(context)!.alreadyHaveAccount : AppLocalizations.of(context)!.dontHaveAccount,
-                      style: const TextStyle(color: AppColors.primaryGold),
-                    ),
-                  ),
+                    const SizedBox(height: 16),
 
-                  const SizedBox(height: 8),
-
-                  // Skip Button
-                  if (!_isSignUp)
+                    // Toggle Login/Signup (Modified for Google Auth Cancel)
                     TextButton(
-                      onPressed: _skipLogin,
+                      onPressed: () {
+                        setState(() {
+                          if (_isGoogleAuth) {
+                            // Cancel Google Auth Mode
+                            _isGoogleAuth = false;
+                            _isSignUp = false; // Return to login default
+                            _emailController.clear();
+                            _nameController.clear();
+                            _dobController.clear();
+                            _passwordController.clear();
+                            _selectedDate = null;
+                            _googleSignIn.signOut();
+                          } else {
+                            _isSignUp = !_isSignUp;
+                          }
+                        });
+                      },
                       child: Text(
-                        AppLocalizations.of(context)!.skipBtn,
-                        style: const TextStyle(color: AppColors.textSecondary),
+                        _isGoogleAuth
+                           ? "Cancel"
+                           : (_isSignUp ? AppLocalizations.of(context)!.alreadyHaveAccount : AppLocalizations.of(context)!.dontHaveAccount),
+                        style: const TextStyle(color: AppColors.primaryGold),
                       ),
                     ),
-                ],
+
+                    const SizedBox(height: 8),
+
+                    // Skip Button
+                    if (!_isSignUp && !_isGoogleAuth)
+                      TextButton(
+                        onPressed: _skipLogin,
+                        child: Text(
+                          AppLocalizations.of(context)!.skipBtn,
+                          style: const TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
           ),
         ),
       ),
