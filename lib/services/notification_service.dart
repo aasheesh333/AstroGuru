@@ -153,25 +153,37 @@ class NotificationService {
 
   // --- Scheduling Logic ---
 
-  Future<void> scheduleDailyNotifications() async {
+  Future<void> scheduleDailyNotifications({
+    String? dailyTitle,
+    String? dailyBody,
+    String? eveningTitle,
+    String? eveningBody,
+  }) async {
     // Clear existing to avoid duplicates
     await flutterLocalNotificationsPlugin.cancelAll();
 
     final prefs = await SharedPreferences.getInstance();
     bool guestMode = prefs.getBool('guest_mode') ?? false;
 
+    // Defaults if not provided (fallback or initial run before l10n)
+    final String dTitle = dailyTitle ?? "🌞 Aaj ka rashifal ready hai";
+    final String dBody = dailyBody ?? "Jaaniye aaj ka shubh samay aur din ka haal.";
+
     // 1. Daily Morning Horoscope (Every Day, 6:30 - 8:30 AM)
-    // We'll pick 7:00 AM fixed for simplicity, or random within range?
-    // Requirement: "Between 6:30 - 8:30". Let's pick 7:30 AM.
+    // We'll pick 7:30 AM fixed
     await _scheduleDaily(
       id: 101,
-      title: "🌞 Aaj ka rashifal ready hai",
-      body: "Jaaniye aaj ka shubh samay aur din ka haal.",
+      title: dTitle,
+      body: dBody,
       hour: 7,
       minute: 30,
     );
 
     if (guestMode) return; // Guests only get Morning
+
+    // Defaults for evening
+    final String eTitle = eveningTitle ?? "✨ Aaj ki shaam ka vishesh sandesh";
+    final String eBody = eveningBody ?? "Aapke rishton aur bhavnao ke liye kya kehte hain sitare?";
 
     // 2. Evening Engagement (Limited: 3-4 times/week, 7:30 - 10:00 PM)
     // We'll pick Mon, Wed, Fri, Sat at 8:30 PM
@@ -179,15 +191,15 @@ class NotificationService {
     for (int day in eveningDays) {
       await _scheduleWeekly(
         id: 200 + day, // Unique ID per day
-        title: "✨ Aaj ki shaam ka vishesh sandesh",
-        body: "Aapke rishton aur bhavnao ke liye kya kehte hain sitare?",
+        title: eTitle,
+        body: eBody,
         day: day,
         hour: 20, // 8 PM
         minute: 30,
       );
     }
 
-    // Festival/User-triggered are event based, not recurring schedules here (except maybe hardcoded festivals if we had dates).
+    // Festival/User-triggered are event based, not recurring schedules here
   }
 
   Future<void> _scheduleDaily({required int id, required String title, required String body, required int hour, required int minute}) async {
@@ -264,10 +276,7 @@ class NotificationService {
       return;
     }
 
-    // Schedule for 1 hour later (or immediate? Prompt says "After...").
-    // Usually "After Generation" implies immediate or slightly delayed to pull them back.
-    // Let's do 2 hours later to pull them back.
-
+    // Schedule for 2 hours later
     final tz.TZDateTime scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(hours: 2));
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
@@ -288,12 +297,6 @@ class NotificationService {
 
     await prefs.setString('last_triggered_notif_date', today);
 
-    // Also save this future notification to local list?
-    // Actually, we usually save when *received*. But for local scheduled, we might want to save when triggered/shown.
-    // For simplicity, we won't pre-save pending local notifications to the list until they fire,
-    // but detecting "did fire" locally is hard without background callback.
-    // Alternative: Just save it to the list now with a timestamp of "future" or just "now".
-    // Let's save it to the list so user sees it in the history even if they miss the banner.
     await _saveNotificationToStorage(title, body, "Local", false);
   }
 

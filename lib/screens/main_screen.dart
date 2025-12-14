@@ -23,6 +23,7 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   final GlobalKey<ChatContentState> _chatKey = GlobalKey<ChatContentState>();
   late final List<Widget> _screens;
+  String? _lastLocale;
 
   @override
   void initState() {
@@ -39,6 +40,28 @@ class _MainScreenState extends State<MainScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService().checkPermissions(context);
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final localizations = AppLocalizations.of(context);
+    if (localizations != null) {
+      final currentLocale = localizations.localeName;
+      if (_lastLocale != currentLocale) {
+        _lastLocale = currentLocale;
+        // Reschedule notifications with new language
+        // We defer this slightly to ensure build is stable, though usually safe here.
+        // Using microtask to be safe.
+        Future.microtask(() {
+           NotificationService().scheduleDailyNotifications(
+             dailyTitle: localizations.notificationDailyTitle,
+             dailyBody: localizations.notificationDailyBody,
+             // Add evening strings here if available in future
+           );
+        });
+      }
+    }
   }
 
   PreferredSizeWidget? _buildAppBar() {
