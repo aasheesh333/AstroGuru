@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool isGuest = false;
   String? _lastKnownZodiac;
+  String? _lastKnownLang;
 
   @override
   void initState() {
@@ -39,17 +40,32 @@ class _HomeScreenState extends State<HomeScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final userProvider = Provider.of<UserProvider>(context);
+    final langProvider = Provider.of<LanguageProvider>(context);
 
-    // If zodiac changed (e.g. after profile edit), reload data
+    bool needsReload = false;
+
+    // Check Zodiac Change
     if (_lastKnownZodiac != null && _lastKnownZodiac != userProvider.zodiac) {
        _lastKnownZodiac = userProvider.zodiac;
-       _loadData();
+       needsReload = true;
     } else if (_lastKnownZodiac == null) {
        _lastKnownZodiac = userProvider.zodiac;
     }
+
+    // Check Language Change
+    if (_lastKnownLang != null && _lastKnownLang != langProvider.locale.languageCode) {
+       _lastKnownLang = langProvider.locale.languageCode;
+       needsReload = true;
+    } else if (_lastKnownLang == null) {
+       _lastKnownLang = langProvider.locale.languageCode;
+    }
+
+    if (needsReload) {
+      _loadData(forceRefresh: true);
+    }
   }
 
-  void _loadData() async {
+  void _loadData({bool forceRefresh = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
@@ -60,17 +76,17 @@ class _HomeScreenState extends State<HomeScreen> {
         isGuest = guest;
       });
 
-      _checkDailyUpdates(prefs);
+      _checkDailyUpdates(prefs, forceRefresh);
     } catch (e) {
       // Handle error safely
     }
   }
 
-  void _checkDailyUpdates(SharedPreferences prefs) async {
+  void _checkDailyUpdates(SharedPreferences prefs, bool forceRefresh) async {
     String today = DateTime.now().toIso8601String().split('T')[0];
     String lastDate = prefs.getString('last_fetch_date') ?? "";
 
-    if (lastDate != today) {
+    if (forceRefresh || lastDate != today) {
        await _fetchNewData(prefs, today);
     } else {
        _loadFromPrefs(prefs);

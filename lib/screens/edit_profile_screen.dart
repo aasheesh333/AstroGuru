@@ -136,7 +136,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 backgroundColor: const Color(0xFF0E1016),
                 title: const Text("Age Restriction", style: TextStyle(color: Color(0xFFD4AF37))),
                 content: const Text(
-                  "You must be between 10 and 150 years old.",
+                  "You must be at least 10 years old.",
                   style: TextStyle(color: Colors.white),
                 ),
                 actions: [

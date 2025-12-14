@@ -35,6 +35,8 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
   bool _isWeeklyLoading = false;
   bool _isMonthlyLoading = false;
 
+  String? _currentLang;
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +59,27 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
         if (_tabController.index == 2 && _monthlyData == null) _fetchMonthly();
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final lang = Provider.of<LanguageProvider>(context).locale.languageCode;
+    if (_currentLang == null) {
+      _currentLang = lang;
+    } else if (_currentLang != lang) {
+      // Language changed, refresh all data
+      _currentLang = lang;
+      setState(() {
+        _dailyData = null;
+        _weeklyData = null;
+        _monthlyData = null;
+      });
+      _fetchDaily();
+      // If other tabs were loaded, they will re-fetch when visited or we can force them
+      if (_tabController.index == 1) _fetchWeekly();
+      if (_tabController.index == 2) _fetchMonthly();
+    }
   }
 
   Future<void> _fetchDaily() async {

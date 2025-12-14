@@ -131,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: const Color(0xFF0E1016),
               title: const Text("Age Restriction", style: TextStyle(color: Color(0xFFD4AF37))),
               content: const Text(
-                "You must be between 10 and 150 years old to use this app.",
+                "You must be at least 10 years old to use this app.",
                 style: TextStyle(color: Colors.white),
               ),
               actions: [
