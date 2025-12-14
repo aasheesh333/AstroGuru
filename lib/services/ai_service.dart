@@ -133,4 +133,21 @@ class AIService {
     String user = "Analyze this Kundli and suggest personalized remedies: $kundliSummary";
     return await getResponse(system, user);
   }
+
+  static Future<String> getNotificationSchedule(String? zodiac, String language, int days) async {
+    String contextPrompt = zodiac != null
+        ? "Target Audience: $zodiac sign. Content Strategy: 50% personalized mini-predictions (e.g., 'Aries: Avoid red today.'), 50% engaging questions or feature prompts (e.g., 'Check your Love Match with...')."
+        : "Target Audience: General user. Content Strategy: 100% engaging prompts (e.g., 'See what the stars say today', 'Check family horoscope', 'Find your soulmate').";
+
+    String system = "You are an expert mobile app engagement specialist and astrologer. Output language: $language. $contextPrompt\n"
+        "Generate a JSON object with a single key 'notifications' containing a list of $days strings.\n"
+        "Requirements:\n"
+        "1. Each string must be short (under 10 words), catchy, and actionable.\n"
+        "2. MUST include appropriate emojis to increase retention.\n"
+        "3. Do not repeat the same message.\n"
+        "4. Return ONLY valid JSON.";
+
+    String user = "Generate $days notification messages for the next $days days.";
+    return await getResponse(system, user, jsonMode: true);
+  }
 }
