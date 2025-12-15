@@ -42,6 +42,8 @@ class _MainScreenState extends State<MainScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService().checkPermissions(context);
       _checkAndScheduleDynamicNotifications();
+      // Load user data immediately on app launch
+      Provider.of<UserProvider>(context, listen: false).loadUserData();
     });
   }
 

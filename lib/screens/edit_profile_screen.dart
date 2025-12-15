@@ -344,15 +344,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _handleForgotPassword,
-                    child: Text(
-                      AppLocalizations.of(context)!.forgotPassword,
-                      style: const TextStyle(color: AppColors.primaryGold, fontSize: 12),
-                    ),
-                  ),
+                // Conditionally show Forgot Password based on provider
+                FutureBuilder<List<UserInfo>>(
+                  future: Future.value(FirebaseAuth.instance.currentUser?.providerData ?? []),
+                  builder: (context, snapshot) {
+                     if (!snapshot.hasData) return const SizedBox.shrink();
+                     bool isGoogleUser = snapshot.data!.any((p) => p.providerId == 'google.com');
+
+                     if (isGoogleUser) return const SizedBox.shrink();
+
+                     return Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _handleForgotPassword,
+                        child: Text(
+                          AppLocalizations.of(context)!.forgotPassword,
+                          style: const TextStyle(color: AppColors.primaryGold, fontSize: 12),
+                        ),
+                      ),
+                    );
+                  }
                 ),
 
                 const SizedBox(height: 32),
