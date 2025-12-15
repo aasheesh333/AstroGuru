@@ -206,18 +206,18 @@ class _ProfileContentState extends State<ProfileContent> {
                             style: const TextStyle(color: AppColors.textPrimary),
                             items: const [
                               DropdownMenuItem(value: Locale('en'), child: Text("English")),
-                              DropdownMenuItem(value: Locale('hi'), child: Text("Hindi")),
-                              DropdownMenuItem(value: Locale('bn'), child: Text("Bengali")),
-                              DropdownMenuItem(value: Locale('mr'), child: Text("Marathi")),
-                              DropdownMenuItem(value: Locale('ta'), child: Text("Tamil")),
-                              DropdownMenuItem(value: Locale('te'), child: Text("Telugu")),
-                              DropdownMenuItem(value: Locale('gu'), child: Text("Gujarati")),
-                              DropdownMenuItem(value: Locale('pa'), child: Text("Punjabi")),
-                              DropdownMenuItem(value: Locale('kn'), child: Text("Kannada")),
-                              DropdownMenuItem(value: Locale('ml'), child: Text("Malayalam")),
-                              DropdownMenuItem(value: Locale('or'), child: Text("Odia")),
-                              DropdownMenuItem(value: Locale('as'), child: Text("Assamese")),
-                              DropdownMenuItem(value: Locale('ur'), child: Text("Urdu")),
+                              DropdownMenuItem(value: Locale('hi'), child: Text("हिन्दी")), // Hindi
+                              DropdownMenuItem(value: Locale('bn'), child: Text("বাংলা")), // Bengali
+                              DropdownMenuItem(value: Locale('mr'), child: Text("मराठी")), // Marathi
+                              DropdownMenuItem(value: Locale('ta'), child: Text("தமிழ்")), // Tamil
+                              DropdownMenuItem(value: Locale('te'), child: Text("తెలుగు")), // Telugu
+                              DropdownMenuItem(value: Locale('gu'), child: Text("ગુજરાતી")), // Gujarati
+                              DropdownMenuItem(value: Locale('pa'), child: Text("ਪੰਜਾਬੀ")), // Punjabi
+                              DropdownMenuItem(value: Locale('kn'), child: Text("ಕನ್ನಡ")), // Kannada
+                              DropdownMenuItem(value: Locale('ml'), child: Text("മലയാളം")), // Malayalam
+                              DropdownMenuItem(value: Locale('or'), child: Text("ଓଡ଼ିଆ")), // Odia
+                              DropdownMenuItem(value: Locale('as'), child: Text("অসমীয়া")), // Assamese
+                              DropdownMenuItem(value: Locale('ur'), child: Text("اردو")), // Urdu
                             ],
                             onChanged: (val) {
                               if (val != null) {
