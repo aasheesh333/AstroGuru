@@ -11,9 +11,10 @@ import 'dart:io';
 import 'logic/language_provider.dart';
 import 'logic/user_provider.dart';
 import 'logic/kundli_service.dart';
+import 'logic/key_manager.dart'; // Import KeyManager
 import 'services/notification_service.dart';
 import 'screens/splash_screen.dart';
-import 'screens/kundli_input_screen.dart'; // Import Input Screen
+import 'screens/kundli_input_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/main_screen.dart';
@@ -52,6 +53,13 @@ void main() async {
     await KundliService.initialize();
   } catch (e) {
     developer.log("Error initializing KundliService: $e");
+  }
+
+  // Initialize AI Key Manager
+  try {
+    await KeyManager().init();
+  } catch (e) {
+    developer.log("Error initializing KeyManager: $e");
   }
 
   // AdMob
@@ -120,7 +128,7 @@ class AstroPrernaApp extends StatelessWidget {
           routes: {
             '/': (context) => const SplashScreen(),
             '/home': (context) => const MainScreen(),
-            '/kundli': (context) => const KundliInputScreen(), // Changed to Input Screen
+            '/kundli': (context) => const KundliInputScreen(),
             '/chat': (context) => const ChatScreen(),
             '/profile': (context) => const ProfileScreen(),
           },

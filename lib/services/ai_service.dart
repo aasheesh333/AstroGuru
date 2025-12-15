@@ -1,45 +1,86 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../logic/key_manager.dart';
 
 class AIService {
   static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
   static Future<String> getResponse(String systemPrompt, String userPrompt, {bool jsonMode = false}) async {
-    // Check both local and CI keys
-    final String apiKey = dotenv.env['APP_GROQ_API_KEY'] ?? dotenv.env['GROQ_API_KEY'] ?? '';
+    return await _executeRequest(
+      systemPrompt: systemPrompt,
+      userPrompt: userPrompt,
+      jsonMode: jsonMode,
+    );
+  }
 
-    if (apiKey.isEmpty) {
-      return jsonMode ? '{"error": "API Key missing"}' : "Error: AI API Key not configured.";
-    }
+  static Future<String> _executeRequest({
+    required String systemPrompt,
+    dynamic userPrompt, // Can be String or List<Map> for chat
+    bool jsonMode = false,
+    bool isChat = false,
+  }) async {
+    int attempts = 0;
+    const int maxAttempts = 2; // Try current key, then rotate once
 
-    try {
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
+    while (attempts < maxAttempts) {
+      attempts++;
+
+      // Get Key (Rotation handled inside)
+      final String apiKey = await KeyManager().getNextKey();
+
+      if (apiKey.isEmpty) {
+        return jsonMode ? '{"error": "API Key missing"}' : "Error: AI API Key not configured.";
+      }
+
+      try {
+        final Map<String, dynamic> body = {
           'model': 'llama-3.3-70b-versatile',
-          'messages': [
+          'temperature': 0.7,
+        };
+
+        if (jsonMode) {
+          body['response_format'] = {'type': 'json_object'};
+        }
+
+        if (isChat) {
+           body['messages'] = userPrompt; // userPrompt is already formatted list for chat
+        } else {
+           body['messages'] = [
             {'role': 'system', 'content': systemPrompt},
             {'role': 'user', 'content': userPrompt}
-          ],
-          'temperature': 0.7,
-          'response_format': jsonMode ? {'type': 'json_object'} : null,
-        }),
-      );
+          ];
+        }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'];
-      } else {
-        return jsonMode ? '{"error": "Service unavailable"}' : "Service is temporarily unavailable. Please try again.";
+        final response = await http.post(
+          Uri.parse(_baseUrl),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return data['choices'][0]['message']['content'];
+        } else if (response.statusCode == 429) {
+          // Rate Limit - Retry Loop will get next key
+          continue;
+        } else {
+          // Other error (500, 401, etc) - Do not retry blindly
+          // If 401 (Invalid Key), we MIGHT want to rotate, but for now stick to 429 logic
+           if (attempts == maxAttempts) {
+             return jsonMode ? '{"error": "Service unavailable"}' : "Service is temporarily unavailable. Please try again.";
+           }
+        }
+      } catch (e) {
+        if (attempts == maxAttempts) {
+           return jsonMode ? '{"error": "Network error"}' : "Service is temporarily unavailable. Please try again.";
+        }
       }
-    } catch (e) {
-      return jsonMode ? '{"error": "Network error"}' : "Service is temporarily unavailable. Please try again.";
     }
+
+    return jsonMode ? '{"error": "Rate limit exceeded"}' : "Service is busy. Please try again later.";
   }
 
   static Future<String> getDailyHoroscope(String sign, DateTime date, String language) async {
@@ -78,15 +119,7 @@ class AIService {
   }
 
   static Future<String> getChatResponse(String query, String kundliSummary, String language, List<Map<String, String>> history) async {
-    // Check both local and CI keys
-    final String apiKey = dotenv.env['APP_GROQ_API_KEY'] ?? dotenv.env['GROQ_API_KEY'] ?? '';
-
-    if (apiKey.isEmpty) {
-      return "Error: AI API Key not configured.";
-    }
-
-    // Build the messages list including history
-    // UPDATED PROMPT: Explicitly injecting "Respond in {language}" and name context.
+    // Build the messages list
     final List<Map<String, dynamic>> messages = [
       {
         'role': 'system',
@@ -94,39 +127,19 @@ class AIService {
       }
     ];
 
-    // Add history (limit to last 10 messages to save context window)
-    // IMPORTANT: 'history' includes the current message as the last item (added by UI),
-    // so we just add the whole (trimmed) history.
     int start = history.length > 10 ? history.length - 10 : 0;
     for (int i = start; i < history.length; i++) {
-       // Map 'sage' role to 'assistant' for the API
        String role = history[i]['role'] == 'user' ? 'user' : 'assistant';
        messages.add({'role': role, 'content': history[i]['content']!});
     }
 
-    try {
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': 'llama-3.3-70b-versatile',
-          'messages': messages,
-          'temperature': 0.7,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'];
-      } else {
-        return "Service is temporarily unavailable. Please try again.";
-      }
-    } catch (e) {
-      return "Service is temporarily unavailable. Please try again.";
-    }
+    // Reuse helper logic
+    return await _executeRequest(
+      systemPrompt: "", // unused for chat
+      userPrompt: messages,
+      jsonMode: false,
+      isChat: true,
+    );
   }
 
   static Future<String> getRemedies(String kundliSummary, String language) async {
