@@ -10,7 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../theme/app_colors.dart';
 import '../logic/user_session.dart';
 
-class NotificationService {
+class NotificationService with WidgetsBindingObserver {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
@@ -26,6 +26,8 @@ class NotificationService {
     await _updateUnreadCount();
 
     if (_initialized) return;
+
+    WidgetsBinding.instance.addObserver(this);
 
     // Initialize Timezone
     tz.initializeTimeZones();
@@ -43,7 +45,11 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Handle local notification tap if needed
+        // Handle local notification tap
+        if (response.payload != null) {
+          // We can't easily parse title/body here unless encoded in payload
+          // But 'getActiveNotifications' sync will catch it anyway if it was visible
+        }
       },
     );
 
@@ -53,21 +59,65 @@ class NotificationService {
       OneSignal.initialize(oneSignalAppId);
 
       // Listener 1: Foreground
-      // Fires when app is open and notification arrives
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {
         // Save immediately
         _saveOneSignalNotification(event.notification);
-        // event.notification.display(); // Default is to display, no need to call if we don't preventDefault
       });
 
-      // Listener 2: Click (Opened via Notification)
-      // This effectively captures the "last received" notification that the user interacted with
+      // Listener 2: Click
       OneSignal.Notifications.addClickListener((event) {
         _saveOneSignalNotification(event.notification);
       });
     }
 
+    // Sync active notifications on startup
+    await _syncActiveNotifications();
+
     _initialized = true;
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncActiveNotifications();
+    }
+  }
+
+  Future<void> _syncActiveNotifications() async {
+    try {
+      final List<ActiveNotification> activeNotifications =
+          await flutterLocalNotificationsPlugin.getActiveNotifications();
+
+      for (var active in activeNotifications) {
+        // We filter out our own internal scheduled IDs (101, 200+, 1000+) to avoid duplication
+        // if they are currently sitting in the tray.
+        // OneSignal notifications usually have random or different IDs managed by OneSignal SDK.
+        // However, OneSignal creates its OWN notifications which flutter_local_notifications can see.
+
+        // Strategy: Just save everything that looks like a notification and isn't in our list.
+        // Check duplication by Title + Body is handled in _saveNotificationToStorage.
+
+        String? title = active.title;
+        String? body = active.body;
+
+        if (title != null && body != null) {
+           await _saveNotificationToStorage(
+             title,
+             body,
+             "Sync", // Source
+             true,   // Assume synced items (like Push) are important
+             scheduledTime: DateTime.now(), // Mark as received NOW
+           );
+        }
+      }
+    } catch (e) {
+      // Fail silently (best effort)
+    }
   }
 
   // --- Permission Flow ---
@@ -154,8 +204,7 @@ class NotificationService {
       scheduledDate: dailyDate,
     );
 
-    // Save to Local History (Source of Truth) - Only save the NEXT immediate occurrence
-    // This ensures that when the time comes, it appears in the list.
+    // Save to Local History
     await _saveNotificationToStorage(
       dTitle,
       dBody,
@@ -218,8 +267,7 @@ class NotificationService {
         matchDateTimeComponents: DateTimeComponents.time,
       );
 
-      // 2. Save to Local Storage (Source of Truth)
-      // This will be filtered by UI until the time arrives
+      // 2. Save to Local Storage
       await _saveNotificationToStorage(
         "✨ AstroPrerna Insight",
         messages[i],
@@ -369,7 +417,6 @@ class NotificationService {
 
     // DUPLICATE CHECK:
     // Check if an identical notification (Same Title, Same Body) exists for the SAME DAY.
-    // This prevents re-scheduling logic from creating multiple entries for the same "Daily Horoscope".
     bool isDuplicate = notifications.any((n) {
       if (n['title'] != title || n['body'] != body) return false;
 
@@ -437,11 +484,6 @@ class NotificationService {
     final now = DateTime.now();
 
     for (var n in notifications) {
-      // Only mark visible ones as read? Or all?
-      // Usually marking all as read applies to what user has seen.
-      // But if we mark future ones as read, they won't trigger badge when they appear.
-      // So, only mark items where timestamp <= now.
-
       DateTime ts = DateTime.parse(n['timestamp']);
       if (ts.isBefore(now) && n['read'] == false) {
         n['read'] = true;
