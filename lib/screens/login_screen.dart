@@ -405,6 +405,11 @@ class _LoginScreenState extends State<LoginScreen> {
               return;
            }
 
+           // Update User Profile with EDITED Name
+           if (user.displayName != name) {
+             await user.updateDisplayName(name);
+           }
+
            // Fetch and Convert Profile Image if available
            String? base64Image;
            if (_pendingGooglePhotoUrl != null) {
@@ -421,7 +426,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
            // Update Firestore
            await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-              'name': name,
+              'name': name, // Store the potentially edited name
               'email': email,
               'dob': _selectedDate!.toIso8601String(),
               'created_at': Timestamp.now(),
