@@ -22,12 +22,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   Future<void> _loadNotifications() async {
     final list = await NotificationService().getNotifications();
+    final now = DateTime.now();
+
+    // Filter out future notifications
+    final visibleList = list.where((n) {
+      DateTime ts = DateTime.tryParse(n['timestamp'] ?? "") ?? DateTime.now();
+      return ts.isBefore(now) || ts.isAtSameMomentAs(now);
+    }).toList();
+
     setState(() {
-      _notifications = list;
+      _notifications = visibleList;
       _isLoading = false;
     });
 
-    // Mark as read after loading
+    // Mark as read after loading (only visible ones)
     await NotificationService().markAllAsRead();
   }
 

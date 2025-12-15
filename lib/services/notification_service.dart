@@ -55,8 +55,9 @@ class NotificationService {
       // Listener 1: Foreground
       // Fires when app is open and notification arrives
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {
+        // Save immediately
         _saveOneSignalNotification(event.notification);
-        // event.notification.display(); // Default is to display
+        // event.notification.display(); // Default is to display, no need to call if we don't preventDefault
       });
 
       // Listener 2: Click (Opened via Notification)
@@ -144,12 +145,23 @@ class NotificationService {
     final String dTitle = dailyTitle ?? "🌞 Aaj ka rashifal ready hai";
     final String dBody = dailyBody ?? "Jaaniye aaj ka shubh samay aur din ka haal.";
 
+    // Schedule System Notification
+    tz.TZDateTime dailyDate = _nextInstanceOfTime(7, 30);
     await _scheduleDaily(
       id: 101,
       title: dTitle,
       body: dBody,
-      hour: 7,
-      minute: 30,
+      scheduledDate: dailyDate,
+    );
+
+    // Save to Local History (Source of Truth) - Only save the NEXT immediate occurrence
+    // This ensures that when the time comes, it appears in the list.
+    await _saveNotificationToStorage(
+      dTitle,
+      dBody,
+      "Local",
+      true, // Daily is important
+      scheduledTime: dailyDate,
     );
 
     if (guestMode) return;
@@ -159,13 +171,21 @@ class NotificationService {
 
     List<int> eveningDays = [DateTime.monday, DateTime.wednesday, DateTime.friday, DateTime.saturday];
     for (int day in eveningDays) {
+      tz.TZDateTime eveningDate = _nextInstanceOfDayTime(day, 20, 30);
       await _scheduleWeekly(
         id: 200 + day,
         title: eTitle,
         body: eBody,
-        day: day,
-        hour: 20,
-        minute: 30,
+        scheduledDate: eveningDate,
+      );
+
+      // Save next occurrence to History
+      await _saveNotificationToStorage(
+        eTitle,
+        eBody,
+        "Local",
+        false,
+        scheduledTime: eveningDate,
       );
     }
   }
@@ -179,6 +199,7 @@ class NotificationService {
       tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 7, 30)
           .add(Duration(days: i + 1));
 
+      // 1. Schedule System Notification
       await flutterLocalNotificationsPlugin.zonedSchedule(
         1000 + i,
         "✨ AstroPrerna Insight",
@@ -196,15 +217,25 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
+
+      // 2. Save to Local Storage (Source of Truth)
+      // This will be filtered by UI until the time arrives
+      await _saveNotificationToStorage(
+        "✨ AstroPrerna Insight",
+        messages[i],
+        "AI",
+        true,
+        scheduledTime: scheduledDate,
+      );
     }
   }
 
-  Future<void> _scheduleDaily({required int id, required String title, required String body, required int hour, required int minute}) async {
+  Future<void> _scheduleDaily({required int id, required String title, required String body, required tz.TZDateTime scheduledDate}) async {
     await flutterLocalNotificationsPlugin.zonedSchedule(
       id,
       title,
       body,
-      _nextInstanceOfTime(hour, minute),
+      scheduledDate,
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_channel',
@@ -220,12 +251,12 @@ class NotificationService {
     );
   }
 
-  Future<void> _scheduleWeekly({required int id, required String title, required String body, required int day, required int hour, required int minute}) async {
+  Future<void> _scheduleWeekly({required int id, required String title, required String body, required tz.TZDateTime scheduledDate}) async {
      await flutterLocalNotificationsPlugin.zonedSchedule(
       id,
       title,
       body,
-      _nextInstanceOfDayTime(day, hour, minute),
+      scheduledDate,
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'evening_channel',
@@ -288,7 +319,8 @@ class NotificationService {
     );
 
     await prefs.setString('last_triggered_notif_date', today);
-    await _saveNotificationToStorage(title, body, "Local", false);
+    // Save locally
+    await _saveNotificationToStorage(title, body, "Local", false, scheduledTime: scheduledDate);
   }
 
   Future<void> onKundliGenerated() async {
@@ -314,31 +346,67 @@ class NotificationService {
     String title = notification.title ?? "New Notification";
     String body = notification.body ?? "";
 
-    // Prevent duplicates if click listener fires after foreground listener
-    List<Map<String, dynamic>> existing = await getNotifications();
-    bool exists = existing.any((n) => n['title'] == title && n['body'] == body && n['timestamp'] != null && DateTime.now().difference(DateTime.parse(n['timestamp'])).inMinutes < 1);
-
-    if (!exists) {
-      await _saveNotificationToStorage(
-        title,
-        body,
-        "OneSignal",
-        true // Important
-      );
-    }
+    await _saveNotificationToStorage(
+      title,
+      body,
+      "OneSignal",
+      true, // Important
+      scheduledTime: DateTime.now(), // Always now for OneSignal
+    );
   }
 
-  Future<void> _saveNotificationToStorage(String title, String body, String source, bool isImportant) async {
+  Future<void> _saveNotificationToStorage(
+    String title,
+    String body,
+    String source,
+    bool isImportant,
+    {DateTime? scheduledTime}
+  ) async {
     List<Map<String, dynamic>> notifications = await getNotifications();
 
-    notifications.insert(0, {
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+    DateTime timestamp = scheduledTime ?? DateTime.now();
+    String timeStr = timestamp.toIso8601String();
+
+    // DUPLICATE CHECK:
+    // Check if an identical notification (Same Title, Same Body) exists for the SAME DAY.
+    // This prevents re-scheduling logic from creating multiple entries for the same "Daily Horoscope".
+    bool isDuplicate = notifications.any((n) {
+      if (n['title'] != title || n['body'] != body) return false;
+
+      // Parse existing timestamp
+      DateTime? existingTime;
+      try {
+        existingTime = DateTime.parse(n['timestamp']);
+      } catch (e) {
+        return false;
+      }
+
+      // Compare dates (Day/Month/Year)
+      return existingTime.year == timestamp.year &&
+             existingTime.month == timestamp.month &&
+             existingTime.day == timestamp.day;
+    });
+
+    if (isDuplicate) {
+      return; // Skip saving
+    }
+
+    // Insert new notification
+    notifications.add({
+      'id': DateTime.now().millisecondsSinceEpoch.toString() + (scheduledTime?.minute.toString() ?? ""),
       'title': title,
       'body': body,
-      'timestamp': DateTime.now().toIso8601String(),
+      'timestamp': timeStr,
       'read': false,
       'source': source,
       'importance': isImportant ? 'high' : 'normal',
+    });
+
+    // Sort by timestamp descending
+    notifications.sort((a, b) {
+      DateTime ta = DateTime.parse(a['timestamp']);
+      DateTime tb = DateTime.parse(b['timestamp']);
+      return tb.compareTo(ta);
     });
 
     // Limit storage to last 50
@@ -366,8 +434,16 @@ class NotificationService {
   Future<void> markAllAsRead() async {
     List<Map<String, dynamic>> notifications = await getNotifications();
     bool changed = false;
+    final now = DateTime.now();
+
     for (var n in notifications) {
-      if (n['read'] == false) {
+      // Only mark visible ones as read? Or all?
+      // Usually marking all as read applies to what user has seen.
+      // But if we mark future ones as read, they won't trigger badge when they appear.
+      // So, only mark items where timestamp <= now.
+
+      DateTime ts = DateTime.parse(n['timestamp']);
+      if (ts.isBefore(now) && n['read'] == false) {
         n['read'] = true;
         changed = true;
       }
@@ -382,7 +458,15 @@ class NotificationService {
 
   Future<void> _updateUnreadCount() async {
     List<Map<String, dynamic>> notifications = await getNotifications();
-    int count = notifications.where((n) => n['read'] == false).length;
+    final now = DateTime.now();
+
+    // Count unread ONLY if the time has passed
+    int count = notifications.where((n) {
+      bool isUnread = n['read'] == false;
+      DateTime ts = DateTime.parse(n['timestamp']);
+      bool isVisible = ts.isBefore(now) || ts.isAtSameMomentAs(now);
+      return isUnread && isVisible;
+    }).length;
 
     // Force UI update
     unreadCount.value = count;
