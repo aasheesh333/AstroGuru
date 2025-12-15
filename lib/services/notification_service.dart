@@ -45,10 +45,9 @@ class NotificationService with WidgetsBindingObserver {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Handle local notification tap
+        // Handle local notification tap if needed
         if (response.payload != null) {
-          // We can't easily parse title/body here unless encoded in payload
-          // But 'getActiveNotifications' sync will catch it anyway if it was visible
+          // Future enhancement: Parse generic payload if we ever set it
         }
       },
     );
@@ -60,7 +59,6 @@ class NotificationService with WidgetsBindingObserver {
 
       // Listener 1: Foreground
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {
-        // Save immediately
         _saveOneSignalNotification(event.notification);
       });
 
@@ -94,16 +92,12 @@ class NotificationService with WidgetsBindingObserver {
           await flutterLocalNotificationsPlugin.getActiveNotifications();
 
       for (var active in activeNotifications) {
-        // We filter out our own internal scheduled IDs (101, 200+, 1000+) to avoid duplication
-        // if they are currently sitting in the tray.
-        // OneSignal notifications usually have random or different IDs managed by OneSignal SDK.
-        // However, OneSignal creates its OWN notifications which flutter_local_notifications can see.
-
-        // Strategy: Just save everything that looks like a notification and isn't in our list.
-        // Check duplication by Title + Body is handled in _saveNotificationToStorage.
-
         String? title = active.title;
         String? body = active.body;
+
+        // Try to get payload - usually this is just a string or null in LocalNotifications
+        // For system synced ones, we might miss the URL.
+        String? payload = active.payload;
 
         if (title != null && body != null) {
            await _saveNotificationToStorage(
@@ -112,6 +106,7 @@ class NotificationService with WidgetsBindingObserver {
              "Sync", // Source
              true,   // Assume synced items (like Push) are important
              scheduledTime: DateTime.now(), // Mark as received NOW
+             launchUrl: payload, // Best effort
            );
         }
       }
@@ -390,9 +385,27 @@ class NotificationService with WidgetsBindingObserver {
   // --- Storage Logic ---
 
   Future<void> _saveOneSignalNotification(OSNotification notification) async {
-    // Check duplication (simple check by ID or Title+Body)
     String title = notification.title ?? "New Notification";
     String body = notification.body ?? "";
+
+    // Extract Launch URL
+    String? launchUrl = notification.launchUrl;
+    if (launchUrl == null && notification.additionalData != null) {
+      // Check additional data for custom keys if used
+      if (notification.additionalData!.containsKey('launchUrl')) {
+        launchUrl = notification.additionalData!['launchUrl'] as String?;
+      }
+    }
+
+    // Extract Big Picture / Large Icon
+    String? imageUrl = notification.bigPicture;
+    if (imageUrl == null && notification.largeIcon != null) {
+      // OneSignal might provide largeIcon as URL or Resource ID.
+      // If it looks like a URL, use it.
+      if (notification.largeIcon!.startsWith("http")) {
+        imageUrl = notification.largeIcon;
+      }
+    }
 
     await _saveNotificationToStorage(
       title,
@@ -400,6 +413,8 @@ class NotificationService with WidgetsBindingObserver {
       "OneSignal",
       true, // Important
       scheduledTime: DateTime.now(), // Always now for OneSignal
+      launchUrl: launchUrl,
+      imageUrl: imageUrl,
     );
   }
 
@@ -408,7 +423,7 @@ class NotificationService with WidgetsBindingObserver {
     String body,
     String source,
     bool isImportant,
-    {DateTime? scheduledTime}
+    {DateTime? scheduledTime, String? launchUrl, String? imageUrl}
   ) async {
     List<Map<String, dynamic>> notifications = await getNotifications();
 
@@ -419,16 +434,12 @@ class NotificationService with WidgetsBindingObserver {
     // Check if an identical notification (Same Title, Same Body) exists for the SAME DAY.
     bool isDuplicate = notifications.any((n) {
       if (n['title'] != title || n['body'] != body) return false;
-
-      // Parse existing timestamp
       DateTime? existingTime;
       try {
         existingTime = DateTime.parse(n['timestamp']);
       } catch (e) {
         return false;
       }
-
-      // Compare dates (Day/Month/Year)
       return existingTime.year == timestamp.year &&
              existingTime.month == timestamp.month &&
              existingTime.day == timestamp.day;
@@ -447,6 +458,8 @@ class NotificationService with WidgetsBindingObserver {
       'read': false,
       'source': source,
       'importance': isImportant ? 'high' : 'normal',
+      'launchUrl': launchUrl,
+      'imageUrl': imageUrl,
     });
 
     // Sort by timestamp descending
@@ -478,7 +491,19 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
+  Future<void> markAsRead(String id) async {
+    List<Map<String, dynamic>> notifications = await getNotifications();
+    int index = notifications.indexWhere((n) => n['id'] == id);
+    if (index != -1) {
+      notifications[index]['read'] = true;
+      String jsonStr = jsonEncode(notifications);
+      await UserSession.setString('notifications_list', jsonStr);
+      await _updateUnreadCount();
+    }
+  }
+
   Future<void> markAllAsRead() async {
+    // Legacy support or fallback if needed
     List<Map<String, dynamic>> notifications = await getNotifications();
     bool changed = false;
     final now = DateTime.now();

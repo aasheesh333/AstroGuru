@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_colors.dart';
 import '../services/notification_service.dart';
 
@@ -30,19 +31,44 @@ class _NotificationScreenState extends State<NotificationScreen> {
       return ts.isBefore(now) || ts.isAtSameMomentAs(now);
     }).toList();
 
+    if (mounted) {
+      setState(() {
+        _notifications = visibleList;
+        _isLoading = false;
+      });
+    }
+
+    // REMOVE AUTO MARK-AS-READ
+    // User wants unread items to stay highlighted until tapped/viewed explicitly
+  }
+
+  Future<void> _handleNotificationTap(Map<String, dynamic> notif) async {
+    // 1. Mark as read
+    String id = notif['id'];
+    await NotificationService().markAsRead(id);
+
+    // Refresh UI locally
     setState(() {
-      _notifications = visibleList;
-      _isLoading = false;
+      int index = _notifications.indexWhere((n) => n['id'] == id);
+      if (index != -1) {
+        _notifications[index]['read'] = true;
+      }
     });
 
-    // Mark as read after loading (only visible ones)
-    await NotificationService().markAllAsRead();
+    // 2. Launch URL if present
+    String? url = notif['launchUrl'];
+    if (url != null && url.isNotEmpty) {
+      final Uri uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBackgroundColor, // Ensure consistent background
+      backgroundColor: AppColors.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -116,57 +142,103 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   Widget _buildNotificationItem(Map<String, dynamic> notif) {
+    bool isRead = notif['read'] == true;
     bool isImportant = notif['importance'] == 'high' || notif['source'] == 'OneSignal';
     DateTime timestamp = DateTime.tryParse(notif['timestamp'] ?? "") ?? DateTime.now();
     String timeStr = DateFormat('MMM d, h:mm a').format(timestamp);
+    String? imageUrl = notif['imageUrl'];
+
+    // Visual Styling for Read vs Unread
+    Color bgColor = isRead
+        ? Colors.white.withOpacity(0.05) // Slight grey/transparent for read
+        : const Color(0xFF1A1C24); // Darker surface for unread (highlighted)
+
+    Color borderColor = isRead
+        ? Colors.transparent
+        : (isImportant ? AppColors.primaryGold : Colors.purpleAccent.withOpacity(0.5));
+
+    Color textColor = isRead ? Colors.grey : Colors.white;
+    FontWeight titleWeight = isRead ? FontWeight.normal : FontWeight.bold;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E1016),
+        color: bgColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isImportant ? AppColors.primaryGold.withOpacity(0.5) : Colors.white10,
-        ),
+        border: Border.all(color: borderColor, width: 1),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isImportant
-                ? AppColors.primaryGold.withOpacity(0.2)
-                : Colors.purple.withOpacity(0.2),
-          ),
-          child: Icon(
-            isImportant ? Icons.star : Icons.notifications,
-            color: isImportant ? AppColors.primaryGold : Colors.purpleAccent,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          notif['title'] ?? "Notification",
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 6),
-            Text(
-              notif['body'] ?? "",
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _handleNotificationTap(notif),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Leading Icon
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isRead ? Colors.grey.withOpacity(0.1) : (isImportant ? AppColors.primaryGold.withOpacity(0.2) : Colors.purple.withOpacity(0.2)),
+                    image: imageUrl != null
+                      ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover)
+                      : const DecorationImage(image: AssetImage('assets/images/logo.png'), fit: BoxFit.cover),
+                  ),
+                  // If image fails or is default, we can add a child icon, but logo.png is safe
+                ),
+                const SizedBox(width: 16),
+
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        notif['title'] ?? "Notification",
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: titleWeight,
+                          fontSize: 16,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        notif['body'] ?? "",
+                        style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 14),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            timeStr,
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                          ),
+                          if (!isRead) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primaryGold,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          ]
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              timeStr,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
+          ),
         ),
       ),
     );
