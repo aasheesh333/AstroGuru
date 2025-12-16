@@ -10,6 +10,7 @@ import '../logic/language_provider.dart';
 import '../logic/user_session.dart';
 import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
+import '../services/ad_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/astro_text_parser.dart';
 import '../widgets/baba_avatar.dart';
@@ -46,6 +47,10 @@ class ChatContentState extends State<ChatContent> {
   bool _isBanned = false;
   String? _lastMessageContent;
   bool _isTextTooLong = false;
+
+  // Limits
+  int _totalCharsSent = 0;
+  int _charLimit = 5000;
 
   // Voice
   late stt.SpeechToText _speech;
@@ -87,13 +92,29 @@ class ChatContentState extends State<ChatContent> {
     int nudity = await UserSession.getInt('nudity_count') ?? 0;
     bool banned = await UserSession.getBool('is_banned') ?? false;
 
+    // Load Limits
+    int chars = await UserSession.getInt('total_chars_sent') ?? 0;
+    int limit = await UserSession.getInt('char_limit') ?? 5000;
+
+    // Track Opens for Interstitial Ad (Every 5th open)
+    int openCount = await UserSession.getInt('sage_open_count') ?? 0;
+    openCount++;
+    await UserSession.setInt('sage_open_count', openCount);
+
     if (mounted) {
       setState(() {
         isGuest = guest;
         _spamStrikes = spam;
         _nudityCount = nudity;
         _isBanned = banned;
+        _totalCharsSent = chars;
+        _charLimit = limit;
       });
+
+      if (openCount % 5 == 0) {
+        // Show Interstitial Ad
+        AdService().showInterstitialAd();
+      }
     }
 
     if (isGuest && mounted) {
@@ -215,6 +236,12 @@ class ChatContentState extends State<ChatContent> {
     if (_controller.text.trim().isEmpty) return;
     String userMsg = _controller.text.trim();
 
+    // --- Limit Check ---
+    if (_totalCharsSent + userMsg.length > _charLimit) {
+      _showLimitReachedDialog();
+      return;
+    }
+
     // --- Spam & Moderation Checks ---
     bool isViolation = false;
     String violationReason = "";
@@ -244,6 +271,10 @@ class ChatContentState extends State<ChatContent> {
     // Update last message
     _lastMessageContent = userMsg;
     // -------------------------------
+
+    // Update usage
+    _totalCharsSent += userMsg.length;
+    await UserSession.setInt('total_chars_sent', _totalCharsSent);
 
     setState(() {
       _messages.add({'role': 'user', 'content': userMsg});
@@ -350,6 +381,49 @@ class ChatContentState extends State<ChatContent> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("I Understand", style: TextStyle(color: AppColors.primaryGold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLimitReachedDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceColor,
+        title: const Text("Usage Limit Reached", style: TextStyle(color: AppColors.primaryGold)),
+        content: const Text(
+          "You have reached the free message limit. Watch a short ad to unlock 5000 more characters.",
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
+            onPressed: () {
+              Navigator.pop(context);
+              AdService().showRewardedAd(
+                onUserEarnedReward: (reward) async {
+                  setState(() {
+                    _charLimit += 5000;
+                  });
+                  await UserSession.setInt('char_limit', _charLimit);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Limit extended by 5000 characters!")),
+                  );
+                },
+                onAdFailed: () {
+                   ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Failed to load ad. Please try again.")),
+                  );
+                }
+              );
+            },
+            child: const Text("Watch Ad"),
           ),
         ],
       ),

@@ -8,6 +8,7 @@ import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/zodiac_utils.dart'; // Added import
+import '../widgets/banner_ad_widget.dart';
 
 class HoroscopeDetailScreen extends StatefulWidget {
   final String signName;
@@ -338,6 +339,8 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
               _DetailCard(title: AppLocalizations.of(context)!.metricLuck, icon: Icons.auto_awesome, content: "${data['lucky_color'] ?? '-'}\n${data['lucky_number'] ?? '-'}", color: Colors.amberAccent),
             ],
           ),
+          const SizedBox(height: 20),
+          const BannerAdWidget(),
         ],
       ),
     );

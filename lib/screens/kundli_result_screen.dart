@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/astro_card.dart';
+import '../widgets/ad_locked_widget.dart';
 import '../logic/kundli_service.dart';
 import '../logic/remedy_service.dart';
 import '../logic/language_provider.dart';
@@ -30,6 +31,10 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
   Map<String, dynamic>? chartData;
   String remedies = "Loading remedies...";
   bool isLoading = true;
+
+  // Unlock States
+  bool _isPlanetsUnlocked = false;
+  bool _isRemediesUnlocked = false;
 
   @override
   void initState() {
@@ -202,6 +207,19 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
   }
 
   Widget _buildPlanetsTab() {
+    final content = _buildPlanetsContent();
+    if (!_isPlanetsUnlocked) {
+      return AdLockedWidget(
+        title: "Unlock Planets Detail",
+        message: "Watch a short ad to see detailed planetary positions.",
+        onUnlock: () => setState(() => _isPlanetsUnlocked = true),
+        child: content,
+      );
+    }
+    return content;
+  }
+
+  Widget _buildPlanetsContent() {
     if (chartData == null) return const SizedBox();
     final planets = chartData!['planets'] as List;
 
@@ -215,7 +233,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
           color: AppColors.surfaceColor,
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: AppColors.scaffoldBackgroundColor, // Replaced background with scaffoldBackgroundColor
+              backgroundColor: AppColors.scaffoldBackgroundColor,
               child: Text(
                 planet['name'][0],
                 style: const TextStyle(color: AppColors.primaryGold),
@@ -231,6 +249,19 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
   }
 
   Widget _buildRemediesTab() {
+    final content = _buildRemediesContent();
+    if (!_isRemediesUnlocked) {
+      return AdLockedWidget(
+        title: "Unlock Vedic Remedies",
+        message: "Watch a short ad to reveal powerful remedies for your Doshas.",
+        onUnlock: () => setState(() => _isRemediesUnlocked = true),
+        child: content,
+      );
+    }
+    return content;
+  }
+
+  Widget _buildRemediesContent() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(

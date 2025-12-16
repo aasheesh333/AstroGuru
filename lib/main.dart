@@ -13,6 +13,7 @@ import 'logic/user_provider.dart';
 import 'logic/kundli_service.dart';
 import 'logic/key_manager.dart'; // Import KeyManager
 import 'services/notification_service.dart';
+import 'services/ad_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/kundli_input_screen.dart';
 import 'screens/chat_screen.dart';
@@ -64,7 +65,7 @@ void main() async {
 
   // AdMob
   try {
-    MobileAds.instance.initialize();
+    await AdService().initialize();
   } catch (e) {
     developer.log("Error initializing AdMob: $e");
   }
