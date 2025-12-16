@@ -73,15 +73,24 @@ class _MainScreenState extends State<MainScreen> {
        final jsonResponse = await AIService.getNotificationSchedule(zodiac, language, 5);
        final data = jsonDecode(jsonResponse);
 
-       if (data is Map && data.containsKey('notifications')) {
-         List<dynamic> list = data['notifications'];
-         List<String> messages = list.map((e) => e.toString()).toList();
+       if (data is Map) {
+         List<String> morning = [];
+         List<String> evening = [];
 
-         // 4. Schedule
-         await NotificationService().scheduleDynamicNotifications(messages);
+         if (data.containsKey('morning')) {
+            morning = (data['morning'] as List).map((e) => e.toString()).toList();
+         }
+         if (data.containsKey('evening')) {
+            evening = (data['evening'] as List).map((e) => e.toString()).toList();
+         }
 
-         // 5. Update timestamp
-         await prefs.setInt('last_notification_schedule_time', now);
+         if (morning.isNotEmpty && evening.isNotEmpty) {
+            // 4. Schedule
+            await NotificationService().scheduleDynamicNotifications(morning, evening);
+
+            // 5. Update timestamp
+            await prefs.setInt('last_notification_schedule_time', now);
+         }
        }
     } catch (e) {
       // Silently fail or fallback to static is handled by NotificationService's daily recurring default

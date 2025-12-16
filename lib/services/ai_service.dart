@@ -154,14 +154,14 @@ class AIService {
         : "Target Audience: General user. Content Strategy: 100% engaging prompts (e.g., 'See what the stars say today', 'Check family horoscope', 'Find your soulmate').";
 
     String system = "You are an expert mobile app engagement specialist and astrologer. Output language: $language. $contextPrompt\n"
-        "Generate a JSON object with a single key 'notifications' containing a list of $days strings.\n"
+        "Generate a JSON object with two keys: 'morning' (list of $days strings) and 'evening' (list of $days strings).\n"
         "Requirements:\n"
         "1. Each string must be short (under 10 words), catchy, and actionable.\n"
         "2. MUST include appropriate emojis to increase retention.\n"
-        "3. Do not repeat the same message.\n"
+        "3. Morning messages should be inspiring/planning related. Evening messages should be reflective/checking status.\n"
         "4. Return ONLY valid JSON.";
 
-    String user = "Generate $days notification messages for the next $days days.";
+    String user = "Generate $days notification messages for the next $days days (morning and evening).";
     return await getResponse(system, user, jsonMode: true);
   }
 }

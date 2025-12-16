@@ -234,21 +234,22 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> scheduleDynamicNotifications(List<String> messages) async {
+  Future<void> scheduleDynamicNotifications(List<String> morning, List<String> evening) async {
     await flutterLocalNotificationsPlugin.cancel(101);
 
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    int count = morning.length < evening.length ? morning.length : evening.length;
 
-    for (int i = 0; i < messages.length; i++) {
-      tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 7, 30)
+    for (int i = 0; i < count; i++) {
+      // 1. Morning (8:00 AM)
+      tz.TZDateTime morningDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 8, 0)
           .add(Duration(days: i + 1));
 
-      // 1. Schedule System Notification
       await flutterLocalNotificationsPlugin.zonedSchedule(
         1000 + i,
-        "✨ AstroPrerna Insight",
-        messages[i],
-        scheduledDate,
+        "🌞 AstroPrerna Insight",
+        morning[i],
+        morningDate,
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'daily_channel',
@@ -262,13 +263,42 @@ class NotificationService with WidgetsBindingObserver {
         matchDateTimeComponents: DateTimeComponents.time,
       );
 
-      // 2. Save to Local Storage
       await _saveNotificationToStorage(
-        "✨ AstroPrerna Insight",
-        messages[i],
+        "🌞 AstroPrerna Insight",
+        morning[i],
         "AI",
         true,
-        scheduledTime: scheduledDate,
+        scheduledTime: morningDate,
+      );
+
+      // 2. Evening (7:00 PM)
+      tz.TZDateTime eveningDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 19, 0)
+          .add(Duration(days: i + 1));
+
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        2000 + i,
+        "🌙 Evening Reflection",
+        evening[i],
+        eveningDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'evening_channel',
+            'Evening Guidance',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+            styleInformation: BigTextStyleInformation(''),
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+
+      await _saveNotificationToStorage(
+        "🌙 Evening Reflection",
+        evening[i],
+        "AI",
+        false,
+        scheduledTime: eveningDate,
       );
     }
   }
