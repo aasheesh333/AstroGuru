@@ -148,20 +148,22 @@ class AIService {
     return await getResponse(system, user);
   }
 
-  static Future<String> getNotificationSchedule(String? zodiac, String language, int days) async {
+  static Future<String> getNotificationSchedule(String? zodiac, String language, int days, {DateTime? startDate}) async {
+    String dateStr = startDate != null ? startDate.toIso8601String() : "today";
     String contextPrompt = zodiac != null
         ? "Target Audience: $zodiac sign. Content Strategy: 50% personalized mini-predictions (e.g., 'Aries: Avoid red today.'), 50% engaging questions or feature prompts (e.g., 'Check your Love Match with...')."
         : "Target Audience: General user. Content Strategy: 100% engaging prompts (e.g., 'See what the stars say today', 'Check family horoscope', 'Find your soulmate').";
 
     String system = "You are an expert mobile app engagement specialist and astrologer. Output language: $language. $contextPrompt\n"
-        "Generate a JSON object with two keys: 'morning' (list of $days strings) and 'evening' (list of $days strings).\n"
+        "Generate a JSON object with THREE keys: 'morning' (list of $days strings), 'evening' (list of $days strings), and 'afternoon' (list of objects).\n"
         "Requirements:\n"
-        "1. Each string must be short (under 10 words), catchy, and actionable.\n"
-        "2. MUST include appropriate emojis to increase retention.\n"
-        "3. Morning messages should be inspiring/planning related. Evening messages should be reflective/checking status.\n"
-        "4. Return ONLY valid JSON.";
+        "1. Morning/Evening: List of $days strings each. Short (under 10 words), catchy, actionable, with emojis.\n"
+        "2. Morning = Inspiring/Planning. Evening = Reflective/Status.\n"
+        "3. 'afternoon': Generate 3-5 objects for the $days day period. Structure: { 'message': string, 'day_offset': int (0 to ${days-1}), 'hour': int (12-16) }.\n"
+        "4. Afternoon content: Focus on Festivals, Shubh Muhurat, or specific astrological transits occurring on that specific date (Starting $dateStr). If no festival, use general motivation.\n"
+        "5. Return ONLY valid JSON.";
 
-    String user = "Generate $days notification messages for the next $days days (morning and evening).";
+    String user = "Generate notification schedule for the next $days days starting $dateStr.";
     return await getResponse(system, user, jsonMode: true);
   }
 }

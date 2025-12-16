@@ -70,12 +70,18 @@ class _MainScreenState extends State<MainScreen> {
     // 3. Fetch from AI in Background
     try {
        // Generate 5 days of content
-       final jsonResponse = await AIService.getNotificationSchedule(zodiac, language, 5);
+       final jsonResponse = await AIService.getNotificationSchedule(
+         zodiac,
+         language,
+         5,
+         startDate: DateTime.now(),
+       );
        final data = jsonDecode(jsonResponse);
 
        if (data is Map) {
          List<String> morning = [];
          List<String> evening = [];
+         List<Map<String, dynamic>> afternoon = [];
 
          if (data.containsKey('morning')) {
             morning = (data['morning'] as List).map((e) => e.toString()).toList();
@@ -83,10 +89,13 @@ class _MainScreenState extends State<MainScreen> {
          if (data.containsKey('evening')) {
             evening = (data['evening'] as List).map((e) => e.toString()).toList();
          }
+         if (data.containsKey('afternoon')) {
+            afternoon = (data['afternoon'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
+         }
 
          if (morning.isNotEmpty && evening.isNotEmpty) {
             // 4. Schedule
-            await NotificationService().scheduleDynamicNotifications(morning, evening);
+            await NotificationService().scheduleDynamicNotifications(morning, evening, afternoon);
 
             // 5. Update timestamp
             await prefs.setInt('last_notification_schedule_time', now);

@@ -234,7 +234,11 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> scheduleDynamicNotifications(List<String> morning, List<String> evening) async {
+  Future<void> scheduleDynamicNotifications(
+    List<String> morning,
+    List<String> evening,
+    List<Map<String, dynamic>> afternoon
+  ) async {
     await flutterLocalNotificationsPlugin.cancel(101);
 
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
@@ -299,6 +303,50 @@ class NotificationService with WidgetsBindingObserver {
         "AI",
         false,
         scheduledTime: eveningDate,
+      );
+    }
+
+    // 3. Afternoon / Festivals (Flexible)
+    for (int i = 0; i < afternoon.length; i++) {
+       var item = afternoon[i];
+       String msg = item['message']?.toString() ?? "✨ Check your horoscope";
+       int offset = (item['day_offset'] is int) ? item['day_offset'] : 0;
+       int hour = (item['hour'] is int) ? item['hour'] : 14;
+
+       tz.TZDateTime festivalDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, 0)
+          .add(Duration(days: offset));
+
+       // Ensure we don't schedule in the past if offset is 0 and hour passed
+       if (festivalDate.isBefore(now)) {
+         festivalDate = festivalDate.add(const Duration(days: 1)); // Just shift to next day or skip?
+         // Better to just skip if it's already passed for today
+         if (festivalDate.isBefore(now)) continue;
+       }
+
+       await flutterLocalNotificationsPlugin.zonedSchedule(
+        3000 + i,
+        "🎉 Special Update",
+        msg,
+        festivalDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'festival_channel',
+            'Festival Alerts',
+            importance: Importance.high,
+            priority: Priority.high,
+            color: Colors.redAccent,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dateAndTime,
+      );
+
+       await _saveNotificationToStorage(
+        "🎉 Special Update",
+        msg,
+        "AI-Festival",
+        true,
+        scheduledTime: festivalDate,
       );
     }
   }
