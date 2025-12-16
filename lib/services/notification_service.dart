@@ -74,7 +74,6 @@ class NotificationService with WidgetsBindingObserver {
     _initialized = true;
   }
 
-  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
   }

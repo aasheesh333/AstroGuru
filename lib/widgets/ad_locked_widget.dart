@@ -61,7 +61,7 @@ class _AdLockedWidgetState extends State<AdLockedWidget> {
             margin: const EdgeInsets.all(24.0),
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.surfaceColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.primaryGold.withOpacity(0.3)),
               boxShadow: [
