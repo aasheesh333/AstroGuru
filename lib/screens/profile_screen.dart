@@ -5,6 +5,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
 import 'login_screen.dart';
@@ -101,6 +102,21 @@ class _ProfileContentState extends State<ProfileContent> {
         ],
       ),
     );
+  }
+
+  Future<void> _launch(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open link.")));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open link.")));
+      }
+    }
   }
 
   @override
@@ -246,21 +262,21 @@ class _ProfileContentState extends State<ProfileContent> {
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
-                  icon: Icons.star_rate_rounded,
-                  title: AppLocalizations.of(context)!.rateApp,
-                  onTap: () {},
+                  icon: Icons.privacy_tip_outlined,
+                  title: AppLocalizations.of(context)!.privacyPolicy,
+                  onTap: () => _launch("https://dhanuk.page.gd/AstroPrerna/Privacy-Policy.html"),
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
-                  icon: Icons.privacy_tip_outlined,
-                  title: AppLocalizations.of(context)!.privacyPolicy,
-                  onTap: () {},
+                  icon: Icons.description_outlined,
+                  title: "Terms & Conditions",
+                  onTap: () => _launch("https://dhanuk.page.gd/AstroPrerna/Terms-and-Conditions.html"),
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
                   icon: Icons.headset_mic_outlined,
                   title: AppLocalizations.of(context)!.helpSupport,
-                  onTap: () {},
+                  onTap: () => _launch("https://dhanuk.page.gd/AstroPrerna/Help-and-Support.html"),
                 ),
               ],
             ),
