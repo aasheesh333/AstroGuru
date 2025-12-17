@@ -14,7 +14,8 @@ import '../utils/zodiac_utils.dart';
 
 // HomeScreen Content Widget
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Function(int)? onTabChange;
+  const HomeScreen({super.key, this.onTabChange});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -191,6 +192,9 @@ class _HomeScreenState extends State<HomeScreen> {
             data: horoscopeData!
           )));
         }
+      } else if (route == '/chat') {
+        // Switch to AI Chat Tab (Index 3)
+        widget.onTabChange?.call(3);
       } else {
         Navigator.pushNamed(context, route);
       }

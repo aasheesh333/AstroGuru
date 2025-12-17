@@ -32,7 +32,11 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _screens = [
-      const HomeScreen(),
+      HomeScreen(onTabChange: (index) {
+        setState(() {
+          _currentIndex = index;
+        });
+      }),
       const HoroscopeContent(),
       const KundliInputContent(),
       ChatContent(key: _chatKey),
