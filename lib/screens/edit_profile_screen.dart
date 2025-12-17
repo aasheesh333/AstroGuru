@@ -299,6 +299,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   controller: _dobController,
                   readOnly: true,
                   style: const TextStyle(color: Colors.white),
+                  validator: (val) {
+                    if (_selectedDate == null) return AppLocalizations.of(context)!.error; // Generic required
+
+                    final now = DateTime.now();
+                    int age = now.year - _selectedDate!.year;
+                    if (now.month < _selectedDate!.month ||
+                       (now.month == _selectedDate!.month && now.day < _selectedDate!.day)) {
+                      age--;
+                    }
+
+                    if (age < 10) return "Minimum age must be 10 years.";
+                    if (age > 150) return "Invalid age (Max 150 years).";
+                    return null;
+                  },
                   decoration: InputDecoration(
                     labelText: AppLocalizations.of(context)!.dateOfBirth,
                     prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primaryGold),
@@ -309,9 +323,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   onTap: () async {
                     DateTime? picked = await showDatePicker(
                       context: context,
-                      initialDate: _selectedDate ?? DateTime.now(),
-                      firstDate: DateTime(1900),
-                      lastDate: DateTime.now(),
+                      initialDate: _selectedDate ?? DateTime.now().subtract(const Duration(days: 365 * 10)),
+                      firstDate: DateTime.now().subtract(const Duration(days: 365 * 155)), // Allow slightly older to show validation
+                      lastDate: DateTime.now(), // Allow selection to show validation
                        builder: (context, child) {
                         return Theme(data: ThemeData.dark(), child: child!);
                       },
