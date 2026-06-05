@@ -29,8 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Typing-indicator shimmer and loading skeletons in chat, kundli, and
   love-match screens.
 - "About", "Rate App", and "Send Feedback" items in the profile screen.
-- Firebase Crashlytics + Analytics init, with global error handlers in
-  release builds.
+- Global error handler at boot that logs uncaught errors to
+  `developer.log` (visible in `adb logcat`). Firebase Crashlytics and
+  Analytics integration is deferred to a future release because of a
+  firebase_core / firebase_storage major-version conflict at the time
+  of writing.
 - Centralized color tokens in `AppColors` (gold accent, accent pink)
   replacing 45+ hardcoded `Color(0xFF...)` literals.
 - ARB localization in 13 Indian languages; all files synced to 185 keys.

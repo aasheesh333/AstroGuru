@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:developer' as developer;
 import 'dart:io';
 
@@ -47,18 +45,17 @@ void main() async {
     developer.log("Error initializing Firebase: $e");
   }
 
-  // Set up global error handlers so crashes get reported to Crashlytics
-  // in release builds. In debug we keep the standard red-screen behavior.
+  // Install a global error handler so uncaught errors are at least logged
+  // (visible in `adb logcat`). Crashlytics integration is intentionally
+  // deferred to a future release; for now we use developer.log and the
+  // default red-screen in debug.
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    if (!kDebugMode) {
-      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-    }
+    developer.log('Uncaught Flutter error: ${details.exceptionAsString()}',
+        name: 'AstroPrerna');
   };
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    if (!kDebugMode) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    }
+    developer.log('Uncaught platform error: $error', name: 'AstroPrerna');
     return true;
   };
 
@@ -100,17 +97,14 @@ void main() async {
     ),
   );
 
-  // Fire-and-forget: log the install / open event.
-  // Wrapped so an analytics failure never blocks startup.
+  // Fire-and-forget: log the install / open event. Wrapped so a logging
+  // failure never blocks startup. We use developer.log here instead of
+  // FirebaseAnalytics so we don't need the analytics package (and the
+  // dependency conflict it introduced with firebase_storage). A future
+  // release can re-add analytics once firebase_core / firebase_storage
+  // major versions are aligned.
   () async {
-    try {
-      await FirebaseAnalytics.instance.logEvent(
-        name: 'app_open',
-        parameters: {'platform': Platform.operatingSystem},
-      );
-    } catch (e) {
-      developer.log("Analytics logEvent failed: $e");
-    }
+    developer.log('app_open: ${Platform.operatingSystem}', name: 'AstroPrerna');
   }();
 }
 
