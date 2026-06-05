@@ -183,5 +183,23 @@
   ,"sendFeedback": "Send Feedback"
   ,"about": "About"
   ,"appVersion": "Version {version} ({build})"
-  ,"@appVersion": {"placeholders": {"version": {"type": "String"},"build": {"type": "String"}}}
+  ,"@appVersion": {"placeholders": {"version": {"type": "String"},"build": {"type": "String"}}},
+"accessDenied": "Access Denied",
+"accountBanned": "Account Suspended",
+"attemptsLeftBeforeBan": "Attempts left before suspension: {count}",
+"banContactSupport": "Contact support if you believe this is a mistake.",
+"banReason": "Reason: {reason}",
+"historyTooLong": "Your chat history is too long. Please start a new conversation.",
+"iUnderstand": "I Understand",
+"limitExtended": "Limit Extended",
+"logoutAndExit": "Log Out and Exit",
+"onboardingDesc": "Your personal AI-powered Vedic astrology companion",
+"onboardingTitle": "Welcome to AstroPrerna",
+"reset": "Reset",
+"resetHistoryMsg": "This will clear all your chat messages. Are you sure?",
+"resetHistoryTitle": "Reset Chat History",
+"usageLimitBody": "You have reached the daily free limit. Watch a short ad to extend your limit.",
+"usageLimitReached": "Daily Limit Reached",
+"warning": "Warning",
+"watchAd": "Watch Ad"
 }
