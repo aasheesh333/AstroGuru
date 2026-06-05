@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:in_app_review/in_app_review.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
 import 'login_screen.dart';
@@ -87,8 +90,8 @@ class _ProfileContentState extends State<ProfileContent> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1016),
-        title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: Color(0xFFD4AF37))),
+        backgroundColor: const AppColors.surfaceColor,
+        title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: AppColors.deepGold)),
         content: Text(AppLocalizations.of(context)!.loginRequiredMsg, style: const TextStyle(color: Colors.white)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
@@ -134,11 +137,8 @@ class _ProfileContentState extends State<ProfileContent> {
               children: [
                 Consumer<UserProvider>(
                   builder: (context, provider, child) {
-                    ImageProvider? img;
-                    if (provider.profileImageBase64 != null) {
-                       img = MemoryImage(base64Decode(provider.profileImageBase64!));
-                    }
-
+                    final url = provider.profileImageUrl;
+                    final b64 = provider.profileImageBase64;
                     return Column(
                       children: [
                         Container(
@@ -148,9 +148,10 @@ class _ProfileContentState extends State<ProfileContent> {
                             shape: BoxShape.circle,
                             color: AppColors.surfaceColor,
                             border: Border.all(color: AppColors.primaryGold, width: 2),
-                            image: img != null ? DecorationImage(image: img, fit: BoxFit.cover) : null,
                           ),
-                          child: img == null ? const Icon(Icons.person, size: 50, color: AppColors.textPrimary) : null,
+                          child: ClipOval(
+                            child: _ProfileImage(url: url, base64: b64, size: 100),
+                          ),
                         ),
                         const SizedBox(height: 16),
 
@@ -189,7 +190,7 @@ class _ProfileContentState extends State<ProfileContent> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.surfaceColor.withOpacity(0.8),
+              color: AppColors.surfaceColor.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -278,6 +279,26 @@ class _ProfileContentState extends State<ProfileContent> {
                   title: AppLocalizations.of(context)!.helpSupport,
                   onTap: () => _launch("https://dhanuk.page.gd/AstroPrerna/Help-and-Support.html"),
                 ),
+                const Divider(color: AppColors.scaffoldBackgroundColor),
+                _buildProfileItem(
+                  icon: Icons.star_border,
+                  title: AppLocalizations.of(context)!.rateApp,
+                  onTap: _requestInAppReview,
+                ),
+                const Divider(color: AppColors.scaffoldBackgroundColor),
+                _buildProfileItem(
+                  icon: Icons.feedback_outlined,
+                  title: AppLocalizations.of(context)!.sendFeedback,
+                  onTap: () => _launch(
+                    "mailto:Aasheeshkatheriya@gmail.com?subject=${AppLocalizations.of(context)!.feedbackSubject}&body=${AppLocalizations.of(context)!.feedbackBody}",
+                  ),
+                ),
+                const Divider(color: AppColors.scaffoldBackgroundColor),
+                _buildProfileItem(
+                  icon: Icons.info_outline,
+                  title: AppLocalizations.of(context)!.about,
+                  onTap: _showAboutDialog,
+                ),
               ],
             ),
           ),
@@ -292,6 +313,85 @@ class _ProfileContentState extends State<ProfileContent> {
             ),
           ),
           const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _requestInAppReview() async {
+    // Reuse the rateApp gate: only ask the user once per 90 days.
+    final prefs = await SharedPreferences.getInstance();
+    final lastAsked = prefs.getInt('last_review_asked_at') ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - lastAsked < const Duration(days: 90).inMilliseconds) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.feedbackThanks)),
+      );
+      return;
+    }
+    try {
+      await InAppReview.instance.requestReview();
+      await prefs.setInt('last_review_asked_at', now);
+    } catch (e) {
+      // InAppReview may not be available on all devices/emulators.
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.ratingDialogFailed)),
+      );
+    }
+  }
+
+  Future<void> _showAboutDialog() async {
+    String version = "—";
+    String build = "—";
+    try {
+      final info = await PackageInfo.fromPlatform();
+      version = info.version;
+      build = info.buildNumber;
+    } catch (_) {
+      // Keep the placeholder values if PackageInfo fails.
+    }
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceColor,
+        title: const Text(
+          'AstroPrerna',
+          style: TextStyle(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Your personal AI-powered Vedic astrology companion.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.appVersion(version, build),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '© 2026 AstroPrerna',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              l10n.ok,
+              style: const TextStyle(color: AppColors.primaryGold),
+            ),
+          ),
         ],
       ),
     );
@@ -315,6 +415,56 @@ class _ProfileContentState extends State<ProfileContent> {
       title: Text(title, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
       trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
       onTap: onTap,
+    );
+  }
+}
+
+/// Shared widget that renders a user profile image: prefer the Firebase
+/// Storage download URL, fall back to the legacy base64 string, fall back to
+/// a default person icon.
+class _ProfileImage extends StatelessWidget {
+  final String? url;
+  final String? base64;
+  final double size;
+
+  const _ProfileImage({required this.url, required this.base64, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    if (url != null && url!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: url!,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        placeholder: (ctx, _) => Container(
+          width: size,
+          height: size,
+          color: AppColors.surfaceColor,
+        ),
+        errorWidget: (ctx, _, __) => _fallback(base64),
+      );
+    }
+    return _fallback(base64);
+  }
+
+  Widget _fallback(String? b64) {
+    if (b64 != null && b64.isNotEmpty) {
+      try {
+        return Image.memory(base64Decode(b64), width: size, height: size, fit: BoxFit.cover);
+      } catch (_) {
+        return _placeholder();
+      }
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: size,
+      height: size,
+      color: AppColors.surfaceColor,
+      child: const Icon(Icons.person, size: 50, color: AppColors.textPrimary),
     );
   }
 }

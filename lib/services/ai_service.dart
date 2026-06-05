@@ -1,86 +1,63 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../logic/key_manager.dart';
+import 'dart:async';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 
 class AIService {
-  static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-
-  static Future<String> getResponse(String systemPrompt, String userPrompt, {bool jsonMode = false}) async {
-    return await _executeRequest(
-      systemPrompt: systemPrompt,
-      userPrompt: userPrompt,
-      jsonMode: jsonMode,
-    );
-  }
-
-  static Future<String> _executeRequest({
-    required String systemPrompt,
-    dynamic userPrompt, // Can be String or List<Map> for chat
+  /// Call the server-side `groqProxy` Cloud Function. The actual API key is
+  /// stored only in the backend; the client only sees the response.
+  /// Implements exponential backoff on resource-exhausted (429 / 503) errors.
+  static Future<String> _callProxy({
+    required List<Map<String, dynamic>> messages,
     bool jsonMode = false,
-    bool isChat = false,
+    int maxTokens = 1024,
+    double temperature = 0.7,
   }) async {
-    int attempts = 0;
-    const int maxAttempts = 2; // Try current key, then rotate once
+    const int maxAttempts = 4;
+    int delayMs = 1000; // start at 1s, double up to 8s
 
-    while (attempts < maxAttempts) {
-      attempts++;
-
-      // Get Key (Rotation handled inside)
-      final String apiKey = await KeyManager().getNextKey();
-
-      if (apiKey.isEmpty) {
-        return jsonMode ? '{"error": "API Key missing"}' : "Error: AI API Key not configured.";
-      }
-
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        final Map<String, dynamic> body = {
-          'model': 'llama-3.3-70b-versatile',
-          'temperature': 0.7,
-        };
-
-        if (jsonMode) {
-          body['response_format'] = {'type': 'json_object'};
-        }
-
-        if (isChat) {
-           body['messages'] = userPrompt; // userPrompt is already formatted list for chat
-        } else {
-           body['messages'] = [
-            {'role': 'system', 'content': systemPrompt},
-            {'role': 'user', 'content': userPrompt}
-          ];
-        }
-
-        final response = await http.post(
-          Uri.parse(_baseUrl),
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(body),
-        );
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          return data['choices'][0]['message']['content'];
-        } else if (response.statusCode == 429) {
-          // Rate Limit - Retry Loop will get next key
+        final callable = FirebaseFunctions.instance
+            .httpsCallable('groqProxy', options: HttpsCallableOptions(
+              timeout: const Duration(seconds: 60),
+            ));
+        final result = await callable.call({
+          'messages': messages,
+          'jsonMode': jsonMode,
+          'maxTokens': maxTokens,
+          'temperature': temperature,
+        });
+        final data = Map<String, dynamic>.from(result.data as Map);
+        return (data['content'] as String?) ?? '';
+      } on FirebaseFunctionsException catch (e) {
+        if (e.code == 'resource-exhausted' && attempt < maxAttempts) {
+          // 429: exponential backoff
+          await Future.delayed(Duration(milliseconds: delayMs));
+          delayMs = (delayMs * 2).clamp(1000, 8000);
           continue;
-        } else {
-          // Other error (500, 401, etc) - Do not retry blindly
-          // If 401 (Invalid Key), we MIGHT want to rotate, but for now stick to 429 logic
-           if (attempts == maxAttempts) {
-             return jsonMode ? '{"error": "Service unavailable"}' : "Service is temporarily unavailable. Please try again.";
-           }
         }
+        if (kDebugMode) {
+          debugPrint('groqProxy failed (${e.code}): ${e.message}');
+        }
+        rethrow;
       } catch (e) {
-        if (attempts == maxAttempts) {
-           return jsonMode ? '{"error": "Network error"}' : "Service is temporarily unavailable. Please try again.";
+        if (kDebugMode) {
+          debugPrint('groqProxy unexpected error: $e');
         }
+        rethrow;
       }
     }
+    throw TimeoutException('groqProxy: max retries exceeded');
+  }
 
-    return jsonMode ? '{"error": "Rate limit exceeded"}' : "Service is busy. Please try again later.";
+  static Future<String> getResponse(String systemPrompt, String userPrompt, {bool jsonMode = false}) async {
+    return await _callProxy(
+      messages: [
+        {'role': 'system', 'content': systemPrompt},
+        {'role': 'user', 'content': userPrompt},
+      ],
+      jsonMode: jsonMode,
+    );
   }
 
   static Future<String> getDailyHoroscope(String sign, DateTime date, String language) async {
@@ -119,7 +96,6 @@ class AIService {
   }
 
   static Future<String> getChatResponse(String query, String kundliSummary, String language, List<Map<String, String>> history) async {
-    // Build the messages list
     final List<Map<String, dynamic>> messages = [
       {
         'role': 'system',
@@ -133,13 +109,7 @@ class AIService {
        messages.add({'role': role, 'content': history[i]['content']!});
     }
 
-    // Reuse helper logic
-    return await _executeRequest(
-      systemPrompt: "", // unused for chat
-      userPrompt: messages,
-      jsonMode: false,
-      isChat: true,
-    );
+    return await _callProxy(messages: messages);
   }
 
   static Future<String> getRemedies(String kundliSummary, String language) async {

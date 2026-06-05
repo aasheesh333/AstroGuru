@@ -75,7 +75,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF371B58), Color(0xFF6A0DAD)], // Purple gradient
+              colors: [AppColors.deepPurple, AppColors.primaryPurple], // Purple gradient
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -118,7 +118,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primaryGold.withOpacity(0.1),
+              color: AppColors.primaryGold.withValues(alpha: 0.1),
             ),
             child: const Icon(Icons.notifications_off_outlined, size: 48, color: AppColors.primaryGold),
           ),
@@ -150,12 +150,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     // Visual Styling for Read vs Unread
     Color bgColor = isRead
-        ? Colors.white.withOpacity(0.05) // Slight grey/transparent for read
-        : const Color(0xFF1A1C24); // Darker surface for unread (highlighted)
+        ? Colors.white.withValues(alpha: 0.05) // Slight grey/transparent for read
+        : const AppColors.surfaceColor; // Darker surface for unread (highlighted)
 
     Color borderColor = isRead
         ? Colors.transparent
-        : (isImportant ? AppColors.primaryGold : Colors.purpleAccent.withOpacity(0.5));
+        : (isImportant ? AppColors.primaryGold : Colors.purpleAccent.withValues(alpha: 0.5));
 
     Color textColor = isRead ? Colors.grey : Colors.white;
     FontWeight titleWeight = isRead ? FontWeight.normal : FontWeight.bold;
@@ -183,7 +183,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   height: 50,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isRead ? Colors.grey.withOpacity(0.1) : (isImportant ? AppColors.primaryGold.withOpacity(0.2) : Colors.purple.withOpacity(0.2)),
+                    color: isRead ? Colors.grey.withValues(alpha: 0.1) : (isImportant ? AppColors.primaryGold.withValues(alpha: 0.2) : Colors.purple.withValues(alpha: 0.2)),
                     image: imageUrl != null
                       ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover)
                       : const DecorationImage(image: AssetImage('assets/images/logo.png'), fit: BoxFit.cover),
@@ -209,7 +209,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       const SizedBox(height: 6),
                       Text(
                         notif['body'] ?? "",
-                        style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 14),
+                        style: TextStyle(color: textColor.withValues(alpha: 0.8), fontSize: 14),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),

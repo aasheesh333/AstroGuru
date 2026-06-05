@@ -294,11 +294,11 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.surfaceColor.withOpacity(0.5),
+              color: AppColors.surfaceColor.withValues(alpha: 0.5),
               border: Border.all(color: AppColors.primaryGold, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primaryGold.withOpacity(0.3),
+                  color: AppColors.primaryGold.withValues(alpha: 0.3),
                   blurRadius: 30,
                   spreadRadius: 5,
                 ),
@@ -319,7 +319,7 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               height: 1.6,
-              color: Colors.white.withOpacity(0.9)
+              color: Colors.white.withValues(alpha: 0.9)
             ),
           ),
           const SizedBox(height: 30),
@@ -367,7 +367,7 @@ class _DetailCard extends StatelessWidget {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF0E1016),
+            backgroundColor: const AppColors.surfaceColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: const BorderSide(color: AppColors.primaryGold, width: 1),
@@ -397,11 +397,11 @@ class _DetailCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceColor.withOpacity(0.6),
+          color: AppColors.surfaceColor.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white10),
           boxShadow: [
-             BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5)),
+             BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5)),
           ]
         ),
         child: Column(

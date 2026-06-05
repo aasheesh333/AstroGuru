@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../theme/app_colors.dart';
 import '../widgets/astro_card.dart';
 import '../widgets/ad_locked_widget.dart';
@@ -54,11 +55,8 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
       t.hour, t.minute,
     );
 
-    // Lat/Lon logic would go here (Geocoding).
-    // For MVP, using default New Delhi coordinates as placeholder or mock.
-    // In a real app, we'd use a Geocoding package to convert widget.place to lat/lon.
-    double lat = 28.6139;
-    double lon = 77.2090;
+    // Resolve place-of-birth to lat/lon using the bundled city table.
+    final (double lat, double lon) = KundliService.resolveLocation(widget.place);
 
     final data = KundliService.calculateChart(dt, lat, lon);
 
@@ -127,7 +125,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
         ),
       ),
       body: isLoading
-        ? const Center(child: CircularProgressIndicator(color: AppColors.primaryGold))
+        ? _buildLoadingShimmer()
         : TabBarView(
             controller: _tabController,
             children: [
@@ -136,6 +134,25 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
               _buildRemediesTab(),
             ],
           ),
+    );
+  }
+
+  Widget _buildLoadingShimmer() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceColor,
+      highlightColor: AppColors.primaryGold.withValues(alpha: 0.15),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(width: double.infinity, height: 220, color: Colors.white),
+          const SizedBox(height: 16),
+          Container(width: double.infinity, height: 80, color: Colors.white),
+          const SizedBox(height: 12),
+          Container(width: double.infinity, height: 80, color: Colors.white),
+          const SizedBox(height: 12),
+          Container(width: double.infinity, height: 80, color: Colors.white),
+        ],
+      ),
     );
   }
 
@@ -384,7 +401,7 @@ class _KundliChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.primaryGold.withOpacity(0.5)
+      ..color = AppColors.primaryGold.withValues(alpha: 0.5)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 

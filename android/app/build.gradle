@@ -56,8 +56,8 @@ android {
 
     defaultConfig {
         applicationId appPackageName
-        minSdkVersion 23
-        targetSdkVersion flutter.targetSdkVersion
+        minSdkVersion 24
+        targetSdkVersion 35
         versionCode appVersionCode
         versionName appVersionName
 

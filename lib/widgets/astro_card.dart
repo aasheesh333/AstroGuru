@@ -22,10 +22,10 @@ class AstroCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.surfaceColor.withOpacity(0.5)),
+          border: Border.all(color: AppColors.surfaceColor.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

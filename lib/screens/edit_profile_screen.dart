@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../logic/user_provider.dart';
@@ -27,12 +28,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _emailController = TextEditingController(); // Added email controller
   DateTime? _selectedDate;
   bool _isLoading = false;
+  bool _isGuest = false;
+  bool _loaded = false;
 
   @override
   void initState() {
     super.initState();
     // Pre-fill data
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      _isGuest = prefs.getBool('guest_mode') ?? false;
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       _nameController.text = userProvider.name;
       _emailController.text = userProvider.email; // Fill email
@@ -42,6 +47,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _dobController.text = "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}";
         } catch (_) {}
       }
+      if (mounted) setState(() => _loaded = true);
     });
   }
 
@@ -151,7 +157,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF0E1016),
+              backgroundColor: const AppColors.surfaceColor,
               title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
               content: Text(
                 e,
@@ -191,7 +197,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1016),
+        backgroundColor: const AppColors.surfaceColor,
         title: Text(AppLocalizations.of(context)!.deleteAccount, style: const TextStyle(color: Colors.red)),
         content: Text(AppLocalizations.of(context)!.softDeleteMsg, style: const TextStyle(color: Colors.white)),
         actions: [
@@ -228,10 +234,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.editProfile),
+        title: Text(l10n.editProfile),
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
@@ -241,7 +248,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: Container(
         height: double.infinity,
         decoration: const BoxDecoration(gradient: AppColors.mainGradient),
-        child: SingleChildScrollView(
+        child: _isGuest
+            ? _buildGuestBlocked(l10n)
+            : SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
@@ -249,9 +258,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               children: [
                 GestureDetector(
                   onTap: () async {
-                    final base64String = await ImageHelper.pickAndCompressImage();
-                    if (base64String != null) {
-                       await userProvider.updateProfile(newImageBase64: base64String);
+                    final user = FirebaseAuth.instance.currentUser;
+                    if (user == null) return;
+                    // Show a quick loading indicator while the upload runs.
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (ctx) => const Center(
+                        child: CircularProgressIndicator(color: AppColors.primaryGold),
+                      ),
+                    );
+                    final url = await ImageHelper.pickCompressAndUpload(user.uid);
+                    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+                    if (!mounted) return;
+                    if (url != null) {
+                      await userProvider.updateProfile(newImageUrl: url);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(AppLocalizations.of(context)!.profileImageUpdated)),
+                      );
+                    } else {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Could not update profile photo.')),
+                      );
                     }
                   },
                   child: Stack(
@@ -262,14 +292,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         height: 100,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          color: AppColors.surfaceColor,
                           border: Border.all(color: AppColors.primaryGold, width: 2),
-                          image: userProvider.profileImageBase64 != null
-                             ? DecorationImage(image: MemoryImage(base64Decode(userProvider.profileImageBase64!)), fit: BoxFit.cover)
-                             : null,
                         ),
-                        child: userProvider.profileImageBase64 == null
-                           ? const Icon(Icons.person, size: 50, color: AppColors.textSecondary)
-                           : null,
+                        child: ClipOval(
+                          child: _Avatar(url: userProvider.profileImageUrl, base64: userProvider.profileImageBase64, size: 100),
+                        ),
                       ),
                       Container(
                         padding: const EdgeInsets.all(4),
@@ -351,7 +379,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     prefixIcon: const Icon(Icons.email, color: Colors.grey),
                     suffixIcon: const Icon(Icons.lock, color: Colors.grey, size: 20),
                     filled: true,
-                    fillColor: AppColors.surfaceColor.withOpacity(0.5),
+                    fillColor: AppColors.surfaceColor.withValues(alpha: 0.5),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     helperText: AppLocalizations.of(context)!.emailImmutable,
                     helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),
@@ -397,6 +425,88 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGuestBlocked(AppLocalizations l10n) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_outline, color: AppColors.primaryGold, size: 72),
+            const SizedBox(height: 24),
+            Text(
+              l10n.loginRequiredTitle,
+              style: const TextStyle(
+                color: AppColors.primaryGold,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              l10n.loginRequiredMsg,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            GradientButton(
+              text: l10n.loginNow,
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  final String? url;
+  final String? base64;
+  final double size;
+
+  const _Avatar({required this.url, required this.base64, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    if (url != null && url!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: url!,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        placeholder: (ctx, _) => Container(width: size, height: size, color: AppColors.surfaceColor),
+        errorWidget: (ctx, _, __) => _fallback(),
+      );
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    if (base64 != null && base64!.isNotEmpty) {
+      try {
+        return Image.memory(base64Decode(base64!), width: size, height: size, fit: BoxFit.cover);
+      } catch (_) {
+        return _placeholder();
+      }
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: size,
+      height: size,
+      color: AppColors.surfaceColor,
+      child: const Icon(Icons.person, size: 50, color: AppColors.textSecondary),
     );
   }
 }

@@ -96,8 +96,8 @@ class _KundliInputContentState extends State<KundliInputContent> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1016),
-        title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: Color(0xFFD4AF37))),
+        backgroundColor: const AppColors.surfaceColor,
+        title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: AppColors.deepGold)),
         content: Text(AppLocalizations.of(context)!.loginRequiredMsg, style: const TextStyle(color: Colors.white)),
         actions: [
           TextButton(

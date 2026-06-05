@@ -20,7 +20,13 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   }
 
   void _loadAd() {
-    final adUnitId = AdService().bannerAdUnitId;
+    String adUnitId;
+    try {
+      adUnitId = AdService().bannerAdUnitId;
+    } catch (e) {
+      debugPrint('BannerAd unit id error: $e');
+      return;
+    }
     if (adUnitId.isEmpty) return;
 
     _bannerAd = BannerAd(
@@ -30,6 +36,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           debugPrint('$ad loaded.');
+          if (!mounted) return;
           setState(() {
             _isLoaded = true;
           });
@@ -57,6 +64,8 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
         child: AdWidget(ad: _bannerAd!),
       );
     }
-    return const SizedBox.shrink(); // Hide if not loaded
+    // Reserve a fixed-height placeholder so the bottom nav doesn't jump
+    // when the ad finally loads.
+    return const SizedBox(height: 60);
   }
 }

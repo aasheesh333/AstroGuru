@@ -1,0 +1,27 @@
+// Firebase Storage security rules for AstroPrerna.
+//
+// Deploy with:  firebase deploy --only storage
+//
+// Policy:
+// - Any authenticated user can read avatar thumbnails.
+// - A user can only write to their own avatar (path includes their uid).
+// - Writes are capped at 2 MB and must be an image MIME type.
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    match /users/{userId}/avatar.jpg {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 2 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Deny everything else by default.
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

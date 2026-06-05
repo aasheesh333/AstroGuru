@@ -1,4 +1,5 @@
 import 'package:sweph/sweph.dart';
+import 'static_cities.dart';
 
 class KundliService {
 
@@ -6,6 +7,19 @@ class KundliService {
     // Moshier mode is default if no files provided.
     // sweph requires initialization.
     await Sweph.init(epheAssets: []);
+    // Set the default sidereal mode to Lahiri (Chitrapaksha), the standard
+    // ayanamsa used in Indian Vedic astrology.
+    try {
+      Sweph.swe_set_sid_mode(SiderealMode.SE_SIDM_LAHIRI);
+    } catch (_) {
+      // Older sweph versions may not expose this; fall back to default sidereal flag.
+    }
+  }
+
+  /// Resolve a place name to (lat, lon) using the bundled static city table.
+  /// Returns the default coordinates (New Delhi) if no match is found.
+  static (double lat, double lon) resolveLocation(String place) {
+    return StaticCities.lookup(place);
   }
 
   static Map<String, dynamic> calculateChart(DateTime dateTime, double lat, double lon) {
@@ -33,7 +47,8 @@ class KundliService {
     List<Map<String, dynamic>> planets = [];
 
     for (HeavenlyBody pid in planetIds) {
-      // swe_calc_ut returns CoordinatesWithSpeed in this version
+      // swe_calc_ut returns CoordinatesWithSpeed in this version.
+      // SEFLG_SIDEREAL is used (Lahiri ayanamsa set in initialize()).
       final CoordinatesWithSpeed coords = Sweph.swe_calc_ut(jd, pid, SwephFlag.SEFLG_SWIEPH | SwephFlag.SEFLG_SIDEREAL);
       String name = _getPlanetName(pid);
 
@@ -87,6 +102,8 @@ class KundliService {
       'jd': jd,
       'nakshatra': nakshatra,
       'pada': pada,
+      'lat': lat,
+      'lon': lon,
     };
 
     chart['doshas'] = checkDoshas(chart);

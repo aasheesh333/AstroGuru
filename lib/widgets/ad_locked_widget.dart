@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:astroguru/theme/app_colors.dart';
 import 'package:astroguru/services/ad_service.dart';
+import 'package:astroguru/l10n/app_localizations.dart';
 
 class AdLockedWidget extends StatefulWidget {
   final String title;
@@ -30,21 +31,25 @@ class _AdLockedWidgetState extends State<AdLockedWidget> {
 
     AdService().showRewardedAd(
       onUserEarnedReward: (reward) {
+        if (!mounted) return;
         // Unlock happens here
         debugPrint('User earned reward: ${reward.amount} ${reward.type}');
         widget.onUnlock();
       },
       onAdDismissed: () {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
       },
       onAdFailed: () {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load ad. Please try again later.')),
+          SnackBar(content: Text(l10n.adLoadFailed)),
         );
       },
     );
@@ -52,6 +57,7 @@ class _AdLockedWidgetState extends State<AdLockedWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Stack(
       children: [
         if (widget.child != null)
@@ -63,10 +69,10 @@ class _AdLockedWidgetState extends State<AdLockedWidget> {
             decoration: BoxDecoration(
               color: AppColors.surfaceColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primaryGold.withOpacity(0.3)),
+              border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -103,9 +109,9 @@ class _AdLockedWidgetState extends State<AdLockedWidget> {
                     : ElevatedButton.icon(
                         onPressed: _showAd,
                         icon: const Icon(Icons.play_circle_filled, color: Colors.black),
-                        label: const Text(
-                          'Watch Ad to Unlock',
-                          style: TextStyle(
+                        label: Text(
+                          l10n.watchAdToUnlock,
+                          style: const TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
                           ),

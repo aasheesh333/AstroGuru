@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:in_app_review/in_app_review.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
@@ -79,8 +80,45 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       _checkDailyUpdates(prefs, forceRefresh);
+      _maybeRequestInAppReview();
     } catch (e) {
       // Handle error safely
+    }
+  }
+
+  /// Ask the user to rate the app once they have been using it for at least
+  /// 7 days and have performed 3 or more key actions. We only ask once.
+  Future<void> _incrementCompletedActions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final current = prefs.getInt('completed_actions') ?? 0;
+      await prefs.setInt('completed_actions', current + 1);
+    } catch (_) {
+      // Non-critical counter; ignore failures.
+    }
+  }
+
+  Future<void> _maybeRequestInAppReview() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('in_app_review_requested') == true) return;
+
+      final firstOpen = prefs.getInt('first_open_ms');
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (firstOpen == null) {
+        await prefs.setInt('first_open_ms', now);
+        return;
+      }
+      final ageMs = now - firstOpen;
+      if (ageMs < const Duration(days: 7).inMilliseconds) return;
+
+      final actions = prefs.getInt('completed_actions') ?? 0;
+      if (actions < 3) return;
+
+      await InAppReview.instance.requestReview();
+      await prefs.setBool('in_app_review_requested', true);
+    } catch (_) {
+      // InAppReview may not be available on emulators / unsupported devices.
     }
   }
 
@@ -156,12 +194,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _checkAccess(String route) {
+    _incrementCompletedActions();
     if (isGuest) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF0E1016),
-          title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: Color(0xFFD4AF37))),
+          backgroundColor: const AppColors.surfaceColor,
+          title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: AppColors.deepGold)),
           content: Text(AppLocalizations.of(context)!.loginRequiredMsg, style: const TextStyle(color: Colors.white)),
           actions: [
             TextButton(
@@ -253,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF0E1016), // Dark card bg
+                color: const AppColors.surfaceColor, // Dark card bg
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white10),
               ),
@@ -275,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primaryGold.withOpacity(0.1),
+                          color: AppColors.primaryGold.withValues(alpha: 0.1),
                         ),
                         child: Icon(ZodiacUtils.getIcon(signName), color: AppColors.primaryGold, size: 32),
                       ),
@@ -315,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 4,
-                shadowColor: AppColors.primaryGold.withOpacity(0.4),
+                shadowColor: AppColors.primaryGold.withValues(alpha: 0.4),
               ),
               child: Text(AppLocalizations.of(context)!.askAiSageBtn, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
@@ -330,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildGridCard(
                   title: AppLocalizations.of(context)!.generateKundliBtn,
                   icon: Icons.auto_awesome, // Sparkle icon
-                  iconColor: const Color(0xFF1DE9B6), // Teal accent
+                  iconColor: const AppColors.accentTeal, // Teal accent
                   onTap: () => _checkAccess('/kundli'),
                 ),
               ),
@@ -339,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildGridCard(
                   title: AppLocalizations.of(context)!.loveMatchBtn,
                   icon: Icons.favorite, // Heart icon
-                  iconColor: const Color(0xFFFF4081), // Pink accent
+                  iconColor: const AppColors.accentPink, // Pink accent
                   onTap: () => _checkAccess('LoveMatch'),
                 ),
               ),
@@ -353,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF371B58), Color(0xFF6A0DAD)], // Purple gradient
+                colors: [AppColors.deepPurple, AppColors.primaryPurple], // Purple gradient
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -400,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         height: 120,
         decoration: BoxDecoration(
-          color: const Color(0xFF0E1016),
+          color: const AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white10),
         ),

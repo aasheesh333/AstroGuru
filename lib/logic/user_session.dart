@@ -80,6 +80,18 @@ class UserSession {
     return await getString('profile_image_base64');
   }
 
+  static Future<String?> getProfileImageUrl() async {
+    return await getString('profile_image_url');
+  }
+
+  /// Removes a key from the per-user prefs (used when migrating away from
+  /// the legacy base64 profile image).
+  static Future<void> remove(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefix = await _getPrefix();
+    await prefs.remove('$prefix$key');
+  }
+
   static Future<String?> getUserLanguage() async {
     return await getString('user_language');
   }

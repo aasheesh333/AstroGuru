@@ -79,7 +79,7 @@ class RemedyService {
       remedies.writeln(aiRemedies);
     } catch (e) {
       if (kDebugMode) {
-        print("Error fetching remedies: $e");
+        debugPrint("Error fetching remedies: $e");
       }
       remedies.writeln("Unable to fetch personalized remedies at the moment.");
     }

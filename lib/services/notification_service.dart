@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../config/app_config.dart';
 import '../theme/app_colors.dart';
 import '../logic/user_session.dart';
 
@@ -53,8 +53,8 @@ class NotificationService with WidgetsBindingObserver {
     );
 
     // Initialize OneSignal
-    String? oneSignalAppId = dotenv.env['APP_ONESIGNAL_APP_ID'];
-    if (oneSignalAppId != null && oneSignalAppId.isNotEmpty) {
+    final String oneSignalAppId = AppConfig.oneSignalAppId;
+    if (oneSignalAppId.isNotEmpty) {
       OneSignal.initialize(oneSignalAppId);
 
       // Listener 1: Foreground
@@ -133,7 +133,7 @@ class NotificationService with WidgetsBindingObserver {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF0E1016),
+          backgroundColor: const AppColors.surfaceColor,
           title: const Text("Stay Connected", style: TextStyle(color: AppColors.primaryGold)),
           content: const Text(
             "Notifications are important to receive your daily horoscope, important astrological alerts, and guidance related to your account.",

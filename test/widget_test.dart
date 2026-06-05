@@ -7,15 +7,12 @@ import 'package:astroguru/logic/language_provider.dart';
 import 'package:astroguru/screens/splash_screen.dart';
 
 void main() {
-  testWidgets('App smoke test', (WidgetTester tester) async {
-    // Set a large screen size (logical pixels)
+  testWidgets('App smoke test shows splash then routes away', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 1.0; // 1:1 ratio for max logical space
+    tester.view.devicePixelRatio = 1.0;
 
-    // Mock SharedPreferences
-    SharedPreferences.setMockInitialValues({}); // Empty values -> !onboarding_seen
+    SharedPreferences.setMockInitialValues({});
 
-    // Build our app and trigger a frame, wrapping in Provider
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => LanguageProvider(),
@@ -23,19 +20,17 @@ void main() {
       ),
     );
 
-    // Verify that the splash screen shows up initially
+    // Splash is the first widget on first frame.
     expect(find.byType(SplashScreen), findsOneWidget);
 
-    // Fast forward time to let the splash screen timer finish (2 seconds)
-    await tester.pump(const Duration(seconds: 3));
-
-    // Allow animations to settle
+    // Let the async _checkLanguage complete; no artificial delay any more.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
 
-    // After Splash, it should go to OnboardingScreen (since prefs are empty)
+    // Splash should have routed to language selection (no language picked yet).
     expect(find.byType(SplashScreen), findsNothing);
 
-    // Reset view
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
   });

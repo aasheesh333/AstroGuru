@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../logic/user_provider.dart';
 import '../theme/app_colors.dart';
 import '../services/notification_service.dart';
@@ -146,25 +147,17 @@ class _MainScreenState extends State<MainScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Consumer<UserProvider>(
               builder: (context, userProvider, child) {
-                if (userProvider.profileImageBase64 != null) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primaryGold, width: 2),
-                      image: DecorationImage(
-                        image: MemoryImage(base64Decode(userProvider.profileImageBase64!)),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  );
-                }
+                final url = userProvider.profileImageUrl;
+                final b64 = userProvider.profileImageBase64;
                 return Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.primaryGold, width: 2),
                     color: AppColors.surfaceColor,
                   ),
-                  child: const Icon(Icons.person, color: AppColors.primaryGold, size: 20),
+                  child: ClipOval(
+                    child: _buildMainAvatar(url: url, base64: b64),
+                  ),
                 );
               },
             ),
@@ -274,7 +267,7 @@ class _MainScreenState extends State<MainScreen> {
               currentIndex: _currentIndex,
               onTap: (index) => setState(() => _currentIndex = index),
               type: BottomNavigationBarType.fixed, // Ensure items don't shift
-              backgroundColor: const Color(0xFF05060A), // Match scaffold background or surface
+              backgroundColor: const AppColors.scaffoldBackgroundColor, // Match scaffold background or surface
               selectedItemColor: AppColors.primaryGold,
               unselectedItemColor: Colors.grey,
               items: [
@@ -305,4 +298,38 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+}
+
+Widget _buildMainAvatar({String? url, String? base64}) {
+  if (url != null && url.isNotEmpty) {
+    return CachedNetworkImage(
+      imageUrl: url,
+      width: 40,
+      height: 40,
+      fit: BoxFit.cover,
+      errorWidget: (_, __, ___) => _mainAvatarFallback(base64),
+    );
+  }
+  return _mainAvatarFallback(base64);
+}
+
+Widget _mainAvatarFallback(String? base64) {
+  if (base64 != null && base64.isNotEmpty) {
+    try {
+      return Image.memory(
+        base64Decode(base64),
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+      );
+    } catch (_) {
+      // fall through
+    }
+  }
+  return Container(
+    width: 40,
+    height: 40,
+    color: AppColors.surfaceColor,
+    child: const Icon(Icons.person, color: AppColors.primaryGold, size: 20),
+  );
 }

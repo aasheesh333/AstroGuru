@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'config/app_config.dart';
 import 'logic/language_provider.dart';
 import 'logic/user_provider.dart';
 import 'logic/kundli_service.dart';
 import 'logic/key_manager.dart'; // Import KeyManager
 import 'services/notification_service.dart';
 import 'services/ad_service.dart';
+import 'theme/app_colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/kundli_input_screen.dart';
 import 'screens/chat_screen.dart';
@@ -22,12 +25,8 @@ import 'screens/main_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load Env
-  try {
-    await dotenv.load(fileName: "assets/.env");
-  } catch (e) {
-    developer.log("Error loading .env file: $e");
-  }
+  // Load env (--dart-define first, then dotenv fallback for local dev)
+  await AppConfig.load();
 
   // Initialize Firebase
   try {
@@ -47,6 +46,21 @@ void main() async {
   } catch (e) {
     developer.log("Error initializing Firebase: $e");
   }
+
+  // Set up global error handlers so crashes get reported to Crashlytics
+  // in release builds. In debug we keep the standard red-screen behavior.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    if (!kDebugMode) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    }
+  };
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    if (!kDebugMode) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    }
+    return true;
+  };
 
   // Initialize Services
   try {
@@ -85,6 +99,19 @@ void main() async {
       child: const AstroPrernaApp(),
     ),
   );
+
+  // Fire-and-forget: log the install / open event.
+  // Wrapped so an analytics failure never blocks startup.
+  () async {
+    try {
+      await FirebaseAnalytics.instance.logEvent(
+        name: 'app_open',
+        parameters: {'platform': Platform.operatingSystem},
+      );
+    } catch (e) {
+      developer.log("Analytics logEvent failed: $e");
+    }
+  }();
 }
 
 class AstroPrernaApp extends StatelessWidget {
@@ -98,8 +125,8 @@ class AstroPrernaApp extends StatelessWidget {
           title: 'AstroPrerna',
           theme: ThemeData(
             primarySwatch: Colors.deepPurple,
-            scaffoldBackgroundColor: const Color(0xFF05060A),
-            appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF0E1016), foregroundColor: Color(0xFFD4AF37)),
+            scaffoldBackgroundColor: const AppColors.scaffoldBackgroundColor,
+            appBarTheme: const AppBarTheme(backgroundColor: AppColors.surfaceColor, foregroundColor: AppColors.deepGold),
             brightness: Brightness.dark,
           ),
           locale: provider.locale,

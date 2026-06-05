@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:shimmer/shimmer.dart';
 import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../utils/validators.dart';
+import '../utils/zodiac_utils.dart';
 import '../logic/love_match_logic.dart';
 import '../services/notification_service.dart';
 import '../services/ad_service.dart';
@@ -28,7 +30,8 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
   bool _isLoading = false;
   Map<String, dynamic>? _result;
 
-  final List<String> _zodiacSigns = [
+  // English keys are used internally; the dropdown shows the localized name.
+  static const List<String> _zodiacSigns = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
   ];
@@ -139,7 +142,9 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
                     isLoading: _isLoading,
                     onPressed: _analyze,
                   ),
-                ] else
+                ] else if (_isLoading)
+                  _buildLoadingShimmer()
+                else
                   _buildResultView(),
               ],
             ),
@@ -153,12 +158,12 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor.withOpacity(0.9),
+        color: AppColors.surfaceColor.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primaryGold.withOpacity(0.3)),
+        border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -176,9 +181,9 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: AppLocalizations.of(context)!.enterName,
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
               filled: true,
-              fillColor: Colors.black.withOpacity(0.3),
+              fillColor: Colors.black.withValues(alpha: 0.3),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
               errorStyle: const TextStyle(color: Colors.redAccent),
               errorBorder: OutlineInputBorder(
@@ -191,7 +196,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(10),
             ),
             child: DropdownButtonHideUnderline(
@@ -201,11 +206,46 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
                 dropdownColor: AppColors.surfaceColor,
                 style: const TextStyle(color: Colors.white),
                 icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryGold),
-                items: _zodiacSigns.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                items: _zodiacSigns
+                    .map((s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(ZodiacUtils.getLocalizedName(context, s)),
+                        ))
+                    .toList(),
                 onChanged: (val) {
                   if (val != null) onSignChanged(val);
                 },
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingShimmer() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceColor,
+      highlightColor: AppColors.primaryGold.withValues(alpha: 0.2),
+      child: Column(
+        children: [
+          Container(
+            width: 160,
+            height: 160,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 32),
+          Container(width: 200, height: 24, color: Colors.white),
+          const SizedBox(height: 24),
+          Container(
+            width: double.infinity,
+            height: 180,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
         ],
@@ -225,7 +265,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
             border: Border.all(color: score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red), width: 4),
             boxShadow: [
               BoxShadow(
-                color: (score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red)).withOpacity(0.4),
+                color: (score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red)).withValues(alpha: 0.4),
                 blurRadius: 20,
                 spreadRadius: 5,
               )
@@ -248,7 +288,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.surfaceColor.withOpacity(0.8),
+            color: AppColors.surfaceColor.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(

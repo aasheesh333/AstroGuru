@@ -5,7 +5,10 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:convert';
+import '../l10n/app_localizations.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_session.dart';
 import '../logic/user_provider.dart';
@@ -24,6 +27,41 @@ class ChatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const ChatContent();
   }
+}
+
+/// Renders a user avatar preferring the Firebase Storage URL, then the
+/// legacy base64, then a default person icon.
+Widget _buildUserAvatar({String? url, String? base64, required double size}) {
+  if (url != null && url.isNotEmpty) {
+    return ClipOval(
+      child: CachedNetworkImage(
+        imageUrl: url,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorWidget: (_, __, ___) => _avatarFallback(base64, size),
+      ),
+    );
+  }
+  return _avatarFallback(base64, size);
+}
+
+Widget _avatarFallback(String? base64, double size) {
+  if (base64 != null && base64.isNotEmpty) {
+    try {
+      return ClipOval(
+        child: Image.memory(
+          base64Decode(base64),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+        ),
+      );
+    } catch (_) {
+      // fall through
+    }
+  }
+  return Icon(Icons.person, color: Colors.white, size: size * 0.6);
 }
 
 class ChatContent extends StatefulWidget {
@@ -51,6 +89,9 @@ class ChatContentState extends State<ChatContent> {
   // Limits
   int _totalCharsSent = 0;
   int _charLimit = 5000;
+
+  // Sending guard (prevents double-send / interleaved responses).
+  bool _isSending = false;
 
   // Voice
   late stt.SpeechToText _speech;
@@ -118,22 +159,25 @@ class ChatContentState extends State<ChatContent> {
     }
 
     if (isGuest && mounted) {
+      final l10n = AppLocalizations.of(context);
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => AlertDialog(
+          builder: (ctx) => AlertDialog(
             backgroundColor: AppColors.surfaceColor,
-            title: const Text("Access Denied", style: TextStyle(color: AppColors.primaryGold)),
-            content: const Text("This feature is only available for logged-in users.", style: TextStyle(color: AppColors.textPrimary)),
+            title: Text(l10n.accessDenied, style: const TextStyle(color: AppColors.primaryGold)),
+            content: Text(l10n.loginRequiredMsg, style: const TextStyle(color: AppColors.textPrimary)),
             actions: [
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(ctx);
+                  if (!mounted) return;
                   Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
                 },
-                child: const Text("Log in Now"),
+                child: Text(l10n.loginNow),
               ),
             ],
           ),
@@ -170,10 +214,12 @@ class ChatContentState extends State<ChatContent> {
     int totalLength = _messages.fold(0, (sum, msg) => sum + (msg['content']?.length ?? 0));
     if (totalLength > 40000) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(
-             content: const Text("Chat history is very long. Please Reset History for better responses."),
-             action: SnackBarAction(label: "Reset", onPressed: resetHistory),
+             content: Text(l10n.historyTooLong),
+             action: SnackBarAction(label: l10n.reset, onPressed: resetHistory),
              duration: const Duration(seconds: 5),
            )
         );
@@ -188,25 +234,28 @@ class ChatContentState extends State<ChatContent> {
   }
 
   void resetHistory() async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceColor,
-        title: const Text("Reset History?", style: TextStyle(color: AppColors.primaryGold)),
-        content: const Text("This will clear your conversation memory with the Sage.", style: TextStyle(color: AppColors.textPrimary)),
+        title: Text(l10n.resetHistoryTitle, style: const TextStyle(color: AppColors.primaryGold)),
+        content: Text(l10n.resetHistoryMsg, style: const TextStyle(color: AppColors.textPrimary)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Reset", style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.reset, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
 
     if (confirmed == true) {
+      if (!mounted) return;
       setState(() {
         _messages.clear();
         _messages.add({
           'role': 'sage',
-          'content': "Namaste! I am your AI Sage. Ask me anything about your destiny."
+          'content': l10n.welcomeToAstroPrerna
         });
       });
       _saveHistory();
@@ -231,6 +280,7 @@ class ChatContentState extends State<ChatContent> {
       return;
     }
 
+    if (_isSending) return; // Block double-send / interleaved requests.
     if (_isTextTooLong) return; // UI should prevent this, but safety check.
 
     if (_controller.text.trim().isEmpty) return;
@@ -277,6 +327,7 @@ class ChatContentState extends State<ChatContent> {
     await UserSession.setInt('total_chars_sent', _totalCharsSent);
 
     setState(() {
+      _isSending = true;
       _messages.add({'role': 'user', 'content': userMsg});
       _controller.clear();
     });
@@ -298,20 +349,21 @@ class ChatContentState extends State<ChatContent> {
       // Actually, we pass the current list including the user's new message
       String response = await AIService.getChatResponse(userMsg, kundliSummary, lang, _messages);
 
-      if (mounted) {
-        setState(() {
-          _messages.add({'role': 'sage', 'content': response});
-        });
-        _saveHistory();
-        _scrollToBottom();
-      }
+      if (!mounted) return;
+      setState(() {
+        _messages.add({'role': 'sage', 'content': response});
+        _isSending = false;
+      });
+      _saveHistory();
+      _scrollToBottom();
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _messages.add({'role': 'sage', 'content': "Sorry, I am having trouble connecting to the stars right now."});
-        });
-        _scrollToBottom();
-      }
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      setState(() {
+        _messages.add({'role': 'sage', 'content': l10n.chatError});
+        _isSending = false;
+      });
+      _scrollToBottom();
     }
   }
 
@@ -350,7 +402,7 @@ class ChatContentState extends State<ChatContent> {
         await FirebaseAuth.instance.signOut();
       } catch (e) {
         // Fallback if network fails, local ban is already set
-        print("Error logging ban to Firebase: $e");
+        debugPrint("Error logging ban to Firebase: $e");
       }
     }
 
@@ -367,20 +419,21 @@ class ChatContentState extends State<ChatContent> {
   }
 
   void _showWarningDialog(String reason, int attemptsLeft) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceColor,
-        title: const Text("Warning", style: TextStyle(color: Colors.red)),
+        title: Text(l10n.warning, style: const TextStyle(color: Colors.red)),
         content: Text(
-          "$reason\nYou have $attemptsLeft attempt(s) left before being banned.",
+          "$reason\n${l10n.attemptsLeftBeforeBan(attemptsLeft)}",
           style: const TextStyle(color: AppColors.textPrimary)
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("I Understand", style: TextStyle(color: AppColors.primaryGold)),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.iUnderstand, style: const TextStyle(color: AppColors.primaryGold)),
           ),
         ],
       ),
@@ -388,42 +441,46 @@ class ChatContentState extends State<ChatContent> {
   }
 
   void _showLimitReachedDialog() {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceColor,
-        title: const Text("Usage Limit Reached", style: TextStyle(color: AppColors.primaryGold)),
-        content: const Text(
-          "You have reached the free message limit. Watch a short ad to unlock 5000 more characters.",
-          style: TextStyle(color: AppColors.textPrimary),
+        title: Text(l10n.usageLimitReached, style: const TextStyle(color: AppColors.primaryGold)),
+        content: Text(
+          l10n.usageLimitBody,
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.cancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               AdService().showRewardedAd(
                 onUserEarnedReward: (reward) async {
+                  if (!mounted) return;
                   setState(() {
                     _charLimit += 5000;
                   });
                   await UserSession.setInt('char_limit', _charLimit);
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Limit extended by 5000 characters!")),
+                    SnackBar(content: Text(l10n.limitExtended)),
                   );
                 },
                 onAdFailed: () {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Failed to load ad. Please try again.")),
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.adLoadFailed)),
                   );
                 }
               );
             },
-            child: const Text("Watch Ad"),
+            child: Text(l10n.watchAd),
           ),
         ],
       ),
@@ -431,27 +488,28 @@ class ChatContentState extends State<ChatContent> {
   }
 
   void _showBanDialog({bool navigateAfter = false}) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceColor,
-        title: const Text("Account Banned", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-        content: const Column(
+        title: Text(l10n.accountBanned, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "You have been banned due to repeated violations of our community guidelines.",
-              style: TextStyle(color: AppColors.textPrimary),
+              l10n.banReason,
+              style: const TextStyle(color: AppColors.textPrimary),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
-              "If you think this is a mistake, contact support:",
-              style: TextStyle(color: AppColors.textSecondary),
+              l10n.banContactSupport,
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
-            SizedBox(height: 8),
-            SelectableText(
+            const SizedBox(height: 8),
+            const SelectableText(
               "Aasheeshkatheriya@gmail.com",
               style: TextStyle(color: AppColors.primaryGold, fontWeight: FontWeight.bold),
             ),
@@ -462,14 +520,14 @@ class ChatContentState extends State<ChatContent> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () {
-                Navigator.pop(context); // Close dialog
+                Navigator.pop(ctx); // Close dialog
                 Navigator.pushAndRemoveUntil(
-                  context,
+                  ctx,
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                   (route) => false,
                 );
               },
-              child: const Text("Log Out & Exit", style: TextStyle(color: Colors.white)),
+              child: Text(l10n.logoutAndExit, style: const TextStyle(color: Colors.white)),
             )
         ],
       ),
@@ -524,8 +582,11 @@ class ChatContentState extends State<ChatContent> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
+              itemCount: _messages.length + (_isSending ? 1 : 0),
               itemBuilder: (context, index) {
+                if (_isSending && index == _messages.length) {
+                  return _buildTypingIndicator();
+                }
                 final msg = _messages[index];
                 final isUser = msg['role'] == 'user';
                 return Padding(
@@ -570,17 +631,12 @@ class ChatContentState extends State<ChatContent> {
                         const SizedBox(width: 8),
                         Consumer<UserProvider>(
                           builder: (context, provider, child) {
-                             ImageProvider? img;
-                             if (provider.profileImageBase64 != null) {
-                               img = MemoryImage(base64Decode(provider.profileImageBase64!));
-                             }
+                             final url = provider.profileImageUrl;
+                             final b64 = provider.profileImageBase64;
                              return CircleAvatar(
                                radius: 16,
                                backgroundColor: Colors.white24,
-                               backgroundImage: img,
-                               child: img == null
-                                 ? const Icon(Icons.person, color: Colors.white, size: 20)
-                                 : null,
+                               child: _buildUserAvatar(url: url, base64: b64, size: 32),
                              );
                           }
                         ),
@@ -639,12 +695,21 @@ class ChatContentState extends State<ChatContent> {
                 // Send Icon
                 Container(
                   decoration: BoxDecoration(
-                    color: _isTextTooLong ? Colors.grey : AppColors.primaryGold,
+                    color: (_isTextTooLong || _isSending) ? Colors.grey : AppColors.primaryGold,
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.black),
-                    onPressed: _isTextTooLong ? null : _sendMessage,
+                    icon: _isSending
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                            ),
+                          )
+                        : const Icon(Icons.send, color: Colors.black),
+                    onPressed: (_isTextTooLong || _isSending) ? null : _sendMessage,
                   ),
                 ),
               ],
@@ -659,6 +724,89 @@ class ChatContentState extends State<ChatContent> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const SizedBox(width: 4),
+          const BabaAvatar(size: 32),
+          const SizedBox(width: 8),
+          Shimmer.fromColors(
+            baseColor: AppColors.surfaceColor,
+            highlightColor: AppColors.primaryGold.withValues(alpha: 0.3),
+            child: Container(
+              width: 64,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _TypingDot(delayMs: 0),
+                  _TypingDot(delayMs: 150),
+                  _TypingDot(delayMs: 300),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingDot extends StatefulWidget {
+  final int delayMs;
+  const _TypingDot({required this.delayMs});
+
+  @override
+  State<_TypingDot> createState() => _TypingDotState();
+}
+
+class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _animation = Tween<double>(begin: 0.4, end: 1.0).animate(_controller);
+    Future.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _controller.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration: const BoxDecoration(
+          color: AppColors.primaryGold,
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }

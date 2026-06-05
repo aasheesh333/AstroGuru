@@ -1,10 +1,19 @@
-name: Build Android App
+name: Build Android App (APK + AAB)
+
+# This workflow intentionally builds ONLY Android artifacts.
+# iOS builds are explicitly disabled (no ios/ directory in the repo).
 
 on:
   push:
     branches: [ "*" ]
   pull_request:
     branches: [ "*" ]
+  workflow_dispatch:
+
+# Cancel in-progress runs of the same workflow on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -18,26 +27,36 @@ jobs:
       uses: actions/setup-java@v3
       with:
         distribution: 'zulu'
-        java-version: '21'
+        java-version: '17'
 
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.24.0'
+        flutter-version: '3.24.5'
         channel: 'stable'
+        cache: true
 
     - name: Install Dependencies
       run: flutter pub get
 
+    - name: Generate localizations
+      run: flutter gen-l10n
+
+    - name: Analyze
+      run: flutter analyze --no-fatal-warnings --no-fatal-infos
+
+    - name: Run tests
+      run: flutter test --no-pub
+
     - name: Create Environment Files
       env:
         FIREBASE_JSON_BASE64: ${{ secrets.FIREBASE_JSON_BASE64 }}
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        APP_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+        APP_ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
+        APP_ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
+        APP_ADMOB_REWARDED_ID: ${{ secrets.ADMOB_REWARDED_ID }}
         APP_ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
         APP_ONESIGNAL_API_KEY: ${{ secrets.ONESIGNAL_API_KEY }}
-        ADMOB_BANNER_ID: ${{ secrets.ADMOB_BANNER_ID }}
-        ADMOB_INTERSTITIAL_ID: ${{ secrets.ADMOB_INTERSTITIAL_ID }}
-        ADMOB_REWARDED_ID: ${{ secrets.ADMOB_REWARDED_ID }}
       run: |
         chmod +x scripts/create_env.sh
         bash scripts/create_env.sh
@@ -89,14 +108,25 @@ jobs:
     - name: Build App Bundle
       run: flutter build appbundle --release -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }}
 
+    - name: Verify artifacts exist
+      run: |
+        set -e
+        test -f build/app/outputs/flutter-apk/app-release.apk
+        test -f build/app/outputs/bundle/release/app-release.aab
+        echo "Artifacts verified."
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
+        if-no-files-found: error
+        retention-days: 30
 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
         name: release-aab
         path: build/app/outputs/bundle/release/app-release.aab
+        if-no-files-found: error
+        retention-days: 30

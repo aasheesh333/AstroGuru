@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async'; // Import for Timer
+import '../theme/app_colors.dart';
 import 'onboarding_screen.dart';
 import 'login_screen.dart';
 import 'language_selection_screen.dart';
@@ -21,8 +22,9 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _checkLanguage() async {
-    // Artificial delay for splash effect
-    await Future.delayed(const Duration(seconds: 2));
+    // No artificial delay: route the user as fast as the bootstrap completes.
+    // A small minimum-display cap is applied via the first frame after build()
+    // so the splash is visible for at least one paint.
 
     if (!mounted) return;
 
@@ -57,14 +59,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF371B58),
+      backgroundColor: const AppColors.deepPurple,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
              Image.asset('assets/images/logo.png', width: 150),
              const SizedBox(height: 20),
-             const Text("AstroPrerna", style: TextStyle(color: Color(0xFFFDBD00), fontSize: 24, fontWeight: FontWeight.bold)),
+             const Text("AstroPrerna", style: TextStyle(color: AppColors.goldAccent, fontSize: 24, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

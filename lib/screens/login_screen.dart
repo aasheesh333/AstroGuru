@@ -147,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   context: context,
                   barrierDismissible: false,
                   builder: (context) => AlertDialog(
-                    backgroundColor: const Color(0xFF0E1016),
+                    backgroundColor: const AppColors.surfaceColor,
                     title: const Text("Access Denied", style: TextStyle(color: Colors.red)),
                     content: Text(
                       "Username is banned due to internal policy.\nReason: $reason",
@@ -171,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                  context: context,
                  barrierDismissible: false,
                  builder: (context) => AlertDialog(
-                   backgroundColor: const Color(0xFF0E1016),
+                   backgroundColor: const AppColors.surfaceColor,
                    title: const Text("Account Scheduled for Deletion", style: TextStyle(color: Colors.red)),
                    content: const Text(
                      "You have previously requested to delete this account. You can regain access or cancel to continue deletion.",
@@ -240,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF0E1016),
+              backgroundColor: const AppColors.surfaceColor,
               title: const Text("Account Exists", style: TextStyle(color: AppColors.primaryGold)),
               content: Text(
                 AppLocalizations.of(context)!.accountExistsWithDifferentCredential,
@@ -325,8 +325,8 @@ class _LoginScreenState extends State<LoginScreen> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF0E1016),
-              title: const Text("Age Restriction", style: TextStyle(color: Color(0xFFD4AF37))),
+              backgroundColor: const AppColors.surfaceColor,
+              title: const Text("Age Restriction", style: TextStyle(color: AppColors.deepGold)),
               content: const Text(
                 "You must be at least 10 years old to use this app.",
                 style: TextStyle(color: Colors.white),
@@ -349,7 +349,7 @@ class _LoginScreenState extends State<LoginScreen> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF0E1016),
+              backgroundColor: const AppColors.surfaceColor,
               title: const Text("Invalid Date", style: TextStyle(color: Colors.red)),
               content: const Text(
                 "Please enter a valid date of birth.",
@@ -454,8 +454,8 @@ class _LoginScreenState extends State<LoginScreen> {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF0E1016),
-                  title: const Text("Verify Email", style: TextStyle(color: Color(0xFFD4AF37))),
+                  backgroundColor: const AppColors.surfaceColor,
+                  title: const Text("Verify Email", style: TextStyle(color: AppColors.deepGold)),
                   content: Text(
                     "A verification link has been sent to your email. Please verify it and then log in.\n\n${AppLocalizations.of(context)!.checkSpamFolder}",
                     style: const TextStyle(color: Colors.white),
@@ -493,8 +493,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    backgroundColor: const Color(0xFF0E1016),
-                    title: const Text("Email Not Verified", style: TextStyle(color: Color(0xFFD4AF37))),
+                    backgroundColor: const AppColors.surfaceColor,
+                    title: const Text("Email Not Verified", style: TextStyle(color: AppColors.deepGold)),
                     content: Text(
                       "Please verify your email address to continue.\n${AppLocalizations.of(context)!.checkSpamFolder}",
                       style: const TextStyle(color: Colors.white),
@@ -539,7 +539,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   context: context,
                   barrierDismissible: false,
                   builder: (context) => AlertDialog(
-                    backgroundColor: const Color(0xFF0E1016),
+                    backgroundColor: const AppColors.surfaceColor,
                     title: const Text("Access Denied", style: TextStyle(color: Colors.red)),
                     content: Text(
                       "Username is banned due to internal policy.\nReason: $reason",
@@ -564,7 +564,7 @@ class _LoginScreenState extends State<LoginScreen> {
                  context: context,
                  barrierDismissible: false,
                  builder: (context) => AlertDialog(
-                   backgroundColor: const Color(0xFF0E1016),
+                   backgroundColor: const AppColors.surfaceColor,
                    title: const Text("Account Scheduled for Deletion", style: TextStyle(color: Colors.red)),
                    content: const Text(
                      "You have previously requested to delete this account. You can regain access or cancel to continue deletion.",
@@ -649,7 +649,7 @@ class _LoginScreenState extends State<LoginScreen> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF0E1016),
+              backgroundColor: const AppColors.surfaceColor,
               title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
               content: Text(e, style: const TextStyle(color: Colors.white)),
               actions: [
@@ -762,7 +762,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           labelText: AppLocalizations.of(context)!.name,
-                          hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                          hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5)),
                           labelStyle: const TextStyle(color: AppColors.textSecondary),
                           prefixIcon: const Icon(Icons.person, color: AppColors.primaryGold),
                           errorStyle: const TextStyle(color: Colors.redAccent),
@@ -795,7 +795,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: AppLocalizations.of(context)!.dateOfBirth,
                           hintText: 'Select Date',
-                          hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                          hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5)),
                           labelStyle: const TextStyle(color: AppColors.textSecondary),
                           prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primaryGold),
                           enabledBorder: OutlineInputBorder(
@@ -850,7 +850,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: InputDecoration(
                         labelText: AppLocalizations.of(context)!.emailLabel,
                         hintText: 'you@example.com',
-                        hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                        hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5)),
                         labelStyle: const TextStyle(color: AppColors.textSecondary),
                         prefixIcon: const Icon(Icons.email, color: AppColors.primaryGold),
                         errorStyle: const TextStyle(color: Colors.redAccent),
