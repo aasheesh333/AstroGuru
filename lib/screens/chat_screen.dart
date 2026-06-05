@@ -487,7 +487,7 @@ class ChatContentState extends State<ChatContent> {
     );
   }
 
-  void _showBanDialog({bool navigateAfter = false}) {
+  void _showBanDialog({bool navigateAfter = false, String reason = ''}) {
     final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
@@ -500,7 +500,7 @@ class ChatContentState extends State<ChatContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l10n.banReason,
+              l10n.banReason(reason),
               style: const TextStyle(color: AppColors.textPrimary),
             ),
             const SizedBox(height: 16),
