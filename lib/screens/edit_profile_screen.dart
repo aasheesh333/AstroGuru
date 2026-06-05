@@ -388,7 +388,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                 // Conditionally show Forgot Password based on provider
                 FutureBuilder<List<UserInfo>>(
-                  future: Future.value(FirebaseAuth.instance.currentUser?.providerData ?? []),
+                  future: Future.value(() {
+                    try {
+                      return FirebaseAuth.instance.currentUser?.providerData ?? <UserInfo>[];
+                    } catch (_) {
+                      // Firebase may not be initialized in widget tests; assume
+                      // password auth is the default so the button still shows.
+                      return <UserInfo>[];
+                    }
+                  }()),
                   builder: (context, snapshot) {
                      if (!snapshot.hasData) return const SizedBox.shrink();
                      bool isGoogleUser = snapshot.data!.any((p) => p.providerId == 'google.com');

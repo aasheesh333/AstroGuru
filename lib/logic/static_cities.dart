@@ -14,7 +14,10 @@ class StaticCities {
     if (place.trim().isEmpty) return (_defaultLat, _defaultLon);
 
     final String normalized = _normalize(place);
+    if (normalized.isEmpty) return (_defaultLat, _defaultLon);
+
     final List<String> tokens = normalized.split(' ').where((t) => t.isNotEmpty).toList();
+    if (tokens.isEmpty) return (_defaultLat, _defaultLon);
 
     // 1) Exact match.
     for (final entry in _cities) {
@@ -25,6 +28,7 @@ class StaticCities {
 
     // 2) All tokens present in the city name.
     for (final entry in _cities) {
+      if (tokens.isEmpty) continue;
       final String cityNorm = _normalize(entry.name);
       if (tokens.every((t) => cityNorm.contains(t))) {
         return (entry.lat, entry.lon);
@@ -33,6 +37,7 @@ class StaticCities {
 
     // 3) Any token of the city matches any token of the input.
     for (final entry in _cities) {
+      if (tokens.isEmpty) continue;
       final String cityNorm = _normalize(entry.name);
       if (tokens.any((t) => cityNorm.contains(t)) && tokens.first.length >= 4) {
         return (entry.lat, entry.lon);

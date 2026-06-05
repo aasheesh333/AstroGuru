@@ -48,7 +48,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify Widgets exist
-    expect(find.text('Edit Profile'), findsOneWidget); // AppBar title
+    expect(find.text('Edit Profile'), findsOneWidget); // AppBar title (en.arb)
 
     // Find Fields by Label
     final nameFieldFinder = find.widgetWithText(TextFormField, 'Name');
@@ -78,7 +78,8 @@ void main() {
     expect(textField.enabled, isFalse);
     expect(textField.readOnly, isTrue);
 
-    // Verify Forgot Password Button exists
+    // Verify Forgot Password Button exists (l10n.forgotPassword key).
+    // In the default English arb the value is "Forgot Password?".
     final forgotPasswordFinder = find.text('Forgot Password?');
     expect(forgotPasswordFinder, findsOneWidget);
 
