@@ -140,7 +140,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
   Widget _buildLoadingShimmer() {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceColor,
-      highlightColor: AppColors.primaryGold.withValues(alpha: 0.15),
+      highlightColor: AppColors.primaryGold.withOpacity(0.15),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -401,7 +401,7 @@ class _KundliChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.primaryGold.withValues(alpha: 0.5)
+      ..color = AppColors.primaryGold.withOpacity(0.5)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 

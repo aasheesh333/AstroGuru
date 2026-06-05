@@ -740,7 +740,7 @@ class ChatContentState extends State<ChatContent> {
           const SizedBox(width: 8),
           Shimmer.fromColors(
             baseColor: AppColors.surfaceColor,
-            highlightColor: AppColors.primaryGold.withValues(alpha: 0.3),
+            highlightColor: AppColors.primaryGold.withOpacity(0.3),
             child: Container(
               width: 64,
               height: 36,

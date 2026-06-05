@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:astroguru/theme/app_colors.dart';
 import 'package:astroguru/services/ad_service.dart';
-import 'package:astroguru/l10n/app_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class AdLockedWidget extends StatefulWidget {
   final String title;
@@ -69,10 +69,10 @@ class _AdLockedWidgetState extends State<AdLockedWidget> {
             decoration: BoxDecoration(
               color: AppColors.surfaceColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+              border: Border.all(color: AppColors.primaryGold.withOpacity(0.3)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: Colors.black.withOpacity(0.5),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

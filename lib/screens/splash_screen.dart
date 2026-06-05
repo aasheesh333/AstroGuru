@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:async'; // Import for Timer
 import '../theme/app_colors.dart';
 import 'onboarding_screen.dart';
 import 'login_screen.dart';
@@ -59,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const AppColors.deepPurple,
+      backgroundColor: AppColors.deepPurple,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -133,7 +133,7 @@ class NotificationService with WidgetsBindingObserver {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const AppColors.surfaceColor,
+          backgroundColor: AppColors.surfaceColor,
           title: const Text("Stay Connected", style: TextStyle(color: AppColors.primaryGold)),
           content: const Text(
             "Notifications are important to receive your daily horoscope, important astrological alerts, and guidance related to your account.",

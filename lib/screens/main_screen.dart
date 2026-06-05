@@ -267,7 +267,7 @@ class _MainScreenState extends State<MainScreen> {
               currentIndex: _currentIndex,
               onTap: (index) => setState(() => _currentIndex = index),
               type: BottomNavigationBarType.fixed, // Ensure items don't shift
-              backgroundColor: const AppColors.scaffoldBackgroundColor, // Match scaffold background or surface
+              backgroundColor: AppColors.scaffoldBackgroundColor, // Match scaffold background or surface
               selectedItemColor: AppColors.primaryGold,
               unselectedItemColor: Colors.grey,
               items: [

@@ -199,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const AppColors.surfaceColor,
+          backgroundColor: AppColors.surfaceColor,
           title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: AppColors.deepGold)),
           content: Text(AppLocalizations.of(context)!.loginRequiredMsg, style: const TextStyle(color: Colors.white)),
           actions: [
@@ -292,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const AppColors.surfaceColor, // Dark card bg
+                color: AppColors.surfaceColor, // Dark card bg
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white10),
               ),
@@ -314,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primaryGold.withValues(alpha: 0.1),
+                          color: AppColors.primaryGold.withOpacity(0.1),
                         ),
                         child: Icon(ZodiacUtils.getIcon(signName), color: AppColors.primaryGold, size: 32),
                       ),
@@ -354,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 4,
-                shadowColor: AppColors.primaryGold.withValues(alpha: 0.4),
+                shadowColor: AppColors.primaryGold.withOpacity(0.4),
               ),
               child: Text(AppLocalizations.of(context)!.askAiSageBtn, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
@@ -369,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildGridCard(
                   title: AppLocalizations.of(context)!.generateKundliBtn,
                   icon: Icons.auto_awesome, // Sparkle icon
-                  iconColor: const AppColors.accentTeal, // Teal accent
+                  iconColor: AppColors.accentTeal, // Teal accent
                   onTap: () => _checkAccess('/kundli'),
                 ),
               ),
@@ -378,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildGridCard(
                   title: AppLocalizations.of(context)!.loveMatchBtn,
                   icon: Icons.favorite, // Heart icon
-                  iconColor: const AppColors.accentPink, // Pink accent
+                  iconColor: AppColors.accentPink, // Pink accent
                   onTap: () => _checkAccess('LoveMatch'),
                 ),
               ),
@@ -439,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         height: 120,
         decoration: BoxDecoration(
-          color: const AppColors.surfaceColor,
+          color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white10),
         ),

@@ -5,6 +5,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'config/app_config.dart';
 import 'logic/language_provider.dart';
@@ -119,7 +120,7 @@ class AstroPrernaApp extends StatelessWidget {
           title: 'AstroPrerna',
           theme: ThemeData(
             primarySwatch: Colors.deepPurple,
-            scaffoldBackgroundColor: const AppColors.scaffoldBackgroundColor,
+            scaffoldBackgroundColor: AppColors.scaffoldBackgroundColor,
             appBarTheme: const AppBarTheme(backgroundColor: AppColors.surfaceColor, foregroundColor: AppColors.deepGold),
             brightness: Brightness.dark,
           ),

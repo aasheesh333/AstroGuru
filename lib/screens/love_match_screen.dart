@@ -158,12 +158,12 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor.withValues(alpha: 0.9),
+        color: AppColors.surfaceColor.withOpacity(0.9),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.primaryGold.withOpacity(0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -181,9 +181,9 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: AppLocalizations.of(context)!.enterName,
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
               filled: true,
-              fillColor: Colors.black.withValues(alpha: 0.3),
+              fillColor: Colors.black.withOpacity(0.3),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
               errorStyle: const TextStyle(color: Colors.redAccent),
               errorBorder: OutlineInputBorder(
@@ -196,7 +196,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Colors.black.withOpacity(0.3),
               borderRadius: BorderRadius.circular(10),
             ),
             child: DropdownButtonHideUnderline(
@@ -226,7 +226,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
   Widget _buildLoadingShimmer() {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceColor,
-      highlightColor: AppColors.primaryGold.withValues(alpha: 0.2),
+      highlightColor: AppColors.primaryGold.withOpacity(0.2),
       child: Column(
         children: [
           Container(
@@ -265,7 +265,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
             border: Border.all(color: score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red), width: 4),
             boxShadow: [
               BoxShadow(
-                color: (score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red)).withValues(alpha: 0.4),
+                color: (score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red)).withOpacity(0.4),
                 blurRadius: 20,
                 spreadRadius: 5,
               )
@@ -288,7 +288,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.surfaceColor.withValues(alpha: 0.8),
+            color: AppColors.surfaceColor.withOpacity(0.8),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(

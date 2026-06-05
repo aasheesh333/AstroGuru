@@ -157,7 +157,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const AppColors.surfaceColor,
+              backgroundColor: AppColors.surfaceColor,
               title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
               content: Text(
                 e,
@@ -197,7 +197,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const AppColors.surfaceColor,
+        backgroundColor: AppColors.surfaceColor,
         title: Text(AppLocalizations.of(context)!.deleteAccount, style: const TextStyle(color: Colors.red)),
         content: Text(AppLocalizations.of(context)!.softDeleteMsg, style: const TextStyle(color: Colors.white)),
         actions: [
@@ -379,7 +379,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     prefixIcon: const Icon(Icons.email, color: Colors.grey),
                     suffixIcon: const Icon(Icons.lock, color: Colors.grey, size: 20),
                     filled: true,
-                    fillColor: AppColors.surfaceColor.withValues(alpha: 0.5),
+                    fillColor: AppColors.surfaceColor.withOpacity(0.5),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     helperText: AppLocalizations.of(context)!.emailImmutable,
                     helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),

@@ -77,7 +77,7 @@ class HoroscopeContent extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.surfaceColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
+                      border: Border.all(color: AppColors.primaryGold.withOpacity(0.3)),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,

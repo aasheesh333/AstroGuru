@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -113,11 +114,11 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  Future<List<int>> _decodeBase64(String b64) async {
+  Future<Uint8List> _decodeBase64(String b64) async {
     try {
       return base64Decode(b64);
     } catch (_) {
-      return const [];
+      return Uint8List(0);
     }
   }
 

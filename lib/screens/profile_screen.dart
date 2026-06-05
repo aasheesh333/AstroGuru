@@ -90,7 +90,7 @@ class _ProfileContentState extends State<ProfileContent> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const AppColors.surfaceColor,
+        backgroundColor: AppColors.surfaceColor,
         title: Text(AppLocalizations.of(context)!.loginRequiredTitle, style: const TextStyle(color: AppColors.deepGold)),
         content: Text(AppLocalizations.of(context)!.loginRequiredMsg, style: const TextStyle(color: Colors.white)),
         actions: [
@@ -190,7 +190,7 @@ class _ProfileContentState extends State<ProfileContent> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.surfaceColor.withValues(alpha: 0.8),
+              color: AppColors.surfaceColor.withOpacity(0.8),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
