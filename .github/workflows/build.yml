@@ -103,10 +103,32 @@ jobs:
         fi
 
     - name: Build APK
-      run: flutter build apk --release -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }}
+      run: |
+        flutter build apk --release \
+          -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} \
+          -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} \
+          -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} \
+          -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }} \
+          --dart-define=APP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }} \
+          --dart-define=APP_ADMOB_BANNER_ID=${{ secrets.ADMOB_BANNER_ID }} \
+          --dart-define=APP_ADMOB_INTERSTITIAL_ID=${{ secrets.ADMOB_INTERSTITIAL_ID }} \
+          --dart-define=APP_ADMOB_REWARDED_ID=${{ secrets.ADMOB_REWARDED_ID }} \
+          --dart-define=APP_ONESIGNAL_APP_ID=${{ secrets.ONESIGNAL_APP_ID }} \
+          --dart-define=APP_ONESIGNAL_API_KEY=${{ secrets.ONESIGNAL_API_KEY }}
 
     - name: Build App Bundle
-      run: flutter build appbundle --release -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }}
+      run: |
+        flutter build appbundle --release \
+          -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} \
+          -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} \
+          -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} \
+          -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }} \
+          --dart-define=APP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }} \
+          --dart-define=APP_ADMOB_BANNER_ID=${{ secrets.ADMOB_BANNER_ID }} \
+          --dart-define=APP_ADMOB_INTERSTITIAL_ID=${{ secrets.ADMOB_INTERSTITIAL_ID }} \
+          --dart-define=APP_ADMOB_REWARDED_ID=${{ secrets.ADMOB_REWARDED_ID }} \
+          --dart-define=APP_ONESIGNAL_APP_ID=${{ secrets.ONESIGNAL_APP_ID }} \
+          --dart-define=APP_ONESIGNAL_API_KEY=${{ secrets.ONESIGNAL_API_KEY }}
 
     - name: Verify artifacts exist
       run: |
