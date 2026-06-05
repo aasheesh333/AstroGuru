@@ -44,3 +44,10 @@ app.*.map.json
 tools/
 .env
 android/key.properties
+
+# Service account / Firebase Admin SDK keys (never commit)
+/root/firebase-key.json
+firebase-key.json
+*-firebase-adminsdk-*.json
+service-account*.json
+gha-creds-*.json

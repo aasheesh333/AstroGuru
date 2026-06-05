@@ -7,6 +7,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+class ProfileImageResult {
+  final String? url;
+  final String? base64;
+  const ProfileImageResult({this.url, this.base64});
+  bool get hasAny => url != null || base64 != null;
+}
+
 class ImageHelper {
   static final ImagePicker _picker = ImagePicker();
 
@@ -49,7 +56,7 @@ class ImageHelper {
   }
 
   /// Backwards-compat helper used by existing callers that still expect a
-  /// base64 string. New code should use [pickCompressAndUpload] instead.
+  /// base64 string.
   static Future<String?> pickAndCompressImage() async {
     final file = await pickAndCompressToFile();
     if (file == null) return null;
@@ -57,26 +64,33 @@ class ImageHelper {
     return base64Encode(bytes);
   }
 
-  /// Picks, compresses, and uploads a profile photo to Firebase Storage at
-  /// `users/{uid}/avatar.jpg`. Returns the download URL on success.
-  static Future<String?> pickCompressAndUpload(String uid) async {
+  /// Picks and compresses a profile photo. Tries Firebase Storage first
+  /// (so the photo is CDN-backed and cheap on Firestore quota); if Storage
+  /// is not available (no bucket, network, etc.) it always falls back to
+  /// embedding the image as base64 in the user document. The result has
+  /// [url] set on success, or [base64] set on the Storage fallback, or
+  /// both `null` if the user cancelled.
+  static Future<ProfileImageResult> pickCompressAndSave(String uid) async {
     final compressed = await pickAndCompressToFile();
-    if (compressed == null) return null;
+    if (compressed == null) return const ProfileImageResult();
+    final bytes = await compressed.readAsBytes();
+    final base64Str = base64Encode(bytes);
+
+    String? url;
     try {
       final ref = FirebaseStorage.instance
           .ref()
           .child('users')
           .child(uid)
           .child('avatar.jpg');
-      final bytes = await compressed.readAsBytes();
       final task = await ref.putData(
         bytes,
         SettableMetadata(contentType: 'image/jpeg'),
       );
-      return await task.ref.getDownloadURL();
+      url = await task.ref.getDownloadURL();
     } catch (e) {
-      debugPrint("Error uploading avatar: $e");
-      return null;
+      debugPrint("Storage upload failed, using base64 fallback: $e");
     }
+    return ProfileImageResult(url: url, base64: url == null ? base64Str : null);
   }
 }

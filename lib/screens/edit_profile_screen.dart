@@ -268,11 +268,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: CircularProgressIndicator(color: AppColors.primaryGold),
                       ),
                     );
-                    final url = await ImageHelper.pickCompressAndUpload(user.uid);
+                    final result = await ImageHelper.pickCompressAndSave(user.uid);
                     if (mounted) Navigator.of(context, rootNavigator: true).pop();
                     if (!mounted) return;
-                    if (url != null) {
-                      await userProvider.updateProfile(newImageUrl: url);
+                    if (result.hasAny) {
+                      await userProvider.updateProfile(
+                        newImageUrl: result.url,
+                        newImageBase64: result.base64,
+                      );
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(AppLocalizations.of(context)!.profileImageUpdated)),

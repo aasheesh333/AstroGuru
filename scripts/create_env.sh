@@ -2,11 +2,13 @@
 set -e
 
 # Create a .env file with PUBLIC values for the build.
-# The Groq API key is no longer needed here — it lives in the
-# `groq_api_keys` Firestore collection and is read by the
-# `groqProxy` Cloud Function (functions/src/index.ts).
+# AdMob IDs and OneSignal are public. The Groq API key is OPTIONAL here:
+# production clients read it from the `groq_api_keys` Firestore doc
+# (KeyManager.getApiKey), but local dev can put a key in APP_GROQ_API_KEY
+# for offline testing without Firestore. The Groq key in .env is NEVER
+# shipped in release builds because `assets/.env` is not bundled.
 mkdir -p assets
-echo "Creating assets/.env (public values only)..."
+echo "Creating assets/.env (public values, optional local Groq key)..."
 : > assets/.env
 
 [ -n "$APP_ADMOB_APP_ID" ] && echo "APP_ADMOB_APP_ID=$APP_ADMOB_APP_ID" >> assets/.env
@@ -15,6 +17,7 @@ echo "Creating assets/.env (public values only)..."
 [ -n "$APP_ADMOB_REWARDED_ID" ] && echo "APP_ADMOB_REWARDED_ID=$APP_ADMOB_REWARDED_ID" >> assets/.env
 [ -n "$APP_ONESIGNAL_APP_ID" ] && echo "APP_ONESIGNAL_APP_ID=$APP_ONESIGNAL_APP_ID" >> assets/.env
 [ -n "$APP_ONESIGNAL_API_KEY" ] && echo "APP_ONESIGNAL_API_KEY=$APP_ONESIGNAL_API_KEY" >> assets/.env
+[ -n "$APP_GROQ_API_KEY" ] && echo "APP_GROQ_API_KEY=$APP_GROQ_API_KEY" >> assets/.env
 
 echo "Assets env created."
 

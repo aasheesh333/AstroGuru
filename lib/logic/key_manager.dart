@@ -1,34 +1,61 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:developer' as developer;
 
-/// The client no longer holds a Groq API key directly. Production requests
-/// are routed through the `groqProxy` Firebase Cloud Function, which holds
-/// the key on the server side. This class is kept as a thin wrapper so
-/// legacy code paths that called `KeyManager().init()` still work, and so
-/// we can use it to detect "no key configured" at boot without exposing
-/// the key in the APK.
+/// Resolves the Groq API key used by [AIService] for direct (client-side)
+/// requests to `api.groq.com`. Resolution order:
+///   1. Firestore doc `groq_api_keys/groq_api_list` — preferred so the key
+///      can be rotated without an app release.
+///   2. `APP_GROQ_API_KEY` / `GROQ_API_KEY` from `assets/.env` (local dev).
+///
+/// A single key is used. Rotation was removed per product decision.
 class KeyManager {
   static final KeyManager _instance = KeyManager._internal();
   factory KeyManager() => _instance;
   KeyManager._internal();
 
-  bool _hasKey = false;
+  String? _cachedKey;
+  bool _initialized = false;
 
-  /// Verify that the backend has a key configured. Throws if not.
   Future<void> init() async {
+    if (_initialized) return;
+    _initialized = true;
+
     try {
-      final doc = await FirebaseFirestore.instance
+      final docSnapshot = await FirebaseFirestore.instance
           .collection('groq_api_keys')
           .doc('groq_api_list')
           .get();
-      if (doc.exists && doc.data() != null) {
-        _hasKey = doc.data()!.values
-            .any((v) => v is String && v.toString().isNotEmpty);
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        final data = docSnapshot.data()!;
+        for (final v in data.values) {
+          final s = v?.toString() ?? '';
+          if (s.isNotEmpty) {
+            _cachedKey = s;
+            developer.log('KeyManager: loaded key from Firestore (len=${s.length}).');
+            return;
+          }
+        }
       }
     } catch (e) {
-      debugPrint('KeyManager: init failed: $e');
+      developer.log('KeyManager: Firestore fetch failed: $e');
+    }
+
+    if (_cachedKey == null || _cachedKey!.isEmpty) {
+      final local = dotenv.env['APP_GROQ_API_KEY'] ?? dotenv.env['GROQ_API_KEY'] ?? '';
+      if (local.isNotEmpty) {
+        _cachedKey = local;
+        developer.log('KeyManager: loaded key from .env (len=${local.length}).');
+      }
     }
   }
 
-  bool get hasKey => _hasKey;
+  Future<String> getApiKey() async {
+    if (!_initialized || _cachedKey == null) {
+      await init();
+    }
+    return _cachedKey ?? '';
+  }
+
+  bool get hasKey => (_cachedKey ?? '').isNotEmpty;
 }
