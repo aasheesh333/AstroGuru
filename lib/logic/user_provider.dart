@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'kundli_context.dart';
+import 'recent_mentions.dart';
+import 'user_context_builder.dart';
 import 'user_session.dart';
 import 'kundli_service.dart';
 
@@ -276,6 +278,23 @@ class UserProvider extends ChangeNotifier {
       birthDate: dob,
       birthTime: _birthTime.isEmpty ? null : _birthTime,
       birthPlace: _birthPlace.isEmpty ? null : _birthPlace,
+    );
+  }
+
+  /// Builds the full AI context string for the user — identity (name,
+  /// email, current address), zodiac, kundli chart, plus a caller-supplied
+  /// [recent] digest of place/date/time mentioned in recent chat messages.
+  ///
+  /// Falls back to a minimal "Zodiac" line if the user has no birth data
+  /// on file, so the AI Sage still knows who it is talking to.
+  String getUserContext({RecentMentions recent = const RecentMentions()}) {
+    return UserContextBuilder.build(
+      name: _name,
+      email: _email,
+      address: _address,
+      zodiac: _zodiac,
+      kundliContext: getKundliContext(),
+      recent: recent,
     );
   }
 }
