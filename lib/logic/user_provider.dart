@@ -267,8 +267,8 @@ class UserProvider extends ChangeNotifier {
   }
 
   /// Builds the full AI context string for the user — identity (name,
-  /// email, current address), zodiac, kundli chart, plus a caller-supplied
-  /// [recent] digest of place/date/time mentioned in recent chat messages.
+  /// email), zodiac, kundli chart, plus a caller-supplied [recent] digest
+  /// of place/date/time mentioned in recent chat messages.
   ///
   /// Falls back to a minimal "Zodiac" line if the user has no birth data
   /// on file, so the AI Sage still knows who it is talking to.
