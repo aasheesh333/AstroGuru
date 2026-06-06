@@ -1,6 +1,7 @@
-/// Scans the most recent user messages for date / time / place mentions
-/// and returns the most recent of each. Used to enrich the AI Sage
-/// prompt with facts the user has stated mid-conversation.
+/// Scans user messages for date / time / place mentions and returns the
+/// most recent of each. Used to enrich the AI Sage prompt with facts the
+/// user has stated mid-conversation (e.g. "I live in Mumbai" sticks for
+/// the rest of the chat).
 class RecentMentions {
   final String? place;
   final String? date;
@@ -10,23 +11,17 @@ class RecentMentions {
 
   bool get isEmpty => place == null && date == null && time == null;
 
-  /// Scans [history] in order, keeping the last user mention of each kind.
-  /// Looks at the last 6 user messages to keep the prompt small and the
-  /// noise down. [history] entries must have `role` and `content` keys.
+  /// Scans every user message in [history] (not just the latest few), so
+  /// once the user mentions a place it stays in context for the rest of
+  /// the conversation. [history] entries must have `role` and `content`
+  /// keys. Keeps the last user mention of each kind.
   static RecentMentions extract(List<Map<String, String>> history) {
     String? place;
     String? date;
     String? time;
 
-    final userMsgs = history
-        .where((m) => m['role'] == 'user')
-        .toList()
-        .reversed
-        .take(6)
-        .toList()
-        .reversed;
-
-    for (final m in userMsgs) {
+    for (final m in history) {
+      if (m['role'] != 'user') continue;
       final text = m['content'] ?? '';
       final p = _matchPlace(text);
       if (p != null) place = p;

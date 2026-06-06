@@ -46,5 +46,12 @@ void main() {
       final out = RecentMentions.extract(history);
       expect(out.place, equals('Pune'));
     });
+
+    test('picks up place mentioned many messages back', () {
+      final history = List.generate(20, (i) => {'role': 'user', 'content': 'msg $i'})
+        ..add({'role': 'user', 'content': 'I live in Chennai'});
+      final out = RecentMentions.extract(history);
+      expect(out.place, equals('Chennai'));
+    });
   });
 }
