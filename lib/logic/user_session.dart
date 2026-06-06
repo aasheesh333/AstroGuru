@@ -123,6 +123,34 @@ class UserSession {
     await setString('user_birth_place', place);
   }
 
+  /// Gender enum key: "male" | "female" | "other" | "prefer_not_to_say" | "" (unset).
+  static Future<String> getGender() async {
+    return (await getString('user_gender')) ?? "";
+  }
+
+  static Future<void> setGender(String value) async {
+    await setString('user_gender', value);
+  }
+
+  /// Free-text profession (e.g. "Software Engineer"). Empty when unset.
+  static Future<String> getProfession() async {
+    return (await getString('user_profession')) ?? "";
+  }
+
+  static Future<void> setProfession(String value) async {
+    await setString('user_profession', value);
+  }
+
+  /// Marital status enum key: "single" | "married" | "in_relationship" |
+  /// "divorced" | "widowed" | "prefer_not_to_say" | "" (unset).
+  static Future<String> getMaritalStatus() async {
+    return (await getString('user_marital_status')) ?? "";
+  }
+
+  static Future<void> setMaritalStatus(String value) async {
+    await setString('user_marital_status', value);
+  }
+
   static Future<void> clearSession() async {
     // We do NOT clear SharedPreferences entirely, only the 'current' pointers if any.
     // But since we use prefixes, logging out essentially switches the prefix to "" (guest).
