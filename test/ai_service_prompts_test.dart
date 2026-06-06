@@ -60,7 +60,7 @@ void main() {
     test('chatResponsePrompt embeds the kundli context instead of the old placeholder', () {
       final messages = AIService.chatResponseMessages(
         query: 'What does my chart say about career?',
-        kundliContext: 'Lagna: Cancer, Moon: Scorpio, Doshas: Mangal Dosh',
+        userContext: 'Lagna: Cancer, Moon: Scorpio, Doshas: Mangal Dosh',
         language: 'en',
         history: const [
           {'role': 'user', 'content': 'Hi'},
@@ -84,7 +84,7 @@ void main() {
       }
       final messages = AIService.chatResponseMessages(
         query: 'final',
-        kundliContext: 'ctx',
+        userContext: 'ctx',
         language: 'en',
         history: history,
       );
@@ -129,7 +129,7 @@ void main() {
         AIService.remedySystemPrompt(language: 'en', kundliContext: 'x'),
         AIService.quoteSystemPrompt(language: 'en', kundliContext: 'x'),
         AIService.chatResponseMessages(
-          query: 'q', kundliContext: 'x', language: 'en', history: const [],
+          query: 'q', userContext: 'x', language: 'en', history: const [],
         ).map((m) => m['content'] as String).join('\n'),
       ].join('\n');
       expect(all, isNot(contains('General Query.')));
