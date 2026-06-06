@@ -17,6 +17,9 @@ class UserProvider extends ChangeNotifier {
   String _dob = "";
   String _birthTime = "";
   String _birthPlace = "";
+  String _gender = "";
+  String _profession = "";
+  String _maritalStatus = "";
   String? _profileImageBase64;
   String? _profileImageUrl;
   String _zodiac = "Aries";
@@ -26,6 +29,9 @@ class UserProvider extends ChangeNotifier {
   String get dob => _dob;
   String get birthTime => _birthTime;
   String get birthPlace => _birthPlace;
+  String get gender => _gender;
+  String get profession => _profession;
+  String get maritalStatus => _maritalStatus;
   String? get profileImageBase64 => _profileImageBase64;
   String? get profileImageUrl => _profileImageUrl;
   String get zodiac => _zodiac;
@@ -47,6 +53,9 @@ class UserProvider extends ChangeNotifier {
         _dob = await UserSession.getUserDob();
         _birthTime = await UserSession.getBirthTime();
         _birthPlace = await UserSession.getBirthPlace();
+        _gender = await UserSession.getGender();
+        _profession = await UserSession.getProfession();
+        _maritalStatus = await UserSession.getMaritalStatus();
         _profileImageBase64 = await UserSession.getProfileImage();
         _profileImageUrl = await UserSession.getProfileImageUrl();
 
@@ -136,6 +145,9 @@ class UserProvider extends ChangeNotifier {
     DateTime? newDob,
     String? newBirthTime,
     String? newBirthPlace,
+    String? newGender,
+    String? newProfession,
+    String? newMaritalStatus,
     String? newImageBase64,
     String? newImageUrl,
     bool updateFirestore = true
@@ -187,6 +199,36 @@ class UserProvider extends ChangeNotifier {
       }
     }
 
+    if (newGender != null) {
+      _gender = newGender;
+      await UserSession.setGender(newGender);
+      if (updateFirestore) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+          {'gender': newGender}, SetOptions(merge: true)
+        );
+      }
+    }
+
+    if (newProfession != null) {
+      _profession = newProfession;
+      await UserSession.setProfession(newProfession);
+      if (updateFirestore) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+          {'profession': newProfession}, SetOptions(merge: true)
+        );
+      }
+    }
+
+    if (newMaritalStatus != null) {
+      _maritalStatus = newMaritalStatus;
+      await UserSession.setMaritalStatus(newMaritalStatus);
+      if (updateFirestore) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+          {'marital_status': newMaritalStatus}, SetOptions(merge: true)
+        );
+      }
+    }
+
     if (newImageUrl != null) {
       _profileImageUrl = newImageUrl;
       _profileImageBase64 = null;
@@ -216,6 +258,9 @@ class UserProvider extends ChangeNotifier {
     _email = "";
     _birthTime = "";
     _birthPlace = "";
+    _gender = "";
+    _profession = "";
+    _maritalStatus = "";
     _profileImageBase64 = null;
     _profileImageUrl = null;
     notifyListeners();
@@ -278,6 +323,9 @@ class UserProvider extends ChangeNotifier {
       email: _email,
       zodiac: _zodiac,
       kundliContext: getKundliContext(),
+      gender: _gender,
+      profession: _profession,
+      maritalStatus: _maritalStatus,
       recent: recent,
     );
   }
