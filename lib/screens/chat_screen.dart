@@ -13,6 +13,7 @@ import '../logic/language_provider.dart';
 import '../logic/user_session.dart';
 import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
+import '../logic/recent_mentions.dart';
 import '../services/ad_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/astro_text_parser.dart';
@@ -337,20 +338,19 @@ class ChatContentState extends State<ChatContent> {
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
     final provider = Provider.of<UserProvider>(context, listen: false);
 
-    // Build a kundli context for the AI Sage. When the user has a full
-    // birth record (DOB + time + place) this is the narrative produced by
-    // KundliContextBuilder — Lagna, Moon, Sun, doshas. When the user only
-    // has a zodiac on file, fall back to a minimal "Zodiac: <sign>" string
-    // so the Sage still knows who it's talking to.
-    String kundliSummary = provider.getKundliContext();
-    if (kundliSummary.isEmpty) {
-      kundliSummary = "User Name: ${provider.name}. Zodiac: ${provider.zodiac}.";
+    // Build the full user context for the AI Sage: identity (name,
+    // email, current address), kundli chart, and a digest of any
+    // place/date/time the user has mentioned in the recent messages.
+    final recentMentions = RecentMentions.extract(_messages);
+    String userContext = provider.getUserContext(recent: recentMentions);
+    if (userContext.isEmpty) {
+      userContext = "User Name: ${provider.name}. Zodiac: ${provider.zodiac}.";
     }
 
     try {
-      // Pass history (excluding the message we just added effectively, handled by logic but passing all for context)
-      // Actually, we pass the current list including the user's new message
-      String response = await AIService.getChatResponse(userMsg, kundliSummary, lang, _messages);
+      // Pass history (including the user's new message we just added).
+      String response = await AIService.getChatResponse(
+          userMsg, userContext, lang, _messages);
 
       if (!mounted) return;
       setState(() {
