@@ -249,16 +249,20 @@ class AIService {
 
   /// Builds the full message list (system + history + new query) for the
   /// AI Sage chat endpoint. Exposed for testing.
+  ///
+  /// The system prompt embeds the full user context (identity, address,
+  /// kundli, recent mentions) so the Sage can answer with full awareness
+  /// of who the user is and what they have mentioned in the conversation.
   static List<Map<String, dynamic>> chatResponseMessages({
     required String query,
-    required String kundliContext,
+    required String userContext,
     required String language,
     required List<Map<String, String>> history,
   }) {
     final messages = <Map<String, dynamic>>[
       {
         'role': 'system',
-        'content': "You are 'AI Sage', a wise Vedic Astrologer. Tone: Wise, Empathetic, Concise, and Genuine. Act like a real human Guru, not an AI. Use Markdown headers (###) and bullet points (*) for formatting if needed, but keep it natural. Avoid raw special characters like '#' in the middle of sentences unless for formatting. Respond in $language. Context (User Kundli):\n$kundliContext"
+        'content': "You are 'AI Sage', a wise Vedic Astrologer. Tone: Wise, Empathetic, Concise, and Genuine. Act like a real human Guru, not an AI. Use Markdown headers (###) and bullet points (*) for formatting if needed, but keep it natural. Avoid raw special characters like '#' in the middle of sentences unless for formatting. Respond in $language.\n\n$userContext"
       }
     ];
 
@@ -274,14 +278,14 @@ class AIService {
 
   static Future<String> getChatResponse(
     String query,
-    String kundliContext,
+    String userContext,
     String language,
     List<Map<String, String>> history,
   ) {
     return _postGroq(
       messages: chatResponseMessages(
         query: query,
-        kundliContext: kundliContext,
+        userContext: userContext,
         language: language,
         history: history,
       ),
