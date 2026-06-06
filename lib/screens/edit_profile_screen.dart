@@ -380,6 +380,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _gender,
                   decoration: InputDecoration(
                     labelText: AppLocalizations.of(context)!.genderLabel,
@@ -399,6 +400,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _maritalStatus,
                   decoration: InputDecoration(
                     labelText: AppLocalizations.of(context)!.maritalStatusLabel,
