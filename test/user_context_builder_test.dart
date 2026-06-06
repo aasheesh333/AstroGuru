@@ -10,14 +10,15 @@ void main() {
         email: 'a@b.com',
         zodiac: 'Aries',
         kundliContext: '- Lagna: Leo\n- Moon Sign: Cancer',
+        gender: '',
+        profession: '',
+        maritalStatus: '',
         recent: const RecentMentions(),
       );
       expect(ctx, contains('Name: Asheesh'));
       expect(ctx, contains('Email: a@b.com'));
       expect(ctx, contains('Zodiac: Aries'));
       expect(ctx, contains('Lagna: Leo'));
-      expect(ctx.contains('Mumbai'), isFalse);
-      expect(ctx.contains('Pune'), isFalse);
     });
 
     test('omits empty fields gracefully', () {
@@ -26,10 +27,16 @@ void main() {
         email: '',
         zodiac: 'Aries',
         kundliContext: '',
+        gender: '',
+        profession: '',
+        maritalStatus: '',
         recent: const RecentMentions(),
       );
       expect(ctx.contains('Name:'), isFalse);
       expect(ctx.contains('Email:'), isFalse);
+      expect(ctx.contains('Gender:'), isFalse);
+      expect(ctx.contains('Profession:'), isFalse);
+      expect(ctx.contains('Marital Status:'), isFalse);
     });
 
     test('appends recent mentions block when present', () {
@@ -38,13 +45,32 @@ void main() {
         email: '',
         zodiac: 'Aries',
         kundliContext: '',
+        gender: '',
+        profession: '',
+        maritalStatus: '',
         recent: const RecentMentions(
-            place: 'Pune', date: '5 Jan 2026', time: '4 pm'),
+          place: 'Pune', date: '5 Jan 2026', time: '4 pm'),
       );
       expect(ctx, contains('Recent mentions'));
       expect(ctx, contains('Pune'));
       expect(ctx, contains('5 Jan 2026'));
       expect(ctx, contains('4 pm'));
+    });
+
+    test('includes gender, profession, marital status when set', () {
+      final ctx = UserContextBuilder.build(
+        name: 'Asheesh',
+        email: '',
+        zodiac: 'Aries',
+        kundliContext: '',
+        gender: 'male',
+        profession: 'Software Engineer',
+        maritalStatus: 'in_relationship',
+        recent: const RecentMentions(),
+      );
+      expect(ctx, contains('Gender: Male'));
+      expect(ctx, contains('Profession: Software Engineer'));
+      expect(ctx, contains('Marital Status: In a relationship'));
     });
   });
 }

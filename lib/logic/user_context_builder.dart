@@ -12,12 +12,18 @@ class UserContextBuilder {
     required String email,
     required String zodiac,
     required String kundliContext,
+    required String gender,
+    required String profession,
+    required String maritalStatus,
     required RecentMentions recent,
   }) {
     final sb = StringBuffer();
     sb.writeln('User profile:');
     if (name.trim().isNotEmpty) sb.writeln('- Name: ${name.trim()}');
     if (email.trim().isNotEmpty) sb.writeln('- Email: ${email.trim()}');
+    if (gender.trim().isNotEmpty) sb.writeln('- Gender: ${_humanize(gender)}');
+    if (profession.trim().isNotEmpty) sb.writeln('- Profession: ${profession.trim()}');
+    if (maritalStatus.trim().isNotEmpty) sb.writeln('- Marital Status: ${_humanize(maritalStatus)}');
     if (zodiac.trim().isNotEmpty) sb.writeln('- Zodiac: ${zodiac.trim()}');
     if (kundliContext.trim().isNotEmpty) {
       sb.writeln(kundliContext.trim());
@@ -32,5 +38,21 @@ class UserContextBuilder {
     }
 
     return sb.toString().trimRight();
+  }
+
+  /// Translates enum keys ("male", "in_relationship") to display strings.
+  static String _humanize(String key) {
+    switch (key) {
+      case 'male': return 'Male';
+      case 'female': return 'Female';
+      case 'other': return 'Other';
+      case 'prefer_not_to_say': return 'Prefer not to say';
+      case 'single': return 'Single';
+      case 'married': return 'Married';
+      case 'in_relationship': return 'In a relationship';
+      case 'divorced': return 'Divorced';
+      case 'widowed': return 'Widowed';
+      default: return key;
+    }
   }
 }
