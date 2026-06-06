@@ -17,7 +17,6 @@ class UserProvider extends ChangeNotifier {
   String _dob = "";
   String _birthTime = "";
   String _birthPlace = "";
-  String _address = "";
   String? _profileImageBase64;
   String? _profileImageUrl;
   String _zodiac = "Aries";
@@ -27,7 +26,6 @@ class UserProvider extends ChangeNotifier {
   String get dob => _dob;
   String get birthTime => _birthTime;
   String get birthPlace => _birthPlace;
-  String get address => _address;
   String? get profileImageBase64 => _profileImageBase64;
   String? get profileImageUrl => _profileImageUrl;
   String get zodiac => _zodiac;
@@ -49,7 +47,6 @@ class UserProvider extends ChangeNotifier {
         _dob = await UserSession.getUserDob();
         _birthTime = await UserSession.getBirthTime();
         _birthPlace = await UserSession.getBirthPlace();
-        _address = await UserSession.getAddress();
         _profileImageBase64 = await UserSession.getProfileImage();
         _profileImageUrl = await UserSession.getProfileImageUrl();
 
@@ -139,7 +136,6 @@ class UserProvider extends ChangeNotifier {
     DateTime? newDob,
     String? newBirthTime,
     String? newBirthPlace,
-    String? newAddress,
     String? newImageBase64,
     String? newImageUrl,
     bool updateFirestore = true
@@ -191,16 +187,6 @@ class UserProvider extends ChangeNotifier {
       }
     }
 
-    if (newAddress != null) {
-      _address = newAddress;
-      await UserSession.setAddress(newAddress);
-      if (updateFirestore) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
-          {'address': newAddress}, SetOptions(merge: true)
-        );
-      }
-    }
-
     if (newImageUrl != null) {
       _profileImageUrl = newImageUrl;
       _profileImageBase64 = null;
@@ -230,7 +216,6 @@ class UserProvider extends ChangeNotifier {
     _email = "";
     _birthTime = "";
     _birthPlace = "";
-    _address = "";
     _profileImageBase64 = null;
     _profileImageUrl = null;
     notifyListeners();
@@ -291,7 +276,6 @@ class UserProvider extends ChangeNotifier {
     return UserContextBuilder.build(
       name: _name,
       email: _email,
-      address: _address,
       zodiac: _zodiac,
       kundliContext: getKundliContext(),
       recent: recent,
