@@ -90,7 +90,7 @@ class HinduFestivals {
       name: 'Govardhan Puja',
       month: 11, day: 9, hour: 10,
       title: '🪔 AstroPrerna Insight',
-      body: 'Govardhan Puja — honor Krishna's lift of the mountain and nature\'s protection.',
+      body: 'Govardhan Puja — honor Lord Krishna for lifting the mountain and protecting nature.',
     ),
     HinduFestival(
       name: 'Bhai Dooj',
@@ -186,7 +186,7 @@ class HinduFestivals {
       name: 'Govardhan Puja 2027',
       month: 10, day: 29, hour: 10,
       title: '🪔 AstroPrerna Insight',
-      body: 'Govardhan Puja — honor Krishna\'s lift of the mountain and nature\'s protection.',
+      body: 'Govardhan Puja — honor Lord Krishna for lifting the mountain and protecting nature.',
     ),
     HinduFestival(
       name: 'Bhai Dooj 2027',
