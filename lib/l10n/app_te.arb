@@ -43,6 +43,7 @@
   "welcomeBack": "స్వాగతం",
   "createAccount": "ఖాతా సృష్టించండి",
   "emailLabel": "ఇమెయిల్",
+  "currentAddress": "ప్రస్తుత చిరునామా / నగరం",
   "passwordLabel": "పాస్వర్డ్",
   "forgotPassword": "పాస్వర్డ్ మర్చిపోయారా?",
   "skipBtn": "టావండి",

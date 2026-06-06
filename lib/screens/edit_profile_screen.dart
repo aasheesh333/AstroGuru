@@ -378,7 +378,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   controller: _addressController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Current Address / City',
+                    labelText: AppLocalizations.of(context)!.currentAddress,
                     prefixIcon: const Icon(Icons.location_on, color: AppColors.primaryGold),
                     filled: true,
                     fillColor: AppColors.surfaceColor,

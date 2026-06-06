@@ -44,6 +44,7 @@
   "welcomeBack": "वापसी पर स्वागत है",
   "createAccount": "खाता बनाएं",
   "emailLabel": "ईमेल पता",
+  "currentAddress": "वर्तमान पता / शहर",
   "passwordLabel": "पासवर्ड",
   "forgotPassword": "पासवर्ड भूल गए?",
   "skipBtn": "अभी के लिए छोड़ें",

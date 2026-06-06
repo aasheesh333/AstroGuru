@@ -43,6 +43,7 @@
   "welcomeBack": "স্বাগতম",
   "createAccount": "অ্যাকাউন্ট তৈরি করুন",
   "emailLabel": "ইমেল ঠিকানা",
+  "currentAddress": "বর্তমান ঠিকানা / শহর",
   "passwordLabel": "পাসওয়ার্ড",
   "forgotPassword": "পাসওয়ার্ড ভুলে গেছেন?",
   "skipBtn": "এখনকার জন্য এড়িয়ে যান",

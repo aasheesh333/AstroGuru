@@ -43,6 +43,7 @@
   "welcomeBack": "स्वागत आहे",
   "createAccount": "खाते तयार करा",
   "emailLabel": "ईमेल पत्ता",
+  "currentAddress": "सध्याचा पत्ता / शहर",
   "passwordLabel": "पासवर्ड",
   "forgotPassword": "पासवर्ड विसरलात?",
   "skipBtn": "आता वगळा",
