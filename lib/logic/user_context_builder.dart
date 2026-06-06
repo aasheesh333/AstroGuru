@@ -1,15 +1,15 @@
 import 'recent_mentions.dart';
 
-/// Builds the full AI context block (identity + location + kundli +
-/// recent mentions) that the AI Sage embeds in its system prompt.
+/// Builds the full AI context block (identity + kundli + recent mentions)
+/// that the AI Sage embeds in its system prompt.
 ///
 /// All fields are optional; empty / null values are omitted so the
-/// resulting string stays tight.
+/// resulting string stays tight. Location comes from `RecentMentions`
+/// (i.e. the chat), not from a profile field.
 class UserContextBuilder {
   static String build({
     required String name,
     required String email,
-    required String address,
     required String zodiac,
     required String kundliContext,
     required RecentMentions recent,
@@ -18,9 +18,6 @@ class UserContextBuilder {
     sb.writeln('User profile:');
     if (name.trim().isNotEmpty) sb.writeln('- Name: ${name.trim()}');
     if (email.trim().isNotEmpty) sb.writeln('- Email: ${email.trim()}');
-    if (address.trim().isNotEmpty) {
-      sb.writeln('- Current Address: ${address.trim()}');
-    }
     if (zodiac.trim().isNotEmpty) sb.writeln('- Zodiac: ${zodiac.trim()}');
     if (kundliContext.trim().isNotEmpty) {
       sb.writeln(kundliContext.trim());
