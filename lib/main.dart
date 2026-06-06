@@ -84,6 +84,7 @@ void main() async {
   // Notification Service (Handles OneSignal + Local)
   try {
     await NotificationService().init();
+    await NotificationService().bootstrapStatic();
   } catch (e) {
     developer.log("Error initializing NotificationService: $e");
   }

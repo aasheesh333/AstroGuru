@@ -9,6 +9,8 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import '../config/app_config.dart';
 import '../theme/app_colors.dart';
 import '../logic/user_session.dart';
+import '../logic/hindu_festivals.dart';
+import 'ai_service.dart';
 
 class NotificationService with WidgetsBindingObserver {
   static final NotificationService _instance = NotificationService._internal();
@@ -18,23 +20,23 @@ class NotificationService with WidgetsBindingObserver {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  static const String _kLastDynamicSchedule = 'last_notification_schedule_time';
+  static const int _dynamicScheduleThrottleMs = 3 * 24 * 60 * 60 * 1000;
+
   bool _initialized = false;
   final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
 
   Future<void> init() async {
-    // 1. Initial Load of Unread Count from Storage
     await _updateUnreadCount();
 
     if (_initialized) return;
 
     WidgetsBinding.instance.addObserver(this);
 
-    // Initialize Timezone
     tz.initializeTimeZones();
     final String timeZoneName = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(timeZoneName));
 
-    // Initialize Local Notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -45,30 +47,24 @@ class NotificationService with WidgetsBindingObserver {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Handle local notification tap if needed
         if (response.payload != null) {
-          // Future enhancement: Parse generic payload if we ever set it
         }
       },
     );
 
-    // Initialize OneSignal
     final String oneSignalAppId = AppConfig.oneSignalAppId;
     if (oneSignalAppId.isNotEmpty) {
       OneSignal.initialize(oneSignalAppId);
 
-      // Listener 1: Foreground
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {
         _saveOneSignalNotification(event.notification);
       });
 
-      // Listener 2: Click
       OneSignal.Notifications.addClickListener((event) {
         _saveOneSignalNotification(event.notification);
       });
     }
 
-    // Sync active notifications on startup
     await _syncActiveNotifications();
 
     _initialized = true;
@@ -93,36 +89,103 @@ class NotificationService with WidgetsBindingObserver {
       for (var active in activeNotifications) {
         String? title = active.title;
         String? body = active.body;
-
-        // Try to get payload - usually this is just a string or null in LocalNotifications
-        // For system synced ones, we might miss the URL.
         String? payload = active.payload;
 
         if (title != null && body != null) {
            await _saveNotificationToStorage(
              title,
              body,
-             "Sync", // Source
-             true,   // Assume synced items (like Push) are important
-             scheduledTime: DateTime.now(), // Mark as received NOW
-             launchUrl: payload, // Best effort
+             "Sync",
+             true,
+             scheduledTime: DateTime.now(),
+             launchUrl: payload,
            );
         }
       }
     } catch (e) {
-      // Fail silently (best effort)
     }
   }
 
-  // --- Permission Flow ---
+  // --- Permission API ---
+
+  Future<bool> hasPermission() async {
+    try {
+      final android = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final granted = await android?.areNotificationsEnabled();
+      return granted ?? true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> requestPermission() async {
+    try {
+      final android = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final granted = await android?.requestNotificationsPermission();
+      return granted ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // --- Bootstrap (called from main.dart before runApp) ---
+
+  Future<void> bootstrapStatic() async {
+    if (!await hasPermission()) return;
+    await scheduleDailyNotifications();
+    await _scheduleFestivals();
+  }
+
+  Future<void> bootstrapDynamic({String? zodiac, String language = 'en'}) async {
+    if (!await hasPermission()) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getInt(_kLastDynamicSchedule) ?? 0;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (nowMs - last < _dynamicScheduleThrottleMs) return;
+
+    if (zodiac == null) {
+      await prefs.setInt(_kLastDynamicSchedule, nowMs);
+      return;
+    }
+
+    try {
+      final jsonResponse = await AIService.getNotificationSchedule(
+        zodiac,
+        language,
+        5,
+        startDate: DateTime.now(),
+      );
+      final data = jsonDecode(jsonResponse) as Map<String, dynamic>;
+
+      final morning = (data['morning'] as List? ?? []).map((e) => e.toString()).toList();
+      final evening = (data['evening'] as List? ?? []).map((e) => e.toString()).toList();
+      final afternoon = (data['afternoon'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+
+      await scheduleDynamicNotifications(
+        morning: morning,
+        evening: evening,
+        afternoonAI: afternoon,
+      );
+      await prefs.setInt(_kLastDynamicSchedule, nowMs);
+    } catch (e) {
+      if (kDebugMode) debugPrint('bootstrapDynamic failed: $e');
+    }
+  }
+
+  // --- Permission Dialog (UI layer) ---
 
   Future<void> checkPermissions(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     bool? asked = prefs.getBool('notification_permission_asked');
 
-    bool enabled = await _isSystemPermissionGranted();
+    bool enabled = await hasPermission();
     if (enabled) {
-      scheduleDailyNotifications();
+      await scheduleDailyNotifications();
       return;
     }
 
@@ -152,7 +215,10 @@ class NotificationService with WidgetsBindingObserver {
               onPressed: () async {
                 Navigator.pop(ctx);
                 await prefs.setBool('notification_permission_asked', true);
-                _requestSystemPermission();
+                final granted = await requestPermission();
+                if (granted) {
+                  await scheduleDailyNotifications();
+                }
               },
               child: const Text("Yes, Enable"),
             ),
@@ -162,18 +228,7 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  Future<bool> _isSystemPermissionGranted() async {
-    return OneSignal.Notifications.permission;
-  }
-
-  Future<void> _requestSystemPermission() async {
-    await OneSignal.Notifications.requestPermission(true);
-    if (await _isSystemPermissionGranted()) {
-      scheduleDailyNotifications();
-    }
-  }
-
-  // --- Scheduling Logic ---
+  // --- Scheduling ---
 
   Future<void> scheduleDailyNotifications({
     String? dailyTitle,
@@ -189,7 +244,6 @@ class NotificationService with WidgetsBindingObserver {
     final String dTitle = dailyTitle ?? "🌞 Aaj ka rashifal ready hai";
     final String dBody = dailyBody ?? "Jaaniye aaj ka shubh samay aur din ka haal.";
 
-    // Schedule System Notification
     tz.TZDateTime dailyDate = _nextInstanceOfTime(7, 30);
     await _scheduleDaily(
       id: 101,
@@ -198,12 +252,11 @@ class NotificationService with WidgetsBindingObserver {
       scheduledDate: dailyDate,
     );
 
-    // Save to Local History
     await _saveNotificationToStorage(
       dTitle,
       dBody,
       "Local",
-      true, // Daily is important
+      true,
       scheduledTime: dailyDate,
     );
 
@@ -222,7 +275,6 @@ class NotificationService with WidgetsBindingObserver {
         scheduledDate: eveningDate,
       );
 
-      // Save next occurrence to History
       await _saveNotificationToStorage(
         eTitle,
         eBody,
@@ -233,18 +285,17 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> scheduleDynamicNotifications(
-    List<String> morning,
-    List<String> evening,
-    List<Map<String, dynamic>> afternoon
-  ) async {
-    await flutterLocalNotificationsPlugin.cancel(101);
+  Future<void> scheduleDynamicNotifications({
+    required List<String> morning,
+    required List<String> evening,
+    required List<Map<String, dynamic>> afternoonAI,
+  }) async {
+    await flutterLocalNotificationsPlugin.cancelAll();
 
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     int count = morning.length < evening.length ? morning.length : evening.length;
 
     for (int i = 0; i < count; i++) {
-      // 1. Morning (8:00 AM)
       tz.TZDateTime morningDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 8, 0)
           .add(Duration(days: i + 1));
 
@@ -259,10 +310,11 @@ class NotificationService with WidgetsBindingObserver {
             'Daily Horoscope',
             importance: Importance.max,
             priority: Priority.high,
+            icon: 'ic_launcher',
             styleInformation: BigTextStyleInformation(''),
           ),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
 
@@ -274,7 +326,6 @@ class NotificationService with WidgetsBindingObserver {
         scheduledTime: morningDate,
       );
 
-      // 2. Evening (7:00 PM)
       tz.TZDateTime eveningDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 19, 0)
           .add(Duration(days: i + 1));
 
@@ -289,10 +340,11 @@ class NotificationService with WidgetsBindingObserver {
             'Evening Guidance',
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
+            icon: 'ic_launcher',
             styleInformation: BigTextStyleInformation(''),
           ),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
 
@@ -305,9 +357,8 @@ class NotificationService with WidgetsBindingObserver {
       );
     }
 
-    // 3. Afternoon / Festivals (Flexible)
-    for (int i = 0; i < afternoon.length; i++) {
-       var item = afternoon[i];
+    for (int i = 0; i < afternoonAI.length; i++) {
+       var item = afternoonAI[i];
        String msg = item['message']?.toString() ?? "✨ Check your horoscope";
        int offset = (item['day_offset'] is int) ? item['day_offset'] : 0;
        int hour = (item['hour'] is int) ? item['hour'] : 14;
@@ -315,12 +366,7 @@ class NotificationService with WidgetsBindingObserver {
        tz.TZDateTime festivalDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, 0)
           .add(Duration(days: offset));
 
-       // Ensure we don't schedule in the past if offset is 0 and hour passed
-       if (festivalDate.isBefore(now)) {
-         festivalDate = festivalDate.add(const Duration(days: 1)); // Just shift to next day or skip?
-         // Better to just skip if it's already passed for today
-         if (festivalDate.isBefore(now)) continue;
-       }
+       if (festivalDate.isBefore(now)) continue;
 
        await flutterLocalNotificationsPlugin.zonedSchedule(
         3000 + i,
@@ -333,10 +379,11 @@ class NotificationService with WidgetsBindingObserver {
             'Festival Alerts',
             importance: Importance.high,
             priority: Priority.high,
+            icon: 'ic_launcher',
             color: Colors.redAccent,
           ),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.dateAndTime,
       );
 
@@ -346,6 +393,51 @@ class NotificationService with WidgetsBindingObserver {
         "AI-Festival",
         true,
         scheduledTime: festivalDate,
+      );
+    }
+  }
+
+  Future<void> _scheduleFestivals({int daysAhead = 14}) async {
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    final upcoming = HinduFestivals.upcomingFrom(
+      now.toLocal(),
+      days: daysAhead,
+    );
+
+    int id = 4000;
+    for (final entry in upcoming) {
+      final f = entry.festival;
+      final d = entry.date;
+      final tz.TZDateTime scheduled = tz.TZDateTime(
+        tz.local, d.year, d.month, d.day, f.hour, 0,
+      );
+      if (scheduled.isBefore(now)) continue;
+
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id++,
+        f.title,
+        f.body,
+        scheduled,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'festival_channel',
+            'Festival Alerts',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: 'ic_launcher',
+            color: Colors.redAccent,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dateAndTime,
+      );
+
+      await _saveNotificationToStorage(
+        f.title,
+        f.body,
+        "Festival",
+        true,
+        scheduledTime: scheduled,
       );
     }
   }
@@ -363,10 +455,11 @@ class NotificationService with WidgetsBindingObserver {
           channelDescription: 'Daily updates for your zodiac',
           importance: Importance.max,
           priority: Priority.high,
+          icon: 'ic_launcher',
           color: AppColors.primaryGold,
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -384,10 +477,11 @@ class NotificationService with WidgetsBindingObserver {
           channelDescription: 'Evening astrological insights',
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
+          icon: 'ic_launcher',
           color: AppColors.primaryPurple,
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );
   }
@@ -433,13 +527,13 @@ class NotificationService with WidgetsBindingObserver {
           'Updates',
           importance: Importance.high,
           priority: Priority.high,
+          icon: 'ic_launcher',
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
 
     await prefs.setString('last_triggered_notif_date', today);
-    // Save locally
     await _saveNotificationToStorage(title, body, "Local", false, scheduledTime: scheduledDate);
   }
 
@@ -465,20 +559,15 @@ class NotificationService with WidgetsBindingObserver {
     String title = notification.title ?? "New Notification";
     String body = notification.body ?? "";
 
-    // Extract Launch URL
     String? launchUrl = notification.launchUrl;
     if (launchUrl == null && notification.additionalData != null) {
-      // Check additional data for custom keys if used
       if (notification.additionalData!.containsKey('launchUrl')) {
         launchUrl = notification.additionalData!['launchUrl'] as String?;
       }
     }
 
-    // Extract Big Picture / Large Icon
     String? imageUrl = notification.bigPicture;
     if (imageUrl == null && notification.largeIcon != null) {
-      // OneSignal might provide largeIcon as URL or Resource ID.
-      // If it looks like a URL, use it.
       if (notification.largeIcon!.startsWith("http")) {
         imageUrl = notification.largeIcon;
       }
@@ -488,8 +577,8 @@ class NotificationService with WidgetsBindingObserver {
       title,
       body,
       "OneSignal",
-      true, // Important
-      scheduledTime: DateTime.now(), // Always now for OneSignal
+      true,
+      scheduledTime: DateTime.now(),
       launchUrl: launchUrl,
       imageUrl: imageUrl,
     );
@@ -507,8 +596,6 @@ class NotificationService with WidgetsBindingObserver {
     DateTime timestamp = scheduledTime ?? DateTime.now();
     String timeStr = timestamp.toIso8601String();
 
-    // DUPLICATE CHECK:
-    // Check if an identical notification (Same Title, Same Body) exists for the SAME DAY.
     bool isDuplicate = notifications.any((n) {
       if (n['title'] != title || n['body'] != body) return false;
       DateTime? existingTime;
@@ -523,10 +610,9 @@ class NotificationService with WidgetsBindingObserver {
     });
 
     if (isDuplicate) {
-      return; // Skip saving
+      return;
     }
 
-    // Insert new notification
     notifications.add({
       'id': DateTime.now().millisecondsSinceEpoch.toString() + (scheduledTime?.minute.toString() ?? ""),
       'title': title,
@@ -539,14 +625,12 @@ class NotificationService with WidgetsBindingObserver {
       'imageUrl': imageUrl,
     });
 
-    // Sort by timestamp descending
     notifications.sort((a, b) {
       DateTime ta = DateTime.parse(a['timestamp']);
       DateTime tb = DateTime.parse(b['timestamp']);
       return tb.compareTo(ta);
     });
 
-    // Limit storage to last 50
     if (notifications.length > 50) {
       notifications = notifications.sublist(0, 50);
     }
@@ -580,7 +664,6 @@ class NotificationService with WidgetsBindingObserver {
   }
 
   Future<void> markAllAsRead() async {
-    // Legacy support or fallback if needed
     List<Map<String, dynamic>> notifications = await getNotifications();
     bool changed = false;
     final now = DateTime.now();
@@ -604,7 +687,6 @@ class NotificationService with WidgetsBindingObserver {
     List<Map<String, dynamic>> notifications = await getNotifications();
     final now = DateTime.now();
 
-    // Count unread ONLY if the time has passed
     int count = notifications.where((n) {
       bool isUnread = n['read'] == false;
       DateTime ts = DateTime.parse(n['timestamp']);
@@ -612,7 +694,6 @@ class NotificationService with WidgetsBindingObserver {
       return isUnread && isVisible;
     }).length;
 
-    // Force UI update
     unreadCount.value = count;
   }
 }

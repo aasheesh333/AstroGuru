@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Automatic daily notifications not firing on cold start: the schedule was
+  only triggered from `MainScreen`'s post-frame callback via
+  `checkPermissions`, which was gated on OneSignal being configured. Moved
+  static + festival scheduling to `NotificationService.bootstrapStatic()`,
+  called from `main()` before `runApp` and independent of OneSignal.
+- Festival notification for "today" silently shifted to "tomorrow at the
+  same hour" when the scheduled hour was already past; now correctly
+  skipped (no shift, no ghost notification).
+- Static evening notifications (Mon/Wed/Fri/Sat 8:30 PM) were not cancelled
+  when the dynamic AI schedule ran, leaving stale entries from the
+  previous cycle. `scheduleDynamicNotifications` now calls `cancelAll()`
+  before re-scheduling.
+- `AndroidScheduleMode.exactAllowWhileIdle` is user-revocable on Android
+  12+; the OS silently degrades to never-fire when denied. Switched all
+  scheduled notifications to `inexactAllowWhileIdle` to remove the
+  `SCHEDULE_EXACT_ALARM` failure mode.
+- Status-bar small icon now explicitly set to `ic_launcher` on every
+  `AndroidNotificationDetails` (previously unset, falling back to a blank
+  white square on most devices).
+
+### Added
+- `lib/logic/hindu_festivals.dart` — hardcoded Hindu-festival table
+  (Diwali, Holi, Navratri, Dussehra, Janmashtami, Ram Navami, Karva
+  Chauth, Chhath, Guru Nanak Jayanti, etc.) for 2026 and 2027.
+  `NotificationService._scheduleFestivals()` schedules the next 14 days
+  on every static bootstrap, so a real festival notification fires
+  regardless of what the AI returns.
+- `NotificationService.bootstrapStatic()` and `bootstrapDynamic({zodiac,
+  language})` — split entry points. Static is called from `main()`
+  before `runApp`; dynamic is throttled to once every 3 days and called
+  from `MainScreen` after the user-provider is ready. Throttle timestamp
+  is also cleared on language change to force a refresh.
+- `NotificationService.hasPermission()` and `requestPermission()` —
+  context-free permission API using the
+  `flutter_local_notifications` plugin's `areNotificationsEnabled` /
+  `requestNotificationsPermission`, no longer dependent on OneSignal.
+- `test/hindu_festivals_test.dart` — table integrity tests
+  (sortedness, year-spanning window, Diwali/Holi/Janmashtami present).
+
 ### Security
 - **Groq API key removed from the APK.** All AI requests now go through a
   server-side Firebase Cloud Function (`functions/src/index.ts`

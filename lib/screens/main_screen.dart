@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,7 +6,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../logic/user_provider.dart';
 import '../theme/app_colors.dart';
 import '../services/notification_service.dart';
-import '../services/ai_service.dart';
 import 'home_screen.dart';
 import 'horoscope_screen.dart';
 import 'kundli_input_screen.dart';
@@ -46,69 +44,21 @@ class _MainScreenState extends State<MainScreen> {
     // Check Notification Permissions and Schedule Dynamic Content
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService().checkPermissions(context);
-      _checkAndScheduleDynamicNotifications();
+      _bootstrapDynamicNotifications();
       // Load user data immediately on app launch
       Provider.of<UserProvider>(context, listen: false).loadUserData();
     });
   }
 
-  Future<void> _checkAndScheduleDynamicNotifications() async {
-    // 1. Check last scheduled time to avoid API spam
-    final prefs = await SharedPreferences.getInstance();
-    final lastScheduled = prefs.getInt('last_notification_schedule_time');
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final threeDays = 3 * 24 * 60 * 60 * 1000;
-
-    if (lastScheduled != null && (now - lastScheduled) < threeDays) {
-      return; // Already scheduled recently
-    }
-
-    // 2. Prepare Context (Zodiac & Language)
+  Future<void> _bootstrapDynamicNotifications() async {
     if (!mounted) return;
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final zodiac = userProvider.zodiac; // Nullable (if not logged in or not set)
-
-    // Use stored language or default to en
+    final zodiac = userProvider.zodiac;
     final language = AppLocalizations.of(context)?.localeName ?? 'en';
-
-    // 3. Fetch from AI in Background
-    try {
-       // Generate 5 days of content
-       final jsonResponse = await AIService.getNotificationSchedule(
-         zodiac,
-         language,
-         5,
-         startDate: DateTime.now(),
-       );
-       final data = jsonDecode(jsonResponse);
-
-       if (data is Map) {
-         List<String> morning = [];
-         List<String> evening = [];
-         List<Map<String, dynamic>> afternoon = [];
-
-         if (data.containsKey('morning')) {
-            morning = (data['morning'] as List).map((e) => e.toString()).toList();
-         }
-         if (data.containsKey('evening')) {
-            evening = (data['evening'] as List).map((e) => e.toString()).toList();
-         }
-         if (data.containsKey('afternoon')) {
-            afternoon = (data['afternoon'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
-         }
-
-         if (morning.isNotEmpty && evening.isNotEmpty) {
-            // 4. Schedule
-            await NotificationService().scheduleDynamicNotifications(morning, evening, afternoon);
-
-            // 5. Update timestamp
-            await prefs.setInt('last_notification_schedule_time', now);
-         }
-       }
-    } catch (e) {
-      // Silently fail or fallback to static is handled by NotificationService's daily recurring default
-      // if we haven't cancelled it yet. But since we use static as fallback, it's fine.
-    }
+    await NotificationService().bootstrapDynamic(
+      zodiac: zodiac,
+      language: language,
+    );
   }
 
   @override
@@ -119,12 +69,10 @@ class _MainScreenState extends State<MainScreen> {
       final currentLocale = localizations.localeName;
       if (_lastLocale != currentLocale) {
         _lastLocale = currentLocale;
-        // Trigger rescheduling logic when language changes
-        // Force update regardless of time limit to ensure language matches
         Future.microtask(() async {
            final prefs = await SharedPreferences.getInstance();
-           await prefs.remove('last_notification_schedule_time'); // Force refresh
-           _checkAndScheduleDynamicNotifications();
+           await prefs.remove('last_notification_schedule_time');
+           _bootstrapDynamicNotifications();
         });
       }
     }
