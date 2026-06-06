@@ -26,7 +26,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController = TextEditingController(); // Added email controller
-  final TextEditingController _addressController = TextEditingController();
   DateTime? _selectedDate;
   bool _isLoading = false;
   bool _isGuest = false;
@@ -48,7 +47,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _dobController.text = "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}";
         } catch (_) {}
       }
-      _addressController.text = userProvider.address;
       if (mounted) setState(() => _loaded = true);
     });
   }
@@ -117,7 +115,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await userProvider.updateProfile(
         newName: _nameController.text.trim(),
         newDob: _selectedDate,
-        newAddress: _addressController.text.trim(),
       );
 
       if (mounted) {
@@ -371,19 +368,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       });
                     }
                   },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _addressController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.currentAddress,
-                    prefixIcon: const Icon(Icons.location_on, color: AppColors.primaryGold),
-                    filled: true,
-                    fillColor: AppColors.surfaceColor,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
                 ),
                 const SizedBox(height: 16),
 
