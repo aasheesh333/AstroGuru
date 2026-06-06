@@ -8,7 +8,6 @@ import '../logic/language_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/zodiac_utils.dart'; // Added import
-import '../widgets/banner_ad_widget.dart';
 
 class HoroscopeDetailScreen extends StatefulWidget {
   final String signName;
@@ -340,7 +339,6 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
             ],
           ),
           const SizedBox(height: 20),
-          const BannerAdWidget(),
         ],
       ),
     );

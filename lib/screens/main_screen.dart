@@ -14,7 +14,6 @@ import 'kundli_input_screen.dart';
 import 'chat_screen.dart';
 import 'profile_screen.dart';
 import 'notification_screen.dart';
-import '../widgets/banner_ad_widget.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -255,46 +254,40 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: _screens[_currentIndex],
       ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const BannerAdWidget(),
-          Container(
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.surfaceColor, width: 1)),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppColors.surfaceColor, width: 1)),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          type: BottomNavigationBarType.fixed, // Ensure items don't shift
+          backgroundColor: AppColors.scaffoldBackgroundColor, // Match scaffold background or surface
+          selectedItemColor: AppColors.primaryGold,
+          unselectedItemColor: Colors.grey,
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.home_filled),
+              label: AppLocalizations.of(context)!.navHome,
             ),
-            child: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: (index) => setState(() => _currentIndex = index),
-              type: BottomNavigationBarType.fixed, // Ensure items don't shift
-              backgroundColor: AppColors.scaffoldBackgroundColor, // Match scaffold background or surface
-              selectedItemColor: AppColors.primaryGold,
-              unselectedItemColor: Colors.grey,
-              items: [
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.home_filled),
-                  label: AppLocalizations.of(context)!.navHome,
-                ),
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.star),
-                  label: AppLocalizations.of(context)!.navHoroscope,
-                ),
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.auto_awesome),
-                  label: AppLocalizations.of(context)!.navKundli,
-                ),
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.chat_bubble),
-                  label: AppLocalizations.of(context)!.navChat,
-                ),
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.person),
-                  label: AppLocalizations.of(context)!.navProfile,
-                ),
-              ],
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.star),
+              label: AppLocalizations.of(context)!.navHoroscope,
             ),
-          ),
-        ],
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.auto_awesome),
+              label: AppLocalizations.of(context)!.navKundli,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.chat_bubble),
+              label: AppLocalizations.of(context)!.navChat,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.person),
+              label: AppLocalizations.of(context)!.navProfile,
+            ),
+          ],
+        ),
       ),
     );
   }
