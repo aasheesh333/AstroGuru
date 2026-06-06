@@ -26,6 +26,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController = TextEditingController(); // Added email controller
+  final TextEditingController _professionController = TextEditingController();
+  String? _gender;
+  String? _maritalStatus;
   DateTime? _selectedDate;
   bool _isLoading = false;
   bool _isGuest = false;
@@ -47,6 +50,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _dobController.text = "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}";
         } catch (_) {}
       }
+      _professionController.text = userProvider.profession;
+      _gender = userProvider.gender.isEmpty ? null : userProvider.gender;
+      _maritalStatus = userProvider.maritalStatus.isEmpty ? null : userProvider.maritalStatus;
       if (mounted) setState(() => _loaded = true);
     });
   }
@@ -115,6 +121,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await userProvider.updateProfile(
         newName: _nameController.text.trim(),
         newDob: _selectedDate,
+        newGender: _gender ?? '',
+        newProfession: _professionController.text.trim(),
+        newMaritalStatus: _maritalStatus ?? '',
       );
 
       if (mounted) {
@@ -368,6 +377,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       });
                     }
                   },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _gender,
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.genderLabel,
+                    prefixIcon: const Icon(Icons.person_outline, color: AppColors.primaryGold),
+                    filled: true,
+                    fillColor: AppColors.surfaceColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  dropdownColor: AppColors.surfaceColor,
+                  items: [
+                    DropdownMenuItem(value: 'male', child: Text(AppLocalizations.of(context)!.genderMale)),
+                    DropdownMenuItem(value: 'female', child: Text(AppLocalizations.of(context)!.genderFemale)),
+                    DropdownMenuItem(value: 'other', child: Text(AppLocalizations.of(context)!.genderOther)),
+                    DropdownMenuItem(value: 'prefer_not_to_say', child: Text(AppLocalizations.of(context)!.genderPreferNot)),
+                  ],
+                  onChanged: (v) => setState(() => _gender = v),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _maritalStatus,
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.maritalStatusLabel,
+                    prefixIcon: const Icon(Icons.favorite_border, color: AppColors.primaryGold),
+                    filled: true,
+                    fillColor: AppColors.surfaceColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  dropdownColor: AppColors.surfaceColor,
+                  items: [
+                    DropdownMenuItem(value: 'single', child: Text(AppLocalizations.of(context)!.maritalSingle)),
+                    DropdownMenuItem(value: 'married', child: Text(AppLocalizations.of(context)!.maritalMarried)),
+                    DropdownMenuItem(value: 'in_relationship', child: Text(AppLocalizations.of(context)!.maritalInRelationship)),
+                    DropdownMenuItem(value: 'divorced', child: Text(AppLocalizations.of(context)!.maritalDivorced)),
+                    DropdownMenuItem(value: 'widowed', child: Text(AppLocalizations.of(context)!.maritalWidowed)),
+                    DropdownMenuItem(value: 'prefer_not_to_say', child: Text(AppLocalizations.of(context)!.maritalPreferNot)),
+                  ],
+                  onChanged: (v) => setState(() => _maritalStatus = v),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _professionController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context)!.professionLabel,
+                    hintText: AppLocalizations.of(context)!.professionHint,
+                    prefixIcon: const Icon(Icons.work_outline, color: AppColors.primaryGold),
+                    filled: true,
+                    fillColor: AppColors.surfaceColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
                 const SizedBox(height: 16),
 
