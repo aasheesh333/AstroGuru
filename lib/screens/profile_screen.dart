@@ -7,10 +7,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:in_app_review/in_app_review.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
+import '../utils/rate_app_launcher.dart';
 import 'login_screen.dart';
 import 'edit_profile_screen.dart';
 import '../widgets/gradient_button.dart';
@@ -283,7 +283,7 @@ class _ProfileContentState extends State<ProfileContent> {
                 _buildProfileItem(
                   icon: Icons.star_border,
                   title: AppLocalizations.of(context)!.rateApp,
-                  onTap: _requestInAppReview,
+                  onTap: _openPlayStore,
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
@@ -318,8 +318,9 @@ class _ProfileContentState extends State<ProfileContent> {
     );
   }
 
-  Future<void> _requestInAppReview() async {
-    // Reuse the rateApp gate: only ask the user once per 90 days.
+  Future<void> _openPlayStore() async {
+    // Rate-App gate: only ask the user once per 90 days. This both nudges
+    // politely and prevents an aggressive button from spamming the Play Store.
     final prefs = await SharedPreferences.getInstance();
     final lastAsked = prefs.getInt('last_review_asked_at') ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -332,14 +333,13 @@ class _ProfileContentState extends State<ProfileContent> {
       return;
     }
     try {
-      await InAppReview.instance.requestReview();
+      await RateAppLauncher.openPlayStoreListing();
       await prefs.setInt('last_review_asked_at', now);
     } catch (e) {
-      // InAppReview may not be available on all devices/emulators.
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.ratingDialogFailed)),
+        SnackBar(content: Text(l10n.openStoreFailed)),
       );
     }
   }

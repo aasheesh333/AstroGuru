@@ -171,7 +171,7 @@
   ,"welcomeToAstroPrerna": "Welcome to AstroPrerna"
   ,"rateLimitBanner": "Too many actions. Please wait a moment and try again."
   ,"feedbackThanks": "Thanks! We'll ask you again later."
-  ,"ratingDialogFailed": "Could not open the rating dialog."
+  ,"openStoreFailed": "Could not open the rating dialog."
   ,"linkOpenFailed": "Could not open the link."
   ,"preparingKundli": "Preparing your Kundli..."
   ,"sageTyping": "Sage is typing..."

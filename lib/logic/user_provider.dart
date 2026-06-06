@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'kundli_context.dart';
 import 'user_session.dart';
 import 'kundli_service.dart';
 
@@ -12,6 +13,8 @@ class UserProvider extends ChangeNotifier {
   String _name = "User";
   String _email = "";
   String _dob = "";
+  String _birthTime = "";
+  String _birthPlace = "";
   String? _profileImageBase64;
   String? _profileImageUrl;
   String _zodiac = "Aries";
@@ -19,6 +22,8 @@ class UserProvider extends ChangeNotifier {
   String get name => _name;
   String get email => _email;
   String get dob => _dob;
+  String get birthTime => _birthTime;
+  String get birthPlace => _birthPlace;
   String? get profileImageBase64 => _profileImageBase64;
   String? get profileImageUrl => _profileImageUrl;
   String get zodiac => _zodiac;
@@ -38,6 +43,8 @@ class UserProvider extends ChangeNotifier {
         // Priority: Session (Local Cache) -> Firestore -> Auth Profile
         _name = await UserSession.getUserName();
         _dob = await UserSession.getUserDob();
+        _birthTime = await UserSession.getBirthTime();
+        _birthPlace = await UserSession.getBirthPlace();
         _profileImageBase64 = await UserSession.getProfileImage();
         _profileImageUrl = await UserSession.getProfileImageUrl();
 
@@ -125,6 +132,8 @@ class UserProvider extends ChangeNotifier {
   Future<void> updateProfile({
     String? newName,
     DateTime? newDob,
+    String? newBirthTime,
+    String? newBirthPlace,
     String? newImageBase64,
     String? newImageUrl,
     bool updateFirestore = true
@@ -156,6 +165,26 @@ class UserProvider extends ChangeNotifier {
       }
     }
 
+    if (newBirthTime != null) {
+      _birthTime = newBirthTime;
+      await UserSession.setBirthTime(newBirthTime);
+      if (updateFirestore) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+          {'birth_time': newBirthTime}, SetOptions(merge: true)
+        );
+      }
+    }
+
+    if (newBirthPlace != null) {
+      _birthPlace = newBirthPlace;
+      await UserSession.setBirthPlace(newBirthPlace);
+      if (updateFirestore) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+          {'birth_place': newBirthPlace}, SetOptions(merge: true)
+        );
+      }
+    }
+
     if (newImageUrl != null) {
       _profileImageUrl = newImageUrl;
       _profileImageBase64 = null;
@@ -183,8 +212,55 @@ class UserProvider extends ChangeNotifier {
   void clear() {
     _name = "User";
     _email = "";
+    _birthTime = "";
+    _birthPlace = "";
     _profileImageBase64 = null;
     _profileImageUrl = null;
     notifyListeners();
+  }
+
+  /// Builds a 1-paragraph, AI-friendly narrative of this user's kundli
+  /// chart, suitable for embedding in prompts (horoscope, chat, remedies).
+  ///
+  /// Returns the empty string when:
+  /// * the user is a guest
+  /// * no DOB is on file
+  /// * the chart calculation fails for any reason
+  ///
+  /// Callers should check `.isNotEmpty` before passing the value to an AI
+  /// service; the AI service methods already accept `null`/empty context
+  /// and fall back to zodiac-only prompts.
+  String getKundliContext() {
+    if (_dob.isEmpty) return '';
+    DateTime? dob;
+    try {
+      dob = DateTime.parse(_dob);
+    } catch (_) {
+      return '';
+    }
+
+    final (lat, lon) = KundliService.resolveLocation(_birthPlace);
+    final hourMinute = _birthTime.split(':');
+    int hour = 0;
+    int minute = 0;
+    if (hourMinute.length >= 2) {
+      hour = int.tryParse(hourMinute[0]) ?? 0;
+      minute = int.tryParse(hourMinute[1]) ?? 0;
+    }
+    final dt = DateTime(dob.year, dob.month, dob.day, hour, minute);
+
+    Map<String, dynamic> chart;
+    try {
+      chart = KundliService.calculateChart(dt, lat, lon);
+    } catch (_) {
+      return '';
+    }
+
+    return KundliContextBuilder.build(
+      chart: chart,
+      birthDate: dob,
+      birthTime: _birthTime.isEmpty ? null : _birthTime,
+      birthPlace: _birthPlace.isEmpty ? null : _birthPlace,
+    );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:sweph/sweph.dart';
+import 'kundli_context.dart';
 import 'static_cities.dart';
 
 class KundliService {
@@ -131,13 +132,18 @@ class KundliService {
     return "Aries";
   }
 
+  /// Public re-export of the rashi-name lookup so screens can use a single
+  /// source of truth instead of duplicating the array.
+  static String? rashiNameFor(int? rashi) =>
+      KundliContextBuilder.rashiNameFor(rashi);
+
   static String _generateSummary(Map<String, dynamic> chart) {
-    StringBuffer sb = StringBuffer();
-    sb.write("Lagna: ${chart['lagna']['rashi']}, ");
-    sb.write("Moon: ${(chart['planets'] as List).firstWhere((p) => p['name'] == 'Moon')['rashi']}, ");
-    sb.write("Sun: ${(chart['planets'] as List).firstWhere((p) => p['name'] == 'Sun')['rashi']}, ");
-    sb.write("Doshas: ${(chart['doshas'] as List).join(', ')}");
-    return sb.toString();
+    // Delegate to KundliContextBuilder so the AI gets a narrative it can
+    // actually read (Lagna: Cancer, Moon: Scorpio) instead of raw rashi ids.
+    // We don't pass a birth date/time/place here because the AI call sites
+    // (RemedyService, chat) already have access to that data from
+    // UserProvider; the chart-only summary is just the chart's portion.
+    return KundliContextBuilder.build(chart: chart);
   }
 
   static String _getPlanetName(HeavenlyBody id) {

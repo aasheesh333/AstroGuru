@@ -100,6 +100,29 @@ class UserSession {
     await setString('user_language', languageCode);
   }
 
+  /// Birth time as an ISO-like string in `HH:mm` 24h format. Returns an
+  /// empty string when unset rather than null so callers can `.isNotEmpty`
+  /// guard without null-checks.
+  static Future<String> getBirthTime() async {
+    return (await getString('user_birth_time')) ?? "";
+  }
+
+  static Future<void> setBirthTime(String hhmm) async {
+    await setString('user_birth_time', hhmm);
+  }
+
+  /// Birth place free-text (e.g. "New Delhi, India"). Returns empty when
+  /// unset. The kundli service re-resolves this to lat/lon via the bundled
+  /// city table on demand; we persist the label so the AI prompt can
+  /// mention the actual place name to the user.
+  static Future<String> getBirthPlace() async {
+    return (await getString('user_birth_place')) ?? "";
+  }
+
+  static Future<void> setBirthPlace(String place) async {
+    await setString('user_birth_place', place);
+  }
+
   static Future<void> clearSession() async {
     // We do NOT clear SharedPreferences entirely, only the 'current' pointers if any.
     // But since we use prefixes, logging out essentially switches the prefix to "" (guest).

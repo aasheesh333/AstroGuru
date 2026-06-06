@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shimmer/shimmer.dart';
 import '../logic/language_provider.dart';
+import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
@@ -55,6 +56,12 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
 
     try {
       final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      // The local user is always "name1" by convention. We pass their full
+      // kundli context to the AI so the analysis can reference Moon, Lagna,
+      // and doshas. The partner only has a name + sign in the form, so we
+      // pass nothing for them.
+      final myKundliContext = userProvider.getKundliContext();
 
       // Calculate local score
       final int matchScore = LoveMatchLogic.calculate(name1, _sign1, name2, _sign2);
@@ -85,6 +92,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         _sign2,
         lang,
         forcedScore: matchScore,
+        kundliContext1: myKundliContext,
       );
 
       final data = jsonDecode(response);

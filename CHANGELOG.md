@@ -29,23 +29,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   white square on most devices).
 
 ### Added
-- `lib/logic/hindu_festivals.dart` — hardcoded Hindu-festival table
-  (Diwali, Holi, Navratri, Dussehra, Janmashtami, Ram Navami, Karva
-  Chauth, Chhath, Guru Nanak Jayanti, etc.) for 2026 and 2027.
-  `NotificationService._scheduleFestivals()` schedules the next 14 days
-  on every static bootstrap, so a real festival notification fires
-  regardless of what the AI returns.
-- `NotificationService.bootstrapStatic()` and `bootstrapDynamic({zodiac,
-  language})` — split entry points. Static is called from `main()`
-  before `runApp`; dynamic is throttled to once every 3 days and called
-  from `MainScreen` after the user-provider is ready. Throttle timestamp
-  is also cleared on language change to force a refresh.
-- `NotificationService.hasPermission()` and `requestPermission()` —
-  context-free permission API using the
-  `flutter_local_notifications` plugin's `areNotificationsEnabled` /
-  `requestNotificationsPermission`, no longer dependent on OneSignal.
 - `test/hindu_festivals_test.dart` — table integrity tests
   (sortedness, year-spanning window, Diwali/Holi/Janmashtami present).
+- `test/kundli_context_test.dart` — verifies the kundli narrative builder
+  produces sign names (not raw rashi ids), handles missing nakshatra
+  gracefully, and formats the birth date / time / place prefix correctly.
+- `test/ai_service_prompts_test.dart` — verifies that the daily, weekly,
+  and monthly horoscope prompts, the AI Sage chat system prompt, the
+  remedies prompt, and the quote prompt all fold the user's kundli
+  context into the system prompt when provided, and that the legacy
+  "General Query." placeholder is gone.
+- `lib/utils/rate_app_launcher.dart` — single source of truth for the
+  Android `applicationId` and the `openStoreListing()` call.
+- `UserProvider.birthTime` and `birthPlace` fields, persisted to
+  per-user SharedPreferences via `UserSession.setBirthTime` /
+  `setBirthPlace`. The kundli input screen now writes these on Generate.
+- `UserProvider.getKundliContext()` — convenience method that runs
+  `KundliService.calculateChart` over the user's stored birth details
+  and returns a 1-paragraph narrative suitable for AI prompts.
+- `lib/logic/kundli_context.dart` — `KundliContextBuilder.build({chart,
+  birthDate, birthTime, birthPlace})` produces a multi-line string with
+  sign names (no raw rashi ids) and doshas. `KundliService._generateSummary`
+  now delegates to this builder so all consumers of the kundli summary
+  (remedies, chat, etc.) get the new format automatically.
+
+### Changed
+- Rate App menu item and home-screen auto-trigger now call
+  `InAppReview.openStoreListing()` instead of
+  `InAppReview.requestReview()`. This opens the Play Store listing
+  directly (no in-app sheet quota, no "wait until Google allows it"
+  behavior). The 90-day manual cooldown and the 7-day + 3-action
+  auto-trigger gate are unchanged.
+- AI prompts (daily/weekly/monthly horoscope, daily quote, AI Sage
+  chat, love match, remedies) now accept an optional `kundliContext`
+  and inject it into the system prompt. Call sites in
+  `home_screen`, `horoscope_detail_screen`, `chat_screen`, and
+  `love_match_screen` build the context from `UserProvider` and pass
+  it through. The result: AI responses reference the user's actual
+  Lagna, Moon sign, and doshas instead of a generic zodiac-only summary.
+- Default Groq temperature lowered from `0.7` to `0.6` to make
+  horoscopes feel less like obvious template copy.
+- L10n key `ratingDialogFailed` renamed to `openStoreFailed` (message
+  updated to "Could not open the Play Store.") across all 13 ARB files.
 
 ### Security
 - **Groq API key removed from the APK.** All AI requests now go through a

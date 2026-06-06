@@ -337,12 +337,15 @@ class ChatContentState extends State<ChatContent> {
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
     final provider = Provider.of<UserProvider>(context, listen: false);
 
-    // Build context with latest user details
-    String kundliSummary = "User Name: ${provider.name}. ";
-    if (provider.dob.isNotEmpty) {
-      kundliSummary += "DOB: ${provider.dob}. Zodiac: ${provider.zodiac}. ";
+    // Build a kundli context for the AI Sage. When the user has a full
+    // birth record (DOB + time + place) this is the narrative produced by
+    // KundliContextBuilder — Lagna, Moon, Sun, doshas. When the user only
+    // has a zodiac on file, fall back to a minimal "Zodiac: <sign>" string
+    // so the Sage still knows who it's talking to.
+    String kundliSummary = provider.getKundliContext();
+    if (kundliSummary.isEmpty) {
+      kundliSummary = "User Name: ${provider.name}. Zodiac: ${provider.zodiac}.";
     }
-    kundliSummary += "General Query.";
 
     try {
       // Pass history (excluding the message we just added effectively, handled by logic but passing all for context)

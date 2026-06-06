@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:in_app_review/in_app_review.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/rate_app_launcher.dart';
 import 'login_screen.dart';
 import 'horoscope_detail_screen.dart';
 import 'love_match_screen.dart';
@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final actions = prefs.getInt('completed_actions') ?? 0;
       if (actions < 3) return;
 
-      await InAppReview.instance.requestReview();
+      await RateAppLauncher.openPlayStoreListing();
       await prefs.setBool('in_app_review_requested', true);
     } catch (_) {
       // InAppReview may not be available on emulators / unsupported devices.
@@ -141,9 +141,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
 
     String sign = isGuest ? "Aries" : userProvider.zodiac;
+    // For non-guest users with a DOB, build the kundli context once and
+    // pass it to every AI call. For guests, the kundli context is empty
+    // and the AI service falls back to zodiac-only prompts.
+    final kundliContext = isGuest ? null : userProvider.getKundliContext();
 
     try {
-      String horoscopeJson = await AIService.getDailyHoroscope(sign, DateTime.now(), lang);
+      String horoscopeJson = await AIService.getDailyHoroscope(
+        sign,
+        DateTime.now(),
+        lang,
+        kundliContext: kundliContext,
+      );
       await prefs.setString('daily_horoscope_json_$lang', horoscopeJson);
     } catch (e) {
       // Keep old or default
@@ -151,7 +160,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Fetch Quote
     try {
-      String quoteJson = await AIService.getDailyQuote(isGuest ? null : sign, lang);
+      String quoteJson = await AIService.getDailyQuote(
+        isGuest ? null : sign,
+        lang,
+        kundliContext: kundliContext,
+      );
       await prefs.setString('daily_quote_json_$lang', quoteJson);
     } catch (e) {
       // Keep old

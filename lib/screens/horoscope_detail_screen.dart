@@ -5,6 +5,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../logic/language_provider.dart';
+import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/zodiac_utils.dart'; // Added import
@@ -87,6 +88,8 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
   Future<void> _fetchDaily() async {
     setState(() => _isDailyLoading = true);
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final kundliContext = userProvider.getKundliContext();
     final now = DateTime.now();
     final dateKey = DateFormat('yyyy-MM-dd').format(now);
     final cacheKey = 'horoscope_${lang}_${widget.signName}_daily_$dateKey';
@@ -107,7 +110,12 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
         }
       }
 
-      final jsonStr = await AIService.getDailyHoroscope(widget.signName, now, lang);
+      final jsonStr = await AIService.getDailyHoroscope(
+        widget.signName,
+        now,
+        lang,
+        kundliContext: kundliContext,
+      );
       final data = jsonDecode(jsonStr);
       await prefs.setString(cacheKey, jsonStr);
 
@@ -131,6 +139,8 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
     if (_isWeeklyLoading) return;
     setState(() => _isWeeklyLoading = true);
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final kundliContext = userProvider.getKundliContext();
     final now = DateTime.now();
     final weekKey = DateFormat('yyyy_w').format(now);
     final cacheKey = 'horoscope_${lang}_${widget.signName}_weekly_$weekKey';
@@ -151,7 +161,12 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
         }
       }
 
-      final jsonStr = await AIService.getWeeklyHoroscope(widget.signName, now, lang);
+      final jsonStr = await AIService.getWeeklyHoroscope(
+        widget.signName,
+        now,
+        lang,
+        kundliContext: kundliContext,
+      );
       final data = jsonDecode(jsonStr);
       await prefs.setString(cacheKey, jsonStr);
 
@@ -175,6 +190,8 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
     if (_isMonthlyLoading) return;
     setState(() => _isMonthlyLoading = true);
     final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final kundliContext = userProvider.getKundliContext();
     final now = DateTime.now();
     final monthKey = DateFormat('yyyy_MM').format(now);
     final cacheKey = 'horoscope_${lang}_${widget.signName}_monthly_$monthKey';
@@ -195,7 +212,12 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
         }
       }
 
-      final jsonStr = await AIService.getMonthlyHoroscope(widget.signName, now, lang);
+      final jsonStr = await AIService.getMonthlyHoroscope(
+        widget.signName,
+        now,
+        lang,
+        kundliContext: kundliContext,
+      );
       final data = jsonDecode(jsonStr);
       await prefs.setString(cacheKey, jsonStr);
 

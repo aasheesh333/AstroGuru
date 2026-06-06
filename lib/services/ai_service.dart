@@ -13,11 +13,16 @@ class AIService {
   static const int _maxAttempts = 3;
   static const String _model = 'llama-3.3-70b-versatile';
 
+  /// Lowered from 0.7 to 0.6 — the higher temperature made horoscopes
+  /// feel like obvious template copy. 0.6 keeps the language natural
+  /// while reducing generic phrasing.
+  static const double _defaultTemperature = 0.6;
+
   static Future<String> _postGroq({
     required List<Map<String, dynamic>> messages,
     bool jsonMode = false,
     int maxTokens = 1024,
-    double temperature = 0.7,
+    double? temperature,
   }) async {
     final apiKey = await KeyManager().getApiKey();
     if (apiKey.isEmpty) {
@@ -30,7 +35,7 @@ class AIService {
         final body = <String, dynamic>{
           'model': _model,
           'messages': messages,
-          'temperature': temperature,
+          'temperature': temperature ?? _defaultTemperature,
           'max_tokens': maxTokens,
         };
         if (jsonMode) {
@@ -85,7 +90,60 @@ class AIService {
     throw TimeoutException('Groq: max retries exceeded');
   }
 
-  static Future<String> getResponse(String systemPrompt, String userPrompt, {bool jsonMode = false}) {
+  // --- Prompt builders (public for testing) -------------------------------
+
+  static String _horoscopeSystemPrompt(String language, String? kundliContext) {
+    final base = "You are an expert Vedic Astrologer. Output language: $language. "
+        "Return ONLY a JSON object with the following keys: 'summary' (2 sentences), "
+        "'love' (forecast), 'career' (forecast), 'health' (forecast), 'lucky_number', "
+        "'lucky_color'. Ensure the JSON is valid.";
+    if (kundliContext == null || kundliContext.isEmpty) return base;
+    return "$base\nPersonalize the forecast for the user whose Kundli is:\n$kundliContext";
+  }
+
+  static String dailyHoroscopeSystemPrompt({
+    required String language,
+    String? kundliContext,
+  }) =>
+      _horoscopeSystemPrompt(language, kundliContext);
+
+  static String dailyHoroscopeUserPrompt({
+    required String sign,
+    required DateTime date,
+  }) =>
+      "Generate a daily horoscope for $sign for ${date.toIso8601String()}.";
+
+  static String weeklyHoroscopeSystemPrompt({
+    required String language,
+    String? kundliContext,
+  }) =>
+      _horoscopeSystemPrompt(language, kundliContext);
+
+  static String weeklyHoroscopeUserPrompt({
+    required String sign,
+    required DateTime date,
+  }) =>
+      "Generate a weekly horoscope for $sign for the week containing ${date.toIso8601String()}.";
+
+  static String monthlyHoroscopeSystemPrompt({
+    required String language,
+    String? kundliContext,
+  }) =>
+      _horoscopeSystemPrompt(language, kundliContext);
+
+  static String monthlyHoroscopeUserPrompt({
+    required String sign,
+    required DateTime date,
+  }) =>
+      "Generate a monthly horoscope for $sign for the month of ${date.month}, ${date.year}.";
+
+  // --- Public API ---------------------------------------------------------
+
+  static Future<String> getResponse(
+    String systemPrompt,
+    String userPrompt, {
+    bool jsonMode = false,
+  }) {
     return _postGroq(
       messages: [
         {'role': 'system', 'content': systemPrompt},
@@ -95,46 +153,112 @@ class AIService {
     );
   }
 
-  static Future<String> getDailyHoroscope(String sign, DateTime date, String language) {
-    final system = "You are an expert Vedic Astrologer. Output language: $language. Return ONLY a JSON object with the following keys: 'summary' (2 sentences), 'love' (forecast), 'career' (forecast), 'health' (forecast), 'lucky_number', 'lucky_color'. Ensure the JSON is valid.";
-    final user = "Generate a daily horoscope for $sign for ${date.toIso8601String()}.";
-    return getResponse(system, user, jsonMode: true);
+  static Future<String> getDailyHoroscope(
+    String sign,
+    DateTime date,
+    String language, {
+    String? kundliContext,
+  }) {
+    return getResponse(
+      dailyHoroscopeSystemPrompt(language: language, kundliContext: kundliContext),
+      dailyHoroscopeUserPrompt(sign: sign, date: date),
+      jsonMode: true,
+    );
   }
 
-  static Future<String> getWeeklyHoroscope(String sign, DateTime date, String language) {
-    final system = "You are an expert Vedic Astrologer. Output language: $language. Return ONLY a JSON object with the following keys: 'summary' (2 sentences), 'love' (forecast), 'career' (forecast), 'health' (forecast), 'lucky_number', 'lucky_color'. Ensure the JSON is valid.";
-    final user = "Generate a weekly horoscope for $sign for the week containing ${date.toIso8601String()}.";
-    return getResponse(system, user, jsonMode: true);
+  static Future<String> getWeeklyHoroscope(
+    String sign,
+    DateTime date,
+    String language, {
+    String? kundliContext,
+  }) {
+    return getResponse(
+      weeklyHoroscopeSystemPrompt(language: language, kundliContext: kundliContext),
+      weeklyHoroscopeUserPrompt(sign: sign, date: date),
+      jsonMode: true,
+    );
   }
 
-  static Future<String> getMonthlyHoroscope(String sign, DateTime date, String language) {
-    final system = "You are an expert Vedic Astrologer. Output language: $language. Return ONLY a JSON object with the following keys: 'summary' (2 sentences), 'love' (forecast), 'career' (forecast), 'health' (forecast), 'lucky_number', 'lucky_color'. Ensure the JSON is valid.";
-    final user = "Generate a monthly horoscope for $sign for the month of ${date.month}, ${date.year}.";
-    return getResponse(system, user, jsonMode: true);
+  static Future<String> getMonthlyHoroscope(
+    String sign,
+    DateTime date,
+    String language, {
+    String? kundliContext,
+  }) {
+    return getResponse(
+      monthlyHoroscopeSystemPrompt(language: language, kundliContext: kundliContext),
+      monthlyHoroscopeUserPrompt(sign: sign, date: date),
+      jsonMode: true,
+    );
   }
 
-  static Future<String> getLoveMatch(String name1, String sign1, String name2, String sign2, String language, {int? forcedScore}) {
+  static Future<String> getLoveMatch(
+    String name1,
+    String sign1,
+    String name2,
+    String sign2,
+    String language, {
+    int? forcedScore,
+    String? kundliContext1,
+    String? kundliContext2,
+  }) {
     String system = "You are an expert Astrologer specializing in relationship compatibility. Output language: $language. Return ONLY a JSON object with keys: 'score' (integer 0-100), 'summary' (short summary), 'detailed_analysis' (paragraph).";
     if (forcedScore != null) {
       system += " IMPORTANT: The calculated compatibility score is $forcedScore%. You MUST output exactly this score in the 'score' field. Write the summary and detailed analysis to match this score level (Low/Medium/High).";
+    }
+    if (kundliContext1 != null && kundliContext1.isNotEmpty) {
+      system += "\nUser 1 ($name1) Kundli: $kundliContext1";
+    }
+    if (kundliContext2 != null && kundliContext2.isNotEmpty) {
+      system += "\nUser 2 ($name2) Kundli: $kundliContext2";
     }
     final user = "Analyze compatibility between $name1 ($sign1) and $name2 ($sign2).";
     return getResponse(system, user, jsonMode: true);
   }
 
-  static Future<String> getDailyQuote(String? sign, String language) {
-    final system = "You are a spiritual guide. Output language: $language. Return ONLY a JSON object with keys: 'quote', 'author'.";
-    final user = sign != null
-        ? "Give me a spiritual quote relevant to a $sign today."
-        : "Give me a general inspiring spiritual quote.";
-    return getResponse(system, user, jsonMode: true);
+  static String quoteSystemPrompt({
+    required String language,
+    String? kundliContext,
+  }) {
+    final base = "You are a spiritual guide. Output language: $language. Return ONLY a JSON object with keys: 'quote', 'author'.";
+    if (kundliContext == null || kundliContext.isEmpty) return base;
+    return "$base\nTie the quote to: $kundliContext";
   }
 
-  static Future<String> getChatResponse(String query, String kundliSummary, String language, List<Map<String, String>> history) {
-    final List<Map<String, dynamic>> messages = [
+  static String quoteUserPrompt({
+    required String? sign,
+    String? kundliContext,
+  }) {
+    if (sign != null) {
+      return "Give me a spiritual quote relevant to a $sign today.";
+    }
+    return "Give me a general inspiring spiritual quote.";
+  }
+
+  static Future<String> getDailyQuote(
+    String? sign,
+    String language, {
+    String? kundliContext,
+  }) {
+    return getResponse(
+      quoteSystemPrompt(language: language, kundliContext: kundliContext),
+      quoteUserPrompt(sign: sign, kundliContext: kundliContext),
+      jsonMode: true,
+    );
+  }
+
+  /// Builds the full message list (system + history + new query) for the
+  /// AI Sage chat endpoint. Exposed for testing.
+  static List<Map<String, dynamic>> chatResponseMessages({
+    required String query,
+    required String kundliContext,
+    required String language,
+    required List<Map<String, String>> history,
+  }) {
+    final messages = <Map<String, dynamic>>[
       {
         'role': 'system',
-        'content': "You are 'AI Sage', a wise Vedic Astrologer. Tone: Wise, Empathetic, Concise, and Genuine. Act like a real human Guru, not an AI. Use Markdown headers (###) and bullet points (*) for formatting if needed, but keep it natural. Avoid raw special characters like '#' in the middle of sentences unless for formatting. Respond in $language. Context (User Kundli): $kundliSummary"
+        'content': "You are 'AI Sage', a wise Vedic Astrologer. Tone: Wise, Empathetic, Concise, and Genuine. Act like a real human Guru, not an AI. Use Markdown headers (###) and bullet points (*) for formatting if needed, but keep it natural. Avoid raw special characters like '#' in the middle of sentences unless for formatting. Respond in $language. Context (User Kundli):\n$kundliContext"
       }
     ];
 
@@ -145,16 +269,54 @@ class AIService {
     }
     messages.add({'role': 'user', 'content': query});
 
-    return _postGroq(messages: messages);
+    return messages;
   }
 
-  static Future<String> getRemedies(String kundliSummary, String language) {
-    final system = "You are a revered Vedic Guru. Speak with deep wisdom, empathy, and authority. NEVER refer to yourself as an AI, machine, or language model. Use a mystical, traditional, and authentic tone. Structure your response with clear sections using Markdown headers (start with ###) and bullet points (start with *). Focus on practical, spiritual, and charitable remedies based on Vedic Astrology. Output language: $language.";
-    final user = "Analyze this Kundli and suggest personalized remedies: $kundliSummary";
-    return getResponse(system, user);
+  static Future<String> getChatResponse(
+    String query,
+    String kundliContext,
+    String language,
+    List<Map<String, String>> history,
+  ) {
+    return _postGroq(
+      messages: chatResponseMessages(
+        query: query,
+        kundliContext: kundliContext,
+        language: language,
+        history: history,
+      ),
+    );
   }
 
-  static Future<String> getNotificationSchedule(String? zodiac, String language, int days, {DateTime? startDate}) {
+  static String remedySystemPrompt({
+    required String language,
+    String? kundliContext,
+  }) {
+    final base = "You are a revered Vedic Guru. Speak with deep wisdom, empathy, and authority. NEVER refer to yourself as an AI, machine, or language model. Use a mystical, traditional, and authentic tone. Structure your response with clear sections using Markdown headers (start with ###) and bullet points (start with *). Focus on practical, spiritual, and charitable remedies based on Vedic Astrology. Output language: $language.";
+    if (kundliContext == null || kundliContext.isEmpty) return base;
+    return "$base\nPersonalize remedies for this Kundli:\n$kundliContext";
+  }
+
+  static String remedyUserPrompt({String? kundliContext}) {
+    if (kundliContext != null && kundliContext.isNotEmpty) {
+      return "Analyze this Kundli and suggest personalized remedies: $kundliContext";
+    }
+    return "Suggest general Vedic remedies.";
+  }
+
+  static Future<String> getRemedies(String kundliContext, String language) {
+    return getResponse(
+      remedySystemPrompt(language: language, kundliContext: kundliContext),
+      remedyUserPrompt(kundliContext: kundliContext),
+    );
+  }
+
+  static Future<String> getNotificationSchedule(
+    String? zodiac,
+    String language,
+    int days, {
+    DateTime? startDate,
+  }) {
     final dateStr = startDate != null ? startDate.toIso8601String() : "today";
     final contextPrompt = zodiac != null
         ? "Target Audience: $zodiac sign. Content Strategy: 50% personalized mini-predictions (e.g., 'Aries: Avoid red today.'), 50% engaging questions or feature prompts (e.g., 'Check your Love Match with...')."

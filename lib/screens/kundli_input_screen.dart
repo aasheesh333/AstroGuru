@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../logic/user_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/gradient_button.dart';
@@ -77,6 +79,26 @@ class _KundliInputContentState extends State<KundliInputContent> {
       // Validation handled by Form/Validators
       String name = _nameController.text.trim();
       String place = _placeController.text.trim();
+      TimeOfDay? time = _selectedTime;
+      DateTime? date = _selectedDate;
+
+      // Persist the birth details into the user profile so the AI can
+      // reference them later in chat, daily horoscope, etc. We fire-and-
+      // forget the persistence call: the kundli screen will still work
+      // even if Firestore is slow or offline because UserProvider falls
+      // back to the session-level cache.
+      if (date != null) {
+        final hhmm = time != null
+            ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+            : '';
+        // ignore: use_build_context_synchronously
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        userProvider.updateProfile(
+          newDob: date,
+          newBirthTime: hhmm,
+          newBirthPlace: place,
+        );
+      }
 
       Navigator.push(
         context,
