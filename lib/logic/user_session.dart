@@ -123,17 +123,6 @@ class UserSession {
     await setString('user_birth_place', place);
   }
 
-  /// Current residential address / city (e.g. "Mumbai, India"). Distinct from
-  /// `birth_place` — used to localize AI Sage answers to where the user lives
-  /// today. Returns empty when unset.
-  static Future<String> getAddress() async {
-    return (await getString('user_address')) ?? "";
-  }
-
-  static Future<void> setAddress(String address) async {
-    await setString('user_address', address);
-  }
-
   static Future<void> clearSession() async {
     // We do NOT clear SharedPreferences entirely, only the 'current' pointers if any.
     // But since we use prefixes, logging out essentially switches the prefix to "" (guest).
