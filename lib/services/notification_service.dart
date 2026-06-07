@@ -266,23 +266,35 @@ class NotificationService with WidgetsBindingObserver {
     final String eTitle = eveningTitle ?? "✨ Aaj ki shaam ka vishesh sandesh";
     final String eBody = eveningBody ?? "Aapke rishton aur bhavnao ke liye kya kehte hain sitare?";
 
+    // Schedule 4 weeks of evening notifications (Mon/Wed/Fri/Sat at 20:30)
+    // as one-time events to avoid matchDateTimeComponents.dayOfWeekAndTime bug.
     List<int> eveningDays = [DateTime.monday, DateTime.wednesday, DateTime.friday, DateTime.saturday];
-    for (int day in eveningDays) {
-      tz.TZDateTime eveningDate = _nextInstanceOfDayTime(day, 20, 30);
-      await _scheduleWeekly(
-        id: 200 + day,
-        title: eTitle,
-        body: eBody,
-        scheduledDate: eveningDate,
-      );
+    int weekCount = 4;
+    int idBase = 2000;
 
-      await _saveNotificationToStorage(
-        eTitle,
-        eBody,
-        "Local",
-        false,
-        scheduledTime: eveningDate,
-      );
+    for (int week = 0; week < weekCount; week++) {
+      for (int dayIdx = 0; dayIdx < eveningDays.length; dayIdx++) {
+        int day = eveningDays[dayIdx];
+        tz.TZDateTime eveningDate = _nextInstanceOfDayTime(day, 20, 30);
+        // Add 7 days for each subsequent week
+        eveningDate = eveningDate.add(Duration(days: week * 7));
+
+        int id = idBase + week * 4 + dayIdx;
+        await _scheduleEveningOneTime(
+          id: id,
+          title: eTitle,
+          body: eBody,
+          scheduledDate: eveningDate,
+        );
+
+        await _saveNotificationToStorage(
+          eTitle,
+          eBody,
+          "Local",
+          false,
+          scheduledTime: eveningDate,
+        );
+      }
     }
   }
 
@@ -316,7 +328,7 @@ class NotificationService with WidgetsBindingObserver {
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
+        matchDateTimeComponents: DateTimeComponents.dateAndTime,
       );
 
       await _saveNotificationToStorage(
@@ -346,7 +358,7 @@ class NotificationService with WidgetsBindingObserver {
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
+        matchDateTimeComponents: DateTimeComponents.dateAndTime,
       );
 
       await _saveNotificationToStorage(
@@ -465,8 +477,8 @@ class NotificationService with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _scheduleWeekly({required int id, required String title, required String body, required tz.TZDateTime scheduledDate}) async {
-     await flutterLocalNotificationsPlugin.zonedSchedule(
+  Future<void> _scheduleEveningOneTime({required int id, required String title, required String body, required tz.TZDateTime scheduledDate}) async {
+    await flutterLocalNotificationsPlugin.zonedSchedule(
       id,
       title,
       body,
@@ -483,7 +495,7 @@ class NotificationService with WidgetsBindingObserver {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      matchDateTimeComponents: DateTimeComponents.dateAndTime,
     );
   }
 

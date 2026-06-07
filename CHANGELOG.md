@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Status-bar small icon now explicitly set to `ic_launcher` on every
   `AndroidNotificationDetails` (previously unset, falling back to a blank
   white square on most devices).
+- **Dynamic morning/evening notifications were firing on wrong days**: `scheduleDynamicNotifications` used `matchDateTimeComponents.time` which makes all scheduled notifications become daily recurring alarms at the next matching time (8 AM / 7 PM), not on their intended future dates. Fixed by scheduling each day as a one-time `DateTimeComponents.dateAndTime` notification.
+- **Weekly evening notifications (Mon/Wed/Fri/Sat 8:30 PM) relied on fragile `dayOfWeekAndTime` behavior**: the plugin fires on the *next* matching day-of-week+time from now, not "first on/after scheduledDate". Replaced with explicit 4-week one-time schedules (16 notifications) using `DateTimeComponents.dateAndTime`.
+- **Missing Android boot receivers**: flutter_local_notifications v17+ requires manual declaration of `ScheduledNotificationBootReceiver` + `ScheduledNotificationReceiver` in `AndroidManifest.xml` for notifications to reschedule after device reboot on Android 14+. Added both receivers with proper intent filters.
 
 ### Added
 - `test/hindu_festivals_test.dart` — table integrity tests
