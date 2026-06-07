@@ -94,6 +94,15 @@ class ChatContentState extends State<ChatContent> {
   // Sending guard (prevents double-send / interleaved responses).
   bool _isSending = false;
 
+  // Per-conversation language override. Defaults to null, which means
+  // "use the app's selected language from LanguageProvider". When the
+  // user explicitly asks the AI to switch (e.g. "speak in Hindi",
+  // "Hindi me baat karo"), [AIService.detectLanguageOverride] picks
+  // the new code and we store it here for the rest of the chat.
+  // Resetting the chat history wipes this so the next session starts
+  // in the app's default language again.
+  String? _chatLanguageOverride;
+
   // Voice
   late stt.SpeechToText _speech;
   bool _isListening = false;
@@ -335,7 +344,7 @@ class ChatContentState extends State<ChatContent> {
     _saveHistory();
     _scrollToBottom();
 
-    final lang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
+    final appLang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
     final provider = Provider.of<UserProvider>(context, listen: false);
 
     // Build the full user context for the AI Sage: identity (name,
@@ -346,6 +355,17 @@ class ChatContentState extends State<ChatContent> {
     if (userContext.isEmpty) {
       userContext = "User Name: ${provider.name}. Zodiac: ${provider.zodiac}.";
     }
+
+    // Language resolution: if the user has already asked the AI to
+    // switch to a different language earlier in this conversation,
+    // honour that. Otherwise default to the app's selected language.
+    // Also detect an override request in this very message so it
+    // applies from the next turn onwards.
+    final overrideInThisMessage = AIService.detectLanguageOverride(userMsg);
+    if (overrideInThisMessage != null) {
+      _chatLanguageOverride = overrideInThisMessage;
+    }
+    final lang = _chatLanguageOverride ?? appLang;
 
     try {
       // Pass history (including the user's new message we just added).

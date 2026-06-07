@@ -71,6 +71,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   horoscopes feel less like obvious template copy.
 - L10n key `ratingDialogFailed` renamed to `openStoreFailed` (message
   updated to "Could not open the Play Store.") across all 13 ARB files.
+- AI Sage chat now responds strictly in the app's currently selected
+  language by default, and ignores incidental mentions of other
+  languages mid-conversation. The chat system prompt includes an
+  explicit `LANGUAGE RULE` (full language name, "respond strictly in
+  $langName", "do not switch unless asked", "continue in it for the
+  rest of the conversation") so the model treats language as a hard
+  instruction. All other AI prompts (daily/weekly/monthly horoscope,
+  daily quote, remedies, love match) now reference the target language
+  by its full name (e.g. "Hindi", "Tamil") instead of its ISO code, so
+  the model never falls back to English.
+- `AIService.detectLanguageOverride(userMessage)` scans each user
+  message for a clear directive to switch (e.g. "Hindi mein baat karo",
+  "Tamil la sollu", "respond in English please") and returns a language
+  code that overrides the app default for the rest of the chat session.
+  Detection is conservative (requires a verb cue near the language
+  name) to avoid false positives on phrases like "I am learning
+  Spanish." Override state is per-conversation; opening a new chat
+  returns to the app's default language.
+
+### Added
+- `test/ai_service_language_test.dart` — 12 cases covering
+  `languageNameFor` (13 locales + fallback), `detectLanguageOverride`
+  (English / Hindi / Dravidian directives, case-insensitivity,
+  negative cases), and the strict-language chat system prompt format.
 
 ### Security
 - **Groq API key removed from the APK.** All AI requests now go through a

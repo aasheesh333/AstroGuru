@@ -23,7 +23,8 @@ void main() {
     test('dailyHoroscopePrompt works without kundli context', () {
       final system = AIService.dailyHoroscopeSystemPrompt(language: 'en');
       expect(system, contains('Vedic Astrologer'));
-      expect(system, contains('Output language: en'));
+      expect(system, contains('Output language: English'),
+          reason: 'prompt should use the full language name, not the ISO code');
     });
 
     test('weeklyHoroscopePrompt mirrors daily and embeds context', () {

@@ -18,6 +18,177 @@ class AIService {
   /// while reducing generic phrasing.
   static const double _defaultTemperature = 0.6;
 
+  // --- Language support ---------------------------------------------------
+
+  /// Maps ISO-639-1 codes used by the app's LanguageProvider to the full
+  /// English name of the language. The AI is much more reliable when
+  /// given a full language name ("Hindi") than a bare 2-letter code
+  /// ("hi") in the system prompt, especially for Indian languages.
+  /// Codes that the app does not ship are not in this map; callers
+  /// should use [languageNameFor] which falls back gracefully.
+  static const Map<String, String> _languageNames = {
+    'en': 'English',
+    'hi': 'Hindi',
+    'bn': 'Bengali',
+    'mr': 'Marathi',
+    'ta': 'Tamil',
+    'te': 'Telugu',
+    'gu': 'Gujarati',
+    'pa': 'Punjabi',
+    'kn': 'Kannada',
+    'ml': 'Malayalam',
+    'or': 'Odia',
+    'ur': 'Urdu',
+    'as': 'Assamese',
+  };
+
+  /// Returns the full English language name for an ISO code, or the
+  /// code itself if the language is not in the table. An empty input
+  /// is returned as-is.
+  static String languageNameFor(String code) {
+    if (code.isEmpty) return code;
+    return _languageNames[code.toLowerCase()] ?? code;
+  }
+
+  /// Patterns that suggest the user is asking the AI to switch its
+  /// response language. Each pattern is a case-insensitive substring
+  /// to look for; the value is the ISO code to switch to.
+  ///
+  /// We keep the list small and explicit to avoid false positives on
+  /// incidental mentions like "I am learning Spanish". A valid request
+  /// must contain a "speak/reply/answer/baat/bolo/sollu/..." cue near
+  /// the language name.
+  static const Map<String, String> _languageOverridePatterns = {
+    // English-script cues
+    'speak in english': 'en',
+    'reply in english': 'en',
+    'answer in english': 'en',
+    'respond in english': 'en',
+    'in english please': 'en',
+    'speak english': 'en',
+    'use english': 'en',
+    'switch to english': 'en',
+    'english me baat': 'en',
+    'english mein baat': 'en',
+    'english me bata': 'en',
+    'english mein bata': 'en',
+    'speak in hindi': 'hi',
+    'reply in hindi': 'hi',
+    'answer in hindi': 'hi',
+    'respond in hindi': 'hi',
+    'in hindi please': 'hi',
+    'speak hindi': 'hi',
+    'use hindi': 'hi',
+    'switch to hindi': 'hi',
+    'hindi me baat': 'hi',
+    'hindi mein baat': 'hi',
+    'hindi me bata': 'hi',
+    'hindi mein bata': 'hi',
+    'hindi me jawab': 'hi',
+    'hindi mein jawab': 'hi',
+    'hindi me reply': 'hi',
+    'speak in bengali': 'bn',
+    'speak in marathi': 'mr',
+    'speak in tamil': 'ta',
+    'speak in telugu': 'te',
+    'speak in gujarati': 'gu',
+    'speak in punjabi': 'pa',
+    'speak in kannada': 'kn',
+    'speak in malayalam': 'ml',
+    'speak in odia': 'or',
+    'speak in urdu': 'ur',
+    'speak in assamese': 'as',
+    // Romanized Dravidian & other regional cues
+    'tamil la sollu': 'ta',
+    'tamil la solra': 'ta',
+    'tamil la pesu': 'ta',
+    'tamil la pesunga': 'ta',
+    'tamil la pesa': 'ta',
+    'tamil la': 'ta',
+    'tamil me': 'ta',
+    'tamil mein': 'ta',
+    'telugu lo cheppu': 'te',
+    'telugu lo': 'te',
+    'telugu me': 'te',
+    'telugu mein': 'te',
+    'bengali te bolo': 'bn',
+    'bengali te bolen': 'bn',
+    'bangla te bolo': 'bn',
+    'bangla te bolen': 'bn',
+    'bengali me': 'bn',
+    'bengali mein': 'bn',
+    'bangla me': 'bn',
+    'bangla mein': 'bn',
+    'marathi madhe sang': 'mr',
+    'marathi madhe sanga': 'mr',
+    'marathi me': 'mr',
+    'marathi mein': 'mr',
+    'gujarati ma bol': 'gu',
+    'gujarati ma bolo': 'gu',
+    'gujarati me': 'gu',
+    'gujarati mein': 'gu',
+    'punjabi vich bol': 'pa',
+    'punjabi vich bola': 'pa',
+    'punjabi me': 'pa',
+    'punjabi mein': 'pa',
+    'kannada alli helu': 'kn',
+    'kannada alli': 'kn',
+    'kannada me': 'kn',
+    'kannada mein': 'kn',
+    'malayalam il parayoo': 'ml',
+    'malayalam il parayuka': 'ml',
+    'malayalam il': 'ml',
+    'malayalam me': 'ml',
+    'malayalam mein': 'ml',
+    'odia re katha bala': 'or',
+    'odia re kaha': 'or',
+    'odia me': 'or',
+    'odia mein': 'or',
+    'urdu me bolo': 'ur',
+    'urdu me': 'ur',
+    'urdu mein': 'ur',
+    'assamese ot koi dao': 'as',
+    'assamese ot': 'as',
+    'assamese me': 'as',
+    'assamese mein': 'as',
+    // Devanagari / regional-script direct mentions
+    'हिंदी में': 'hi',
+    'हिंदी मे': 'hi',
+    'हिन्दी में': 'hi',
+    'हिन्दी मे': 'hi',
+    'বাংলায়': 'bn',
+    'বাংলাতে': 'bn',
+    'মরাঠিতে': 'mr',
+    'தமிழில்': 'ta',
+    'తెలుగులో': 'te',
+    'ગુજરાતીમાં': 'gu',
+    'ਪੰਜਾਬੀ ਵਿੱਚ': 'pa',
+    'ಕನ್ನಡದಲ್ಲಿ': 'kn',
+    'മലയാളത്തിൽ': 'ml',
+    'ଓଡ଼ିଆରେ': 'or',
+    'اردو میں': 'ur',
+    'অসমীয়াত': 'as',
+  };
+
+  /// Inspects a user message for an explicit request to switch the AI's
+  /// response language. Returns the ISO code to switch to, or null if
+  /// the message does not contain such a request.
+  ///
+  /// The detection is conservative: the message must contain a verb
+  /// cue ("speak/reply/baat/bolo/...") near the language name, so
+  /// incidental mentions like "I am learning Spanish" do not trigger
+  /// an override.
+  static String? detectLanguageOverride(String message) {
+    if (message.isEmpty) return null;
+    final lower = message.toLowerCase();
+    for (final entry in _languageOverridePatterns.entries) {
+      if (lower.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
   static Future<String> _postGroq({
     required List<Map<String, dynamic>> messages,
     bool jsonMode = false,
@@ -93,7 +264,9 @@ class AIService {
   // --- Prompt builders (public for testing) -------------------------------
 
   static String _horoscopeSystemPrompt(String language, String? kundliContext) {
-    final base = "You are an expert Vedic Astrologer. Output language: $language. "
+    final langName = languageNameFor(language);
+    final base = "You are an expert Vedic Astrologer. Output language: $langName. "
+        "Write every value in the JSON in $langName. "
         "Return ONLY a JSON object with the following keys: 'summary' (2 sentences), "
         "'love' (forecast), 'career' (forecast), 'health' (forecast), 'lucky_number', "
         "'lucky_color'. Ensure the JSON is valid.";
@@ -202,7 +375,7 @@ class AIService {
     String? kundliContext1,
     String? kundliContext2,
   }) {
-    String system = "You are an expert Astrologer specializing in relationship compatibility. Output language: $language. Return ONLY a JSON object with keys: 'score' (integer 0-100), 'summary' (short summary), 'detailed_analysis' (paragraph).";
+    String system = "You are an expert Astrologer specializing in relationship compatibility. Output language: ${languageNameFor(language)}. Write 'summary' and 'detailed_analysis' in ${languageNameFor(language)}. Return ONLY a JSON object with keys: 'score' (integer 0-100), 'summary' (short summary), 'detailed_analysis' (paragraph).";
     if (forcedScore != null) {
       system += " IMPORTANT: The calculated compatibility score is $forcedScore%. You MUST output exactly this score in the 'score' field. Write the summary and detailed analysis to match this score level (Low/Medium/High).";
     }
@@ -220,7 +393,8 @@ class AIService {
     required String language,
     String? kundliContext,
   }) {
-    final base = "You are a spiritual guide. Output language: $language. Return ONLY a JSON object with keys: 'quote', 'author'.";
+    final langName = languageNameFor(language);
+    final base = "You are a spiritual guide. Output language: $langName. Write both the 'quote' and 'author' values in $langName. Return ONLY a JSON object with keys: 'quote', 'author'.";
     if (kundliContext == null || kundliContext.isEmpty) return base;
     return "$base\nTie the quote to: $kundliContext";
   }
@@ -253,16 +427,27 @@ class AIService {
   /// The system prompt embeds the full user context (identity, address,
   /// kundli, recent mentions) so the Sage can answer with full awareness
   /// of who the user is and what they have mentioned in the conversation.
+  ///
+  /// Language rule: the Sage responds strictly in the app's selected
+  /// language (passed in as a 2-letter code; we translate it to the
+  /// full name so the model does not have to). The user can ask the
+  /// Sage to switch languages mid-conversation; once it switches, it
+  /// keeps that new language for the rest of the chat. The prompt
+  /// makes this contract explicit so the model does not silently
+  /// drift back to English when a user message is in English script.
   static List<Map<String, dynamic>> chatResponseMessages({
     required String query,
     required String userContext,
     required String language,
     required List<Map<String, String>> history,
   }) {
+    final langName = languageNameFor(language);
     final messages = <Map<String, dynamic>>[
       {
         'role': 'system',
-        'content': "You are 'AI Sage', a wise Vedic Astrologer. Tone: Wise, Empathetic, Concise, and Genuine. Act like a real human Guru, not an AI. Use Markdown headers (###) and bullet points (*) for formatting if needed, but keep it natural. Avoid raw special characters like '#' in the middle of sentences unless for formatting. Respond in $language.\n\n$userContext"
+        'content': "You are 'AI Sage', a wise Vedic Astrologer. Tone: Wise, Empathetic, Concise, and Genuine. Act like a real human Guru, not an AI. Use Markdown headers (###) and bullet points (*) for formatting if needed, but keep it natural. Avoid raw special characters like '#' in the middle of sentences unless for formatting.\n\n"
+            "LANGUAGE RULE: Respond strictly in $langName. Every word of your reply must be in $langName; do not mix in English or any other language. Do not switch languages unless the user explicitly asks you to. If the user writes in a different language or script, you may still reply in $langName — they will understand. If the user clearly asks (e.g. 'speak in Hindi', 'Hindi me baat karo', 'हिंदी में जवाब दो') to switch to a specific language, switch to that language and continue in it for the rest of the conversation.\n\n"
+            "$userContext"
       }
     ];
 
@@ -296,7 +481,8 @@ class AIService {
     required String language,
     String? kundliContext,
   }) {
-    final base = "You are a revered Vedic Guru. Speak with deep wisdom, empathy, and authority. NEVER refer to yourself as an AI, machine, or language model. Use a mystical, traditional, and authentic tone. Structure your response with clear sections using Markdown headers (start with ###) and bullet points (start with *). Focus on practical, spiritual, and charitable remedies based on Vedic Astrology. Output language: $language.";
+    final langName = languageNameFor(language);
+    final base = "You are a revered Vedic Guru. Speak with deep wisdom, empathy, and authority. NEVER refer to yourself as an AI, machine, or language model. Use a mystical, traditional, and authentic tone. Structure your response with clear sections using Markdown headers (start with ###) and bullet points (start with *). Focus on practical, spiritual, and charitable remedies based on Vedic Astrology. Output language: $langName. Write every section, header, and bullet in $langName.";
     if (kundliContext == null || kundliContext.isEmpty) return base;
     return "$base\nPersonalize remedies for this Kundli:\n$kundliContext";
   }
@@ -326,7 +512,8 @@ class AIService {
         ? "Target Audience: $zodiac sign. Content Strategy: 50% personalized mini-predictions (e.g., 'Aries: Avoid red today.'), 50% engaging questions or feature prompts (e.g., 'Check your Love Match with...')."
         : "Target Audience: General user. Content Strategy: 100% engaging prompts (e.g., 'See what the stars say today', 'Check family horoscope', 'Find your soulmate').";
 
-    final system = "You are an expert mobile app engagement specialist and astrologer. Output language: $language. $contextPrompt\n"
+    final langName = languageNameFor(language);
+    final system = "You are an expert mobile app engagement specialist and astrologer. Output language: $langName. Write every notification string in $langName. $contextPrompt\n"
         "Generate a JSON object with THREE keys: 'morning' (list of $days strings), 'evening' (list of $days strings), and 'afternoon' (list of objects).\n"
         "Requirements:\n"
         "1. Morning/Evening: List of $days strings each. Short (under 10 words), catchy, actionable, with emojis.\n"
