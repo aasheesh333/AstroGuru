@@ -38,6 +38,12 @@ class LanguageProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('language_code', locale.languageCode);
 
+    // 3. Changing the app language is a strong signal that overrides any
+    // sticky AI Sage chat override — the user wants the whole app, AI
+    // included, in the new language. Wipe the persisted override so the
+    // next chat falls back to the new app language.
+    await UserSession.setChatLanguage(null);
+
     notifyListeners();
   }
 }

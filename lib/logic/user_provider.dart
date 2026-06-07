@@ -23,6 +23,7 @@ class UserProvider extends ChangeNotifier {
   String? _profileImageBase64;
   String? _profileImageUrl;
   String _zodiac = "Aries";
+  String? _chatLanguage;
 
   String get name => _name;
   String get email => _email;
@@ -35,6 +36,12 @@ class UserProvider extends ChangeNotifier {
   String? get profileImageBase64 => _profileImageBase64;
   String? get profileImageUrl => _profileImageUrl;
   String get zodiac => _zodiac;
+
+  /// Per-user override for the AI Sage chat language. `null` means
+  /// "follow the app's selected language". Persisted across sessions
+  /// via [UserSession.setChatLanguage]; reset to null when the user
+  /// changes the app language (handled by [LanguageProvider]).
+  String? get chatLanguage => _chatLanguage;
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
@@ -56,6 +63,7 @@ class UserProvider extends ChangeNotifier {
         _gender = await UserSession.getGender();
         _profession = await UserSession.getProfession();
         _maritalStatus = await UserSession.getMaritalStatus();
+        _chatLanguage = await UserSession.getChatLanguage();
         _profileImageBase64 = await UserSession.getProfileImage();
         _profileImageUrl = await UserSession.getProfileImageUrl();
 
@@ -261,8 +269,20 @@ class UserProvider extends ChangeNotifier {
     _gender = "";
     _profession = "";
     _maritalStatus = "";
+    _chatLanguage = null;
     _profileImageBase64 = null;
     _profileImageUrl = null;
+    notifyListeners();
+  }
+
+  /// Persist a new AI Sage chat language override. Pass `null` to clear
+  /// the override and fall back to the app's selected language on the
+  /// next chat send. Notifies listeners so any open chat screen can
+  /// re-render the resolved language on the next message.
+  Future<void> setChatLanguage(String? languageCode) async {
+    if (_chatLanguage == languageCode) return;
+    _chatLanguage = languageCode;
+    await UserSession.setChatLanguage(languageCode);
     notifyListeners();
   }
 

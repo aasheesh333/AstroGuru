@@ -4,7 +4,7 @@ import 'package:astroguru/services/ai_service.dart';
 void main() {
   group('AIService prompt builders', () {
     test('dailyHoroscopePrompt embeds the kundli context when provided', () {
-      final ctx = 'User birth details:\n- Lagna (Ascendant): Cancer\n- Moon Sign: Scorpio';
+      const ctx = 'User birth details:\n- Lagna (Ascendant): Cancer\n- Moon Sign: Scorpio';
       final system = AIService.dailyHoroscopeSystemPrompt(
         language: 'en',
         kundliContext: ctx,
@@ -28,7 +28,7 @@ void main() {
     });
 
     test('weeklyHoroscopePrompt mirrors daily and embeds context', () {
-      final ctx = 'Lagna: Cancer';
+      const ctx = 'Lagna: Cancer';
       final system = AIService.weeklyHoroscopeSystemPrompt(
         language: 'en',
         kundliContext: ctx,
@@ -43,7 +43,7 @@ void main() {
     });
 
     test('monthlyHoroscopePrompt embeds context and uses month/year', () {
-      final ctx = 'Lagna: Cancer';
+      const ctx = 'Lagna: Cancer';
       final system = AIService.monthlyHoroscopeSystemPrompt(
         language: 'en',
         kundliContext: ctx,

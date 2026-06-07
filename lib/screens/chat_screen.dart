@@ -94,14 +94,15 @@ class ChatContentState extends State<ChatContent> {
   // Sending guard (prevents double-send / interleaved responses).
   bool _isSending = false;
 
-  // Per-conversation language override. Defaults to null, which means
-  // "use the app's selected language from LanguageProvider". When the
-  // user explicitly asks the AI to switch (e.g. "speak in Hindi",
-  // "Hindi me baat karo"), [AIService.detectLanguageOverride] picks
-  // the new code and we store it here for the rest of the chat.
-  // Resetting the chat history wipes this so the next session starts
-  // in the app's default language again.
-  String? _chatLanguageOverride;
+  // Sticky language override. Persisted in [UserProvider] /
+  // [UserSession] and survives across chats and app restarts. Defaults
+  // to null, which means "use the app's selected language from
+  // LanguageProvider". When the user explicitly asks the AI to switch
+  // (e.g. "speak in Hindi", "Hindi me baat karo"),
+  // [AIService.detectLanguageOverride] picks the new code and we
+  // store it on the provider for all future chats. The app language
+  // change in settings clears the override (handled by
+  // LanguageProvider -> UserSession.setChatLanguage(null)).
 
   // Voice
   late stt.SpeechToText _speech;
@@ -356,16 +357,21 @@ class ChatContentState extends State<ChatContent> {
       userContext = "User Name: ${provider.name}. Zodiac: ${provider.zodiac}.";
     }
 
-    // Language resolution: if the user has already asked the AI to
-    // switch to a different language earlier in this conversation,
-    // honour that. Otherwise default to the app's selected language.
-    // Also detect an override request in this very message so it
-    // applies from the next turn onwards.
+    // Language resolution: honour any sticky override the user has set
+    // in this or any previous chat (loaded from UserProvider, persisted
+    // to UserSession). On every new message we run
+    // [AIService.detectLanguageOverride] to see if the user is asking
+    // to switch now ("Tamil la sollu", "respond in English please") —
+    // if so, persist it on the provider so the change is sticky across
+    // all future chats. Falls back to the app's selected language when
+    // no override is set.
+    String? chatLang = provider.chatLanguage;
     final overrideInThisMessage = AIService.detectLanguageOverride(userMsg);
     if (overrideInThisMessage != null) {
-      _chatLanguageOverride = overrideInThisMessage;
+      chatLang = overrideInThisMessage;
+      await provider.setChatLanguage(chatLang);
     }
-    final lang = _chatLanguageOverride ?? appLang;
+    final lang = chatLang ?? appLang;
 
     try {
       // Pass history (including the user's new message we just added).

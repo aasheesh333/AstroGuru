@@ -87,14 +87,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code that overrides the app default for the rest of the chat session.
   Detection is conservative (requires a verb cue near the language
   name) to avoid false positives on phrases like "I am learning
-  Spanish." Override state is per-conversation; opening a new chat
-  returns to the app's default language.
+  Spanish." The override is now **sticky across all chats and across
+  app restarts** — once the user says "Tamil la sollu", every future
+  chat (in the same account) responds in Tamil. Changing the app
+  language in settings clears the override.
 
 ### Added
 - `test/ai_service_language_test.dart` — 12 cases covering
   `languageNameFor` (13 locales + fallback), `detectLanguageOverride`
   (English / Hindi / Dravidian directives, case-insensitivity,
   negative cases), and the strict-language chat system prompt format.
+- `test/user_session_chat_language_test.dart` — 4 cases covering
+  `UserSession.getChatLanguage` / `setChatLanguage` persistence
+  (unset, set, overwrite, clear).
+- `UserProvider.chatLanguage` — per-user sticky AI Sage language
+  override. Loaded from `UserSession` in `loadUserData`, persisted
+  via `setChatLanguage(code)` (pass `null` to clear), and reset on
+  `clear()`. The chat screen reads `provider.chatLanguage` on every
+  send and writes back whenever `AIService.detectLanguageOverride`
+  picks up a new directive.
 
 ### Security
 - **Groq API key removed from the APK.** All AI requests now go through a

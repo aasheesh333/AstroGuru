@@ -100,6 +100,25 @@ class UserSession {
     await setString('user_language', languageCode);
   }
 
+  /// Per-user AI Sage chat language override. Distinct from
+  /// [getUserLanguage] (the app UI locale) — when the user explicitly
+  /// asks the AI to switch (e.g. "Tamil la sollu") we record it here
+  /// and it persists across sessions and across chats. The app UI
+  /// language can be changed independently via [setUserLanguage];
+  /// [LanguageProvider] is the source of truth for the UI locale, and
+  /// resets the chat override when the user changes the app language.
+  static Future<String?> getChatLanguage() async {
+    return await getString('user_chat_language');
+  }
+
+  static Future<void> setChatLanguage(String? languageCode) async {
+    if (languageCode == null) {
+      await remove('user_chat_language');
+    } else {
+      await setString('user_chat_language', languageCode);
+    }
+  }
+
   /// Birth time as an ISO-like string in `HH:mm` 24h format. Returns an
   /// empty string when unset rather than null so callers can `.isNotEmpty`
   /// guard without null-checks.
