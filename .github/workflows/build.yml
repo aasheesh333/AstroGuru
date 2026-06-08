@@ -105,9 +105,9 @@ jobs:
     - name: Build APK
       run: |
         flutter build apk --release \
+          --build-number=${{ secrets.VERSION_CODE }} \
+          --build-name=${{ secrets.VERSION_NAME }} \
           -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} \
-          -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} \
-          -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} \
           -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }} \
           --dart-define=APP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }} \
           --dart-define=APP_ADMOB_BANNER_ID=${{ secrets.ADMOB_BANNER_ID }} \
@@ -119,9 +119,9 @@ jobs:
     - name: Build App Bundle
       run: |
         flutter build appbundle --release \
+          --build-number=${{ secrets.VERSION_CODE }} \
+          --build-name=${{ secrets.VERSION_NAME }} \
           -PAPP_PACKAGE_NAME=${{ secrets.PACKAGE_NAME }} \
-          -PAPP_VERSION_CODE=${{ secrets.VERSION_CODE }} \
-          -PAPP_VERSION_NAME=${{ secrets.VERSION_NAME }} \
           -PAPP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }} \
           --dart-define=APP_ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }} \
           --dart-define=APP_ADMOB_BANNER_ID=${{ secrets.ADMOB_BANNER_ID }} \
