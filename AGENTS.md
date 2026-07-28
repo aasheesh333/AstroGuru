@@ -46,9 +46,9 @@ flutter test --no-pub
 
 ## AI System (Google Gemini)
 
-`AIService` calls the Gemini 2.5 Flash-Lite API (`gemini-2.5-flash-lite`) directly from the client with the key fetched from Firestore by `KeyManager`.
+`AIService` calls the Gemini 3.5 Flash-Lite API (`gemini-3.5-flash-lite`) directly from the client with the key fetched from Firestore by `KeyManager`. The key is on the free tier (~15 RPM); `_postGemini` already retries 429s with exponential backoff (3 attempts, 1s→2s→4s). Bump the constant in `lib/services/ai_service.dart` whenever Google retires a model. Historical model rotation: `gemini-2.5-flash-lite` (deprecated mid-2026, HTTP 404) → `gemini-3.1-flash-lite` (intermittent 404s during deprecation rollout) → `gemini-3.5-flash-lite` (current, GA-stable). (`gemini-2.0-flash-lite` is NOT a safe fallback; that key has hit free-tier quota and returns 429.)
 
-- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent` (non-streaming) and `:streamGenerateContent?alt=sse` (streaming).
+- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent` (non-streaming) and `:streamGenerateContent?alt=sse` (streaming).
 - **Auth**: `x-goog-api-key` header (not Bearer token).
 - **Message format conversion** happens inside `_postGemini` / `_buildGeminiBody`:
   - `role: "system"` → `systemInstruction.parts[0].text`

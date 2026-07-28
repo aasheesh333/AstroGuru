@@ -116,6 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // and the AI service falls back to zodiac-only prompts.
     final kundliContext = isGuest ? null : userProvider.getKundliContext();
 
+    bool horoscopeFailed = false;
+    bool quoteFailed = false;
+
     try {
       String horoscopeJson = await AIService.getDailyHoroscope(
         sign,
@@ -125,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       await prefs.setString('daily_horoscope_json_$lang', horoscopeJson);
     } catch (e) {
-      // Keep old or default
+      horoscopeFailed = true;
     }
 
     // Fetch Quote
@@ -137,12 +140,29 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       await prefs.setString('daily_quote_json_$lang', quoteJson);
     } catch (e) {
-      // Keep old
+      quoteFailed = true;
     }
 
-    await prefs.setString(lastDateKey, today);
+    // Only stamp the fetch date when at least the primary horoscope
+    // call succeeded, so a total AI outage is retried on next open
+    // instead of freezing stale content for 24h.
+    if (!horoscopeFailed) {
+      await prefs.setString(lastDateKey, today);
+    }
     if (!mounted) return;
     _loadFromPrefs(prefs, lang);
+
+    // Surface the failure once via a transient snackbar instead of
+    // silently leaving the user with stale/no content. Reuses the
+    // already-localized `homeForecastUnavailable` string.
+    if ((horoscopeFailed || quoteFailed) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.homeForecastUnavailable),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _loadFromPrefs(SharedPreferences prefs, String lang) {

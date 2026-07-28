@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // The Gemini API key lives in `gemini_api_keys/gemini_api_list`.
+    // It is fetched at app start by KeyManager and shipped ONLY in the
+    // session cache (never written into the APK). Clients need read-only
+    // access; writes are denied from the client (rotation happens via
+    // Firebase Console or the Admin SDK).
+    match /gemini_api_keys/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Per-user data. Reads/writes are gated on the request coming from
+    // an authenticated user touching only their own document. Moderation
+    // fields (e.g. `banned`) are written by the client chat screen today
+    // — a known limitation; a future release should move these to
+    // Cloud Functions so other users cannot be banned by the client.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // The chat screen currently writes `banned`/`ban_reason` from the
+      // client to self — allowing a self-ban but not banning others.
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Self-service password reset tickets written by the app.
+    match /password_resets/{ticketId} {
+      allow read, write: if request.auth != null && request.auth.uid == ticketId;
+    }
+
+    // Default-deny anything not matched above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

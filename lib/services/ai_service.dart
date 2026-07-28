@@ -6,12 +6,19 @@ import '../logic/key_manager.dart';
 
 class AIService {
   static const String _baseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite';
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite';
   static const int _maxAttempts = 3;
 
   static const double _defaultTemperature = 0.6;
 
+  // JSON-mode calls (horoscope, quote, love-match, notifications) set an
+  // explicit thinking budget so the model reasons before emitting JSON.
   static const int _thinkingBudgetJson = 512;
+
+  // Chat calls pass 0, which _buildGeminiBody interprets as "omit
+  // thinkingConfig entirely" so the model uses its default thinking
+  // behaviour. This is required for gemini-3.5-flash-lite, which rejects
+  // thinkingBudget:0 with HTTP 400 INVALID_ARGUMENT.
   static const int _thinkingBudgetChat = 0;
 
   static const Map<String, String> _languageNames = {
@@ -183,13 +190,24 @@ class AIService {
       }
     }
 
+    final generationConfig = <String, dynamic>{
+      'temperature': temperature ?? _defaultTemperature,
+      'maxOutputTokens': maxTokens,
+    };
+
+    // gemini-3.5-flash-lite rejects thinkingBudget=0 with HTTP 400
+    // (INVALID_ARGUMENT) — thinking is enabled by default on this model
+    // and cannot be disabled. Only send thinkingConfig when a non-zero
+    // budget is requested (i.e. JSON-mode horoscope/quote/love-match
+    // calls that use _thinkingBudgetJson=512). For chat calls (budget=0)
+    // we omit it entirely so the model uses its default behavior.
+    if (thinkingBudget > 0) {
+      generationConfig['thinkingConfig'] = {'thinkingBudget': thinkingBudget};
+    }
+
     final body = <String, dynamic>{
       'contents': contents,
-      'generationConfig': <String, dynamic>{
-        'temperature': temperature ?? _defaultTemperature,
-        'maxOutputTokens': maxTokens,
-        'thinkingConfig': {'thinkingBudget': thinkingBudget},
-      },
+      'generationConfig': generationConfig,
     };
 
     if (systemInstruction != null && systemInstruction.isNotEmpty) {
@@ -266,7 +284,17 @@ class AIService {
         if (kDebugMode) {
           debugPrint('gemini http ${response.statusCode}: ${response.body}');
         }
-        throw StateError('Gemini request failed: HTTP ${response.statusCode}');
+        // Surface the upstream error message (if any) so the cause — e.g.
+        // model deprecated (404), quota exceeded (429), invalid key (400) —
+        // is visible to developers instead of an opaque status code.
+        String detail = 'HTTP ${response.statusCode}';
+        try {
+          final err = jsonDecode(response.body)?['error'];
+          if (err is Map && err['message'] is String && err['message'].isNotEmpty) {
+            detail = '${detail}: ${err['message']}';
+          }
+        } catch (_) {}
+        throw StateError('Gemini request failed: $detail');
       } on TimeoutException {
         if (attempt < _maxAttempts) {
           await Future.delayed(Duration(milliseconds: delayMs));
@@ -327,7 +355,14 @@ class AIService {
       if (response.statusCode != 200) {
         final errorBody = await response.stream.bytesToString();
         if (kDebugMode) {
-          debugPrint('gemini stream http ${response.statusCode}: $errorBody');
+          String detail = 'HTTP ${response.statusCode}';
+          try {
+            final err = jsonDecode(errorBody)?['error'];
+            if (err is Map && err['message'] is String && err['message'].isNotEmpty) {
+              detail = '$detail: ${err['message']}';
+            }
+          } catch (_) {}
+          debugPrint('gemini stream $detail: $errorBody');
         }
         yield 'Could not reach the AI Sage. Please try again.';
         return;
