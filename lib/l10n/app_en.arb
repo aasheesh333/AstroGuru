@@ -314,5 +314,34 @@
   "verifyEmailFullBody": "A verification link has been sent to your email. Please verify it and then log in.",
   "emailNotVerifiedFullBody": "Please verify your email address to continue.",
   "ageRestrictionFull": "You must be at least 10 years old to use this app.",
-  "passwordResetLimitBody": "You have reached the maximum number of password reset attempts."
+  "passwordResetLimitBody": "You have reached the maximum number of password reset attempts.",
+  "notificationEveningTitle": "✨ Tonight's Stars",
+  "notificationEveningBody": "See what the stars say about your evening ahead.",
+  "notificationReengageTitle": "🌙 The stars missed you",
+  "notificationReengageBody": "Your daily horoscope is ready. Come see what the universe has planned for you.",
+  "notificationReengage2Title": "💫 Don't miss your sign",
+  "notificationReengage2Body": "It's been a while — your Kundli insights are waiting. Tap to explore today's guidance.",
+  "notificationFestivalTitle": "🎉 {festival} blessings from AstroPrerna",
+  "@notificationFestivalTitle": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFestivalBody": "Wishing you joy and prosperity on {festival}. May the stars align in your favor today.",
+  "@notificationFestivalBody": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
+  "@chatMsgTooLong": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

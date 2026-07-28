@@ -44,11 +44,49 @@ class _MainScreenState extends State<MainScreen> {
 
     // Check Notification Permissions and Schedule Dynamic Content
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _rescheduleStaticNotifications();
       NotificationService().checkPermissions(context);
       _bootstrapDynamicNotifications();
       // Load user data immediately on app launch
       Provider.of<UserProvider>(context, listen: false).loadUserData();
     });
+  }
+
+  /// Builds the localized notification strings from the current
+  /// [AppLocalizations] and re-schedules all static notifications
+  /// (daily horoscope, evening reflection, festivals, re-engagement)
+  /// so they use the user's selected language. Called on first build
+  /// and whenever the locale changes.
+  Future<void> _rescheduleStaticNotifications() async {
+    if (!mounted) return;
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) return;
+
+    final language = localizations.localeName;
+
+    final localized = LocalizedNotificationStrings(
+      dailyTitle: localizations.notificationDailyTitle,
+      dailyBody: localizations.notificationDailyBody,
+      eveningTitle: localizations.notificationEveningTitle,
+      eveningBody: localizations.notificationEveningBody,
+      reengageTitle: localizations.notificationReengageTitle,
+      reengageBody: localizations.notificationReengageBody,
+      reengage2Title: localizations.notificationReengage2Title,
+      reengage2Body: localizations.notificationReengage2Body,
+      festivalTitleFor: (festival) =>
+          localizations.notificationFestivalTitle(festival),
+      festivalBodyFor: (festival) =>
+          localizations.notificationFestivalBody(festival),
+    );
+
+    try {
+      await NotificationService().bootstrapStatic(
+        language: language,
+        localized: localized,
+      );
+    } catch (e) {
+      debugPrint('Static notification reschedule failed: $e');
+    }
   }
 
   Future<void> _bootstrapDynamicNotifications() async {
@@ -73,6 +111,7 @@ class _MainScreenState extends State<MainScreen> {
         Future.microtask(() async {
            final prefs = await SharedPreferences.getInstance();
            await prefs.remove('last_notification_schedule_time');
+           _rescheduleStaticNotifications();
            _bootstrapDynamicNotifications();
         });
       }

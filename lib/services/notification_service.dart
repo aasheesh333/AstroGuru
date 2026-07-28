@@ -14,6 +14,36 @@ import '../logic/hindu_festivals.dart';
 import '../logic/interest_tracker.dart';
 import 'ai_service.dart';
 
+/// Bundles the localized strings that [NotificationService] needs to schedule
+/// static notifications (daily horoscope, evening reflection, re-engagement,
+/// and festival greetings). The caller builds this from `AppLocalizations`
+/// so the service itself stays free of any `BuildContext` dependency.
+class LocalizedNotificationStrings {
+  final String dailyTitle;
+  final String dailyBody;
+  final String eveningTitle;
+  final String eveningBody;
+  final String reengageTitle;
+  final String reengageBody;
+  final String reengage2Title;
+  final String reengage2Body;
+  final String Function(String festival) festivalTitleFor;
+  final String Function(String festival) festivalBodyFor;
+
+  const LocalizedNotificationStrings({
+    required this.dailyTitle,
+    required this.dailyBody,
+    required this.eveningTitle,
+    required this.eveningBody,
+    required this.reengageTitle,
+    required this.reengageBody,
+    required this.reengage2Title,
+    required this.reengage2Body,
+    required this.festivalTitleFor,
+    required this.festivalBodyFor,
+  });
+}
+
 class NotificationService with WidgetsBindingObserver {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -134,10 +164,14 @@ class NotificationService with WidgetsBindingObserver {
 
   // --- Bootstrap (called from main.dart before runApp) ---
 
-  Future<void> bootstrapStatic() async {
+  Future<void> bootstrapStatic({
+    String language = 'en',
+    LocalizedNotificationStrings? localized,
+  }) async {
     if (!await hasPermission()) return;
-    await scheduleDailyNotifications();
-    await _scheduleFestivals();
+    await scheduleDailyNotifications(localized: localized);
+    await _scheduleFestivals(language: language, localized: localized);
+    await _scheduleReengagementNotifications(localized: localized);
   }
 
   Future<void> bootstrapDynamic({String? zodiac, String language = 'en'}) async {
@@ -235,18 +269,15 @@ class NotificationService with WidgetsBindingObserver {
   // --- Scheduling ---
 
   Future<void> scheduleDailyNotifications({
-    String? dailyTitle,
-    String? dailyBody,
-    String? eveningTitle,
-    String? eveningBody,
+    LocalizedNotificationStrings? localized,
   }) async {
     await flutterLocalNotificationsPlugin.cancelAll();
 
     final prefs = await SharedPreferences.getInstance();
     bool guestMode = prefs.getBool('guest_mode') ?? false;
 
-    final String dTitle = dailyTitle ?? "🌞 Aaj ka rashifal ready hai";
-    final String dBody = dailyBody ?? "Jaaniye aaj ka shubh samay aur din ka haal.";
+    final String dTitle = localized?.dailyTitle ?? "🌞 Aaj ka rashifal ready hai";
+    final String dBody = localized?.dailyBody ?? "Jaaniye aaj ka shubh samay aur din ka haal.";
 
     tz.TZDateTime dailyDate = _nextInstanceOfTime(7, 30);
     await _scheduleDaily(
@@ -266,8 +297,8 @@ class NotificationService with WidgetsBindingObserver {
 
     if (guestMode) return;
 
-    final String eTitle = eveningTitle ?? "✨ Aaj ki shaam ka vishesh sandesh";
-    final String eBody = eveningBody ?? "Aapke rishton aur bhavnao ke liye kya kehte hain sitare?";
+    final String eTitle = localized?.eveningTitle ?? "✨ Aaj ki shaam ka vishesh sandesh";
+    final String eBody = localized?.eveningBody ?? "Aapke rishton aur bhavnao ke liye kya kehte hain sitare?";
 
     // Schedule 4 weeks of evening notifications (Mon/Wed/Fri/Sat at 20:30)
     // as one-time events to avoid matchDateTimeComponents.dayOfWeekAndTime bug.
@@ -413,7 +444,11 @@ class NotificationService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _scheduleFestivals({int daysAhead = 14}) async {
+  Future<void> _scheduleFestivals({
+    int daysAhead = 14,
+    String language = 'en',
+    LocalizedNotificationStrings? localized,
+  }) async {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     final upcoming = HinduFestivals.upcomingFrom(
       now.toLocal(),
@@ -429,10 +464,24 @@ class NotificationService with WidgetsBindingObserver {
       );
       if (scheduled.isBefore(now)) continue;
 
+      // Use the localized festival name; if the caller provided localized
+      // title/body builders, use them, otherwise fall back to the festival's
+      // hardcoded English title/body.
+      final festName = f.nameFor(language);
+      final String title;
+      final String body;
+      if (localized != null) {
+        title = localized.festivalTitleFor(festName);
+        body = localized.festivalBodyFor(festName);
+      } else {
+        title = f.title;
+        body = f.body;
+      }
+
       await flutterLocalNotificationsPlugin.zonedSchedule(
         id++,
-        f.title,
-        f.body,
+        title,
+        body,
         scheduled,
         const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -449,13 +498,105 @@ class NotificationService with WidgetsBindingObserver {
       );
 
       await _saveNotificationToStorage(
-        f.title,
-        f.body,
+        title,
+        body,
         "Festival",
         true,
         scheduledTime: scheduled,
       );
     }
+  }
+
+  /// Schedules two re-engagement notifications that fire even if the app is
+  /// killed: one 1 day from now and another 3 days from now. They use the
+  /// user's selected language so the message feels personal. The IDs
+  /// (5000/5001) are fixed so re-scheduling replaces the previous ones
+  /// rather than stacking duplicates.
+  Future<void> _scheduleReengagementNotifications({
+    LocalizedNotificationStrings? localized,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    bool guestMode = prefs.getBool('guest_mode') ?? false;
+    if (guestMode) return;
+
+    final String r1Title = localized?.reengageTitle ?? "🌙 The stars missed you";
+    final String r1Body = localized?.reengageBody ?? "Your daily horoscope is ready.";
+    final String r2Title = localized?.reengage2Title ?? "💫 Don't miss your sign";
+    final String r2Body = localized?.reengage2Body ?? "Your Kundli insights are waiting.";
+
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+
+    // First re-engagement: 1 day from now at 11:00 AM.
+    tz.TZDateTime r1Date = tz.TZDateTime(
+      tz.local, now.year, now.month, now.day, 11, 0,
+    ).add(const Duration(days: 1));
+    if (r1Date.isBefore(now)) {
+      r1Date = r1Date.add(const Duration(days: 1));
+    }
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      5000,
+      r1Title,
+      r1Body,
+      r1Date,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'reengage_channel',
+          'Re-engagement',
+          channelDescription: 'Reminders to bring you back to the stars',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          icon: 'ic_launcher',
+          color: AppColors.primaryPurple,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.dateAndTime,
+    );
+
+    await _saveNotificationToStorage(
+      r1Title,
+      r1Body,
+      "Re-engage",
+      false,
+      scheduledTime: r1Date,
+    );
+
+    // Second re-engagement: 3 days from now at 6:00 PM.
+    tz.TZDateTime r2Date = tz.TZDateTime(
+      tz.local, now.year, now.month, now.day, 18, 0,
+    ).add(const Duration(days: 3));
+    if (r2Date.isBefore(now)) {
+      r2Date = r2Date.add(const Duration(days: 1));
+    }
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      5001,
+      r2Title,
+      r2Body,
+      r2Date,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'reengage_channel',
+          'Re-engagement',
+          channelDescription: 'Reminders to bring you back to the stars',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          icon: 'ic_launcher',
+          color: AppColors.primaryPurple,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.dateAndTime,
+    );
+
+    await _saveNotificationToStorage(
+      r2Title,
+      r2Body,
+      "Re-engage",
+      false,
+      scheduledTime: r2Date,
+    );
   }
 
   Future<void> _scheduleDaily({required int id, required String title, required String body, required tz.TZDateTime scheduledDate}) async {

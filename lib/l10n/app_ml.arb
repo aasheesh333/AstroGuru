@@ -308,6 +308,28 @@
   "emailNotVerifiedFullBody": "Please verify your email address to continue.",
   "ageRestrictionFull": "You must be at least 10 years old to use this app.",
   "passwordResetLimitBody": "You have reached the maximum number of password reset attempts.",
+  "notificationEveningTitle": "✨ ഇന്ന് രാത്രിയിലെ നക്ഷത്രങ്ങൾ",
+  "notificationEveningBody": "നിങ്ങളുടെ വൈകുന്നേരത്തിനായി നക്ഷത്രങ്ങൾ എന്ത് പറയുന്നു എന്ന് കാണുക.",
+  "notificationReengageTitle": "🌙 നക്ഷത്രങ്ങൾ നിങ്ങളെ ഓർത്തു",
+  "notificationReengageBody": "നിങ്ങളുടെ പ്രതിദിന രാശിഫലം തയ്യാറാണ്. പ്രപഞ്ചം നിങ്ങൾക്കായി എന്ത് പ്ലാൻ ചെയ്തു എന്ന് വാരൂ.",
+  "notificationReengage2Title": "💫 നിങ്ങളുടെ രാശി മറക്കരുത്",
+  "notificationReengage2Body": "കുറച്ച് ദിവസങ്ങളായി — നിങ്ങളുടെ കുണ്ഡലി പ്രവചനങ്ങൾ കാത്തിരിക്കുന്നു. ഇന്നത്തെ മാർഗദർശനം കാണാൻ ടാപ്പ് ചെയ്യുക.",
+  "notificationFestivalTitle": "🎉 ആസ്ട്രോപ്രേരണയിൽ നിന്ന് {festival} ആശംസകൾ",
+  "notificationFestivalBody": "{festival} ദിവസം നിങ്ങൾക്ക് സന്തോഷവും സമൃദ്ധിയും ലഭിക്കട്ടെ. ഇന്ന് നക്ഷത്രങ്ങൾ നിങ്ങളുടെ പക്ഷത്തായിരിക്കട്ടെ.",
+  "@notificationFestivalTitle": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
+  "@notificationFestivalBody": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
   "@chatMsgTooLong": {
     "placeholders": {
       "count": {

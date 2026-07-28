@@ -308,6 +308,28 @@
   "emailNotVerifiedFullBody": "Please verify your email address to continue.",
   "ageRestrictionFull": "You must be at least 10 years old to use this app.",
   "passwordResetLimitBody": "You have reached the maximum number of password reset attempts.",
+  "notificationEveningTitle": "✨ ಇಂದು ರಾತ್ರಿಯ ನಕ್ಷತ್ರಗಳು",
+  "notificationEveningBody": "ನಿಮ್ಮ ಸಂಜೆಗಾಗಿ ನಕ್ಷತ್ರಗಳು ಏನು ಹೇಳುತ್ತಿವೆ ನೋಡಿ.",
+  "notificationReengageTitle": "🌙 ನಕ್ಷತ್ರಗಳು ನಿಮ್ಮನ್ನು ನೆನಪಿಸಿಕೊಂಡವು",
+  "notificationReengageBody": "ನಿಮ್ಮ ದೈನಂದಿನ ರಾಶಿಫಲ ಸಿದ್ಧವಾಗಿದೆ. ವಿಶ್ವವು ನಿಮಗಾಗಿ ಏನು ಯೋಜಿಸಿದೆ ಎಂಬುದನ್ನು ತಿಳಿಯಿರಿ.",
+  "notificationReengage2Title": "💫 ನಿಮ್ಮ ರಾಶಿಯನ್ನು ಕಳೆದುಕೊಳ್ಳಬೇಡಿ",
+  "notificationReengage2Body": "ಕೆಲವು ದಿನಗಳಾಗಿವೆ — ನಿಮ್ಮ ಕುಂಡಲಿ ಒಳನೋಟ ಕಾಯುತ್ತಿದೆ. ಇಂದಿನ ಮಾರ್ಗದರ್ಶನ ನೋಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ.",
+  "notificationFestivalTitle": "🎉 ಆಸ್ಟ್ರೋಪ್ರೇರಣದಿಂದ {festival} ಶುಭಾಶಯಗಳು",
+  "notificationFestivalBody": "{festival} ದಿನ ನಿಮಗೆ ಸಂತೋಷ ಮತ್ತು ಸಮೃದ್ಧಿ ಸಿಗಲಿ. ಇಂದು ನಕ್ಷತ್ರಗಳು ನಿಮ್ಮ ಪರವಾಗಿರಲಿ.",
+  "@notificationFestivalTitle": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
+  "@notificationFestivalBody": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
   "@chatMsgTooLong": {
     "placeholders": {
       "count": {

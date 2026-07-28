@@ -308,6 +308,28 @@
   "emailNotVerifiedFullBody": "Please verify your email address to continue.",
   "ageRestrictionFull": "You must be at least 10 years old to use this app.",
   "passwordResetLimitBody": "You have reached the maximum number of password reset attempts.",
+  "notificationEveningTitle": "✨ آج رات کے ستارے",
+  "notificationEveningBody": "دیکھیں آپ کی شام کے لیے ستارے کیا کہہ رہے ہیں۔",
+  "notificationReengageTitle": "🌙 ستاروں نے آپ کو یاد کیا",
+  "notificationReengageBody": "آپ کی روزانہ راشی پھل تیار ہے۔ آئیے جانئے کائنات نے آپ کے لیے کیا منصوبہ بنایا ہے۔",
+  "notificationReengage2Title": "💫 اپنی راشی نہ بھولیں",
+  "notificationReengage2Body": "کچھ دن ہو گئے — آپ کی کنڈلی کی معلومات انتظار کر رہی ہے۔ آج کی رہنمائی دیکھنے کے لیے ٹیپ کریں۔",
+  "notificationFestivalTitle": "🎉 اسٹروپریرنا کی طرف سے {festival} کی مبارکباد",
+  "notificationFestivalBody": "{festival} کے دن آپ کو خوشی اور خوشحالی ملے۔ آج ستارے آپ کے حق میں ہوں۔",
+  "@notificationFestivalTitle": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
+  "@notificationFestivalBody": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
   "@chatMsgTooLong": {
     "placeholders": {
       "count": {

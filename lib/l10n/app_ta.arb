@@ -308,6 +308,28 @@
   "emailNotVerifiedFullBody": "Please verify your email address to continue.",
   "ageRestrictionFull": "You must be at least 10 years old to use this app.",
   "passwordResetLimitBody": "You have reached the maximum number of password reset attempts.",
+  "notificationEveningTitle": "✨ இன்று இரவு நட்சத்திரங்கள்",
+  "notificationEveningBody": "உங்கள் மாலை நேரத்திற்கு நட்சத்திரங்கள் என்ன சொல்கின்றன என்று பாருங்கள்.",
+  "notificationReengageTitle": "🌙 நட்சத்திரங்கள் உங்களை இழந்தன",
+  "notificationReengageBody": "உங்கள் தினசரி ராசி பலன் தயார். பிரபஞ்சம் உங்களுக்காக என்ன திட்டமிட்டுள்ளது என்று வாருங்கள்.",
+  "notificationReengage2Title": "💫 உங்கள் ராசியை தவறவிடாதீர்கள்",
+  "notificationReengage2Body": "சில நாட்கள் ஆகிவிட்டன — உங்கள் குண்டலி குறிப்புகள் காத்திருக்கின்றன. இன்றைய வழிகாட்டியை பார்க்க தட்டவும்.",
+  "notificationFestivalTitle": "🎉 அஸ்ட்ரோப்ரேரணாவிலிருந்து {festival} வாழ்த்துக்கள்",
+  "notificationFestivalBody": "{festival} அன்று உங்களுக்கு மகிழ்ச்சியும் செழுமையும் கிடைக்கட்டும். இன்று நட்சத்திரங்கள் உங்கள் சார்பாக இருக்கட்டும்.",
+  "@notificationFestivalTitle": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
+  "@notificationFestivalBody": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
   "@chatMsgTooLong": {
     "placeholders": {
       "count": {

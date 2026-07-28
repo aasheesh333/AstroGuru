@@ -308,6 +308,28 @@
   "emailNotVerifiedFullBody": "Please verify your email address to continue.",
   "ageRestrictionFull": "You must be at least 10 years old to use this app.",
   "passwordResetLimitBody": "You have reached the maximum number of password reset attempts.",
+  "notificationEveningTitle": "✨ আজি নিশাৰ তৰা",
+  "notificationEveningBody": "আপোনাৰ সন্ধিয়াৰ বাবে তৰাবোৰে কি কৈছে চাওক।",
+  "notificationReengageTitle": "🌙 তৰাবোৰে আপোনাক মিছ কৰিলে",
+  "notificationReengageBody": "আপোনাৰ দৈনিক ৰাশিফল সাজু। ব্ৰহ্মাণ্ডই আপোনাৰ বাবে কি পৰিকল্পনা কৰিছে জানক।",
+  "notificationReengage2Title": "💫 আপোনাৰ ৰাশি নাপাহৰিব",
+  "notificationReengage2Body": "কেইদিনমান হ'ল — আপোনাৰ কুণ্ডলীৰ তথ্য বাট চাই আছে। আজিৰ পথপ্ৰদৰ্শক চাবলৈ টেপ কৰক।",
+  "notificationFestivalTitle": "🎉 অস্ট্ৰোপ্ৰেৰণাৰ পৰা {festival}ৰ শুভেচ্ছা",
+  "notificationFestivalBody": "{festival}ৰ দিনা আপোনাক আনন্দ আৰু সমৃদ্ধি লাভ কৰক। আজি তৰাবোৰ আপোনাৰ পক্ষত থাকক।",
+  "@notificationFestivalTitle": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
+  "@notificationFestivalBody": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
   "@chatMsgTooLong": {
     "placeholders": {
       "count": {

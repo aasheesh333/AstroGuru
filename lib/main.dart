@@ -82,9 +82,11 @@ void main() async {
   }
 
   // Notification Service (Handles OneSignal + Local)
+  // Static notification scheduling (daily/festival/re-engagement) is deferred
+  // to MainScreen where AppLocalizations is available, so notifications use
+  // the user's selected language.
   try {
     await NotificationService().init();
-    await NotificationService().bootstrapStatic();
   } catch (e) {
     developer.log("Error initializing NotificationService: $e");
   }

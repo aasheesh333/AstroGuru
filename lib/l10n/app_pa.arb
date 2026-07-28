@@ -308,6 +308,28 @@
   "emailNotVerifiedFullBody": "Please verify your email address to continue.",
   "ageRestrictionFull": "You must be at least 10 years old to use this app.",
   "passwordResetLimitBody": "You have reached the maximum number of password reset attempts.",
+  "notificationEveningTitle": "✨ ਅੱਜ ਰਾਤ ਦੇ ਤਾਰੇ",
+  "notificationEveningBody": "ਦੇਖੋ ਤੁਹਾਡੀ ਸ਼ਾਮ ਲਈ ਤਾਰੇ ਕੀ ਆਖ ਰਹੇ ਹਨ।",
+  "notificationReengageTitle": "🌙 ਤਾਰਿਆਂ ਨੇ ਤੁਹਾਨੂੰ ਯਾਦ ਕੀਤਾ",
+  "notificationReengageBody": "ਤੁਹਾਡੀ ਰੋਜ਼ਾਨਾ ਰਾਸ਼ੀ ਤਿਆਰ ਹੈ। ਆਓ ਜਾਣੀਏ ਬ੍ਰਹਿਮੰਡ ਨੇ ਤੁਹਾਡੇ ਲਈ ਕੀ ਯੋਜਨਾ ਬਣਾਈ ਹੈ।",
+  "notificationReengage2Title": "💫 ਆਪਣੀ ਰਾਸ਼ੀ ਨਾ ਭੁੱਲੋ",
+  "notificationReengage2Body": "ਕੁਝ ਦਿਨ ਹੋ ਗਏ — ਤੁਹਾਡੀ ਕੁੰਡਲੀ ਦੀ ਜਾਣਕਾਰੀ ਉਡੀਕ ਕਰ ਰਹੀ ਹੈ। ਅੱਜ ਦੀ ਮਾਰਗਦਰਸ਼ਨ ਲਈ ਟੈਪ ਕਰੋ।",
+  "notificationFestivalTitle": "🎉 ਅਸਟ੍ਰੋਪ੍ਰੇਰਨਾ ਵੱਲੋਂ {festival} ਦੀਆਂ ਸ਼ੁਭਕਾਮਨਾਵਾਂ",
+  "notificationFestivalBody": "{festival} ਵਾਲੇ ਦਿਨ ਤੁਹਾਨੂੰ ਖੁਸ਼ੀ ਤੇ ਖੁਸ਼ਹਾਲੀ ਮਿਲੇ। ਅੱਜ ਤਾਰੇ ਤੁਹਾਡੇ ਪੱਖ ਵਿੱਚ ਹੋਣ।",
+  "@notificationFestivalTitle": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
+  "@notificationFestivalBody": {
+    "placeholders": {
+      "festival": {
+        "type": "String"
+      }
+    }
+  },
   "@chatMsgTooLong": {
     "placeholders": {
       "count": {

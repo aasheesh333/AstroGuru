@@ -50,6 +50,51 @@ void main() {
       }
     });
 
+    test('nameFor returns translated name for supported languages', () {
+      // Pick Diwali which should have translations for all major languages.
+      final allFestivals = HinduFestivals.upcomingFrom(
+        DateTime(2026, 1, 1),
+        days: 365 * 2,
+      );
+      final diwali = allFestivals.firstWhere(
+        (e) => e.festival.name == 'Diwali',
+      ).festival;
+      expect(diwali.nameFor('en'), 'Diwali');
+      expect(diwali.nameFor('hi'), isNot('Diwali'));
+      expect(diwali.nameFor('hi'), isNotEmpty);
+      expect(diwali.nameFor('ta'), isNotEmpty);
+      expect(diwali.nameFor('bn'), isNotEmpty);
+      expect(diwali.nameFor('ur'), isNotEmpty);
+    });
+
+    test('nameFor falls back to English for unknown language', () {
+      final allFestivals = HinduFestivals.upcomingFrom(
+        DateTime(2026, 1, 1),
+        days: 365 * 2,
+      );
+      final diwali = allFestivals.firstWhere(
+        (e) => e.festival.name == 'Diwali',
+      ).festival;
+      expect(diwali.nameFor('fr'), 'Diwali');
+      expect(diwali.nameFor(''), 'Diwali');
+    });
+
+    test('every festival entry has a localizedName map', () {
+      final allFestivals = HinduFestivals.upcomingFrom(
+        DateTime(2026, 1, 1),
+        days: 365 * 2,
+      );
+      final seenNames = <String>{};
+      for (final entry in allFestivals) {
+        // Only check each unique festival name once (skip 2027 variants
+        // that share the same base entry).
+        if (seenNames.contains(entry.festival.name)) continue;
+        seenNames.add(entry.festival.name);
+        expect(entry.festival.localizedName, isNotEmpty,
+            reason: '${entry.festival.name} is missing localizedName translations');
+      }
+    });
+
     test('2026 and 2027 each contain Diwali, Holi, and Janmashtami', () {
       final twoYear = HinduFestivals.upcomingFrom(
         DateTime(2026, 1, 1),
