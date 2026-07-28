@@ -4,28 +4,16 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../logic/key_manager.dart';
 
-/// Calls Groq's OpenAI-compatible chat completions endpoint directly from
-/// the client. The API key is resolved via [KeyManager], which prefers the
-/// `groq_api_keys/groq_api_list` Firestore doc and falls back to a local
-/// `.env` value. We retry on 429 with a small exponential backoff.
 class AIService {
-  static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  static const String _baseUrl =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite';
   static const int _maxAttempts = 3;
-  static const String _model = 'llama-3.3-70b-versatile';
 
-  /// Lowered from 0.7 to 0.6 — the higher temperature made horoscopes
-  /// feel like obvious template copy. 0.6 keeps the language natural
-  /// while reducing generic phrasing.
   static const double _defaultTemperature = 0.6;
 
-  // --- Language support ---------------------------------------------------
+  static const int _thinkingBudgetJson = 512;
+  static const int _thinkingBudgetChat = 0;
 
-  /// Maps ISO-639-1 codes used by the app's LanguageProvider to the full
-  /// English name of the language. The AI is much more reliable when
-  /// given a full language name ("Hindi") than a bare 2-letter code
-  /// ("hi") in the system prompt, especially for Indian languages.
-  /// Codes that the app does not ship are not in this map; callers
-  /// should use [languageNameFor] which falls back gracefully.
   static const Map<String, String> _languageNames = {
     'en': 'English',
     'hi': 'Hindi',
@@ -42,24 +30,12 @@ class AIService {
     'as': 'Assamese',
   };
 
-  /// Returns the full English language name for an ISO code, or the
-  /// code itself if the language is not in the table. An empty input
-  /// is returned as-is.
   static String languageNameFor(String code) {
     if (code.isEmpty) return code;
     return _languageNames[code.toLowerCase()] ?? code;
   }
 
-  /// Patterns that suggest the user is asking the AI to switch its
-  /// response language. Each pattern is a case-insensitive substring
-  /// to look for; the value is the ISO code to switch to.
-  ///
-  /// We keep the list small and explicit to avoid false positives on
-  /// incidental mentions like "I am learning Spanish". A valid request
-  /// must contain a "speak/reply/answer/baat/bolo/sollu/..." cue near
-  /// the language name.
   static const Map<String, String> _languageOverridePatterns = {
-    // English-script cues
     'speak in english': 'en',
     'reply in english': 'en',
     'answer in english': 'en',
@@ -98,7 +74,6 @@ class AIService {
     'speak in odia': 'or',
     'speak in urdu': 'ur',
     'speak in assamese': 'as',
-    // Romanized Dravidian & other regional cues
     'tamil la sollu': 'ta',
     'tamil la solra': 'ta',
     'tamil la pesu': 'ta',
@@ -151,14 +126,13 @@ class AIService {
     'assamese ot': 'as',
     'assamese me': 'as',
     'assamese mein': 'as',
-    // Devanagari / regional-script direct mentions
     'हिंदी में': 'hi',
     'हिंदी मे': 'hi',
     'हिन्दी में': 'hi',
     'हिन्दी मे': 'hi',
     'বাংলায়': 'bn',
     'বাংলাতে': 'bn',
-    'মরাঠিতে': 'mr',
+    'মराठিতে': 'mr',
     'தமிழில்': 'ta',
     'తెలుగులో': 'te',
     'ગુજરાતીમાં': 'gu',
@@ -170,14 +144,6 @@ class AIService {
     'অসমীয়াত': 'as',
   };
 
-  /// Inspects a user message for an explicit request to switch the AI's
-  /// response language. Returns the ISO code to switch to, or null if
-  /// the message does not contain such a request.
-  ///
-  /// The detection is conservative: the message must contain a verb
-  /// cue ("speak/reply/baat/bolo/...") near the language name, so
-  /// incidental mentions like "I am learning Spanish" do not trigger
-  /// an override.
   static String? detectLanguageOverride(String message) {
     if (message.isEmpty) return null;
     final lower = message.toLowerCase();
@@ -189,49 +155,106 @@ class AIService {
     return null;
   }
 
-  static Future<String> _postGroq({
+  static Map<String, dynamic> _buildGeminiBody({
+    required List<Map<String, dynamic>> messages,
+    required bool jsonMode,
+    required int maxTokens,
+    required double? temperature,
+    required int thinkingBudget,
+  }) {
+    String? systemInstruction;
+    final contents = <Map<String, dynamic>>[];
+
+    for (final msg in messages) {
+      final role = msg['role']?.toString() ?? '';
+      final content = msg['content']?.toString() ?? '';
+      if (role == 'system') {
+        systemInstruction = content;
+      } else if (role == 'assistant') {
+        contents.add({
+          'role': 'model',
+          'parts': [{'text': content}],
+        });
+      } else {
+        contents.add({
+          'role': role.isEmpty ? 'user' : role,
+          'parts': [{'text': content}],
+        });
+      }
+    }
+
+    final body = <String, dynamic>{
+      'contents': contents,
+      'generationConfig': <String, dynamic>{
+        'temperature': temperature ?? _defaultTemperature,
+        'maxOutputTokens': maxTokens,
+        'thinkingConfig': {'thinkingBudget': thinkingBudget},
+      },
+    };
+
+    if (systemInstruction != null && systemInstruction.isNotEmpty) {
+      body['systemInstruction'] = {
+        'parts': [{'text': systemInstruction}],
+      };
+    }
+
+    if (jsonMode) {
+      (body['generationConfig'] as Map<String, dynamic>)['responseMimeType'] =
+          'application/json';
+    }
+
+    return body;
+  }
+
+  static String _extractGeminiText(Map<String, dynamic> data) {
+    final candidates = data['candidates'] as List?;
+    if (candidates == null || candidates.isEmpty) return '';
+    final content = candidates[0]['content'] as Map?;
+    if (content == null) return '';
+    final parts = content['parts'] as List?;
+    if (parts == null || parts.isEmpty) return '';
+    return (parts[0]['text'] ?? '').toString();
+  }
+
+  static Future<String> _postGemini({
     required List<Map<String, dynamic>> messages,
     bool jsonMode = false,
     int maxTokens = 1024,
     double? temperature,
+    int? thinkingBudget,
   }) async {
     final apiKey = await KeyManager().getApiKey();
     if (apiKey.isEmpty) {
-      throw StateError('Groq API key is not configured.');
+      throw StateError('Gemini API key is not configured.');
     }
+
+    final budget = thinkingBudget ?? (jsonMode ? _thinkingBudgetJson : _thinkingBudgetChat);
 
     int delayMs = 1000;
     for (int attempt = 1; attempt <= _maxAttempts; attempt++) {
       try {
-        final body = <String, dynamic>{
-          'model': _model,
-          'messages': messages,
-          'temperature': temperature ?? _defaultTemperature,
-          'max_tokens': maxTokens,
-        };
-        if (jsonMode) {
-          body['response_format'] = {'type': 'json_object'};
-        }
+        final requestBody = _buildGeminiBody(
+          messages: messages,
+          jsonMode: jsonMode,
+          maxTokens: maxTokens,
+          temperature: temperature,
+          thinkingBudget: budget,
+        );
 
-        final response = await http.post(
-          Uri.parse(_baseUrl),
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 60));
+        final response = await http
+            .post(
+              Uri.parse('$_baseUrl:generateContent'),
+              headers: {
+                'x-goog-api-key': apiKey,
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode(requestBody),
+            )
+            .timeout(const Duration(seconds: 60));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
-          final choices = data['choices'] as List?;
-          if (choices != null && choices.isNotEmpty) {
-            final msg = choices[0]['message'] as Map?;
-            if (msg != null) {
-              return (msg['content'] ?? '').toString();
-            }
-          }
-          return '';
+          return _extractGeminiText(data);
         }
 
         if (response.statusCode == 429 && attempt < _maxAttempts) {
@@ -241,9 +264,9 @@ class AIService {
         }
 
         if (kDebugMode) {
-          debugPrint('groq http ${response.statusCode}: ${response.body}');
+          debugPrint('gemini http ${response.statusCode}: ${response.body}');
         }
-        throw StateError('Groq request failed: HTTP ${response.statusCode}');
+        throw StateError('Gemini request failed: HTTP ${response.statusCode}');
       } on TimeoutException {
         if (attempt < _maxAttempts) {
           await Future.delayed(Duration(milliseconds: delayMs));
@@ -253,15 +276,91 @@ class AIService {
         rethrow;
       } catch (e) {
         if (kDebugMode) {
-          debugPrint('groq unexpected error: $e');
+          debugPrint('gemini unexpected error: $e');
         }
         rethrow;
       }
     }
-    throw TimeoutException('Groq: max retries exceeded');
+    throw TimeoutException('Gemini: max retries exceeded');
   }
 
-  // --- Prompt builders (public for testing) -------------------------------
+  static Stream<String> getChatResponseStream({
+    required String query,
+    required String userContext,
+    required String language,
+    required List<Map<String, String>> history,
+    String? apiKeyOverride,
+  }) async* {
+    final apiKey = apiKeyOverride ?? await KeyManager().getApiKey();
+    if (apiKey.isEmpty) {
+      yield 'Error: Gemini API key is not configured.';
+      return;
+    }
+
+    final messages = chatResponseMessages(
+      query: query,
+      userContext: userContext,
+      language: language,
+      history: history,
+    );
+
+    final requestBody = _buildGeminiBody(
+      messages: messages,
+      jsonMode: false,
+      maxTokens: 2048,
+      temperature: _defaultTemperature,
+      thinkingBudget: _thinkingBudgetChat,
+    );
+
+    final client = http.Client();
+    final request = http.Request(
+      'POST',
+      Uri.parse('$_baseUrl:streamGenerateContent?alt=sse'),
+    );
+    request.headers['x-goog-api-key'] = apiKey;
+    request.headers['Content-Type'] = 'application/json';
+    request.body = jsonEncode(requestBody);
+
+    try {
+      final response = await client.send(request).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        final errorBody = await response.stream.bytesToString();
+        if (kDebugMode) {
+          debugPrint('gemini stream http ${response.statusCode}: $errorBody');
+        }
+        yield 'Could not reach the AI Sage. Please try again.';
+        return;
+      }
+
+      await for (final line
+          in response.stream.transform(utf8.decoder).transform(const LineSplitter())) {
+        if (line.startsWith('data:')) {
+          final jsonStr = line.substring(5).trim();
+          if (jsonStr == '[DONE]') break;
+          if (jsonStr.isEmpty) continue;
+          try {
+            final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+            final text = _extractGeminiText(data);
+            if (text.isNotEmpty) yield text;
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('gemini stream chunk parse error: $e');
+            }
+          }
+        }
+      }
+    } on TimeoutException {
+      yield 'The AI Sage took too long to respond. Please try again.';
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('gemini stream error: $e');
+      }
+      yield 'Something went wrong. Please try again.';
+    } finally {
+      client.close();
+    }
+  }
 
   static String _horoscopeSystemPrompt(String language, String? kundliContext) {
     final langName = languageNameFor(language);
@@ -310,14 +409,12 @@ class AIService {
   }) =>
       "Generate a monthly horoscope for $sign for the month of ${date.month}, ${date.year}.";
 
-  // --- Public API ---------------------------------------------------------
-
   static Future<String> getResponse(
     String systemPrompt,
     String userPrompt, {
     bool jsonMode = false,
   }) {
-    return _postGroq(
+    return _postGemini(
       messages: [
         {'role': 'system', 'content': systemPrompt},
         {'role': 'user', 'content': userPrompt},
@@ -375,9 +472,11 @@ class AIService {
     String? kundliContext1,
     String? kundliContext2,
   }) {
-    String system = "You are an expert Astrologer specializing in relationship compatibility. Output language: ${languageNameFor(language)}. Write 'summary' and 'detailed_analysis' in ${languageNameFor(language)}. Return ONLY a JSON object with keys: 'score' (integer 0-100), 'summary' (short summary), 'detailed_analysis' (paragraph).";
+    String system =
+        "You are an expert Astrologer specializing in relationship compatibility. Output language: ${languageNameFor(language)}. Write 'summary' and 'detailed_analysis' in ${languageNameFor(language)}. Return ONLY a JSON object with keys: 'score' (integer 0-100), 'summary' (short summary), 'detailed_analysis' (paragraph).";
     if (forcedScore != null) {
-      system += " IMPORTANT: The calculated compatibility score is $forcedScore%. You MUST output exactly this score in the 'score' field. Write the summary and detailed analysis to match this score level (Low/Medium/High).";
+      system +=
+          " IMPORTANT: The calculated compatibility score is $forcedScore%. You MUST output exactly this score in the 'score' field. Write the summary and detailed analysis to match this score level (Low/Medium/High).";
     }
     if (kundliContext1 != null && kundliContext1.isNotEmpty) {
       system += "\nUser 1 ($name1) Kundli: $kundliContext1";
@@ -394,7 +493,8 @@ class AIService {
     String? kundliContext,
   }) {
     final langName = languageNameFor(language);
-    final base = "You are a spiritual guide. Output language: $langName. Write both the 'quote' and 'author' values in $langName. Return ONLY a JSON object with keys: 'quote', 'author'.";
+    final base =
+        "You are a spiritual guide. Output language: $langName. Write both the 'quote' and 'author' values in $langName. Return ONLY a JSON object with keys: 'quote', 'author'.";
     if (kundliContext == null || kundliContext.isEmpty) return base;
     return "$base\nTie the quote to: $kundliContext";
   }
@@ -421,20 +521,6 @@ class AIService {
     );
   }
 
-  /// Builds the full message list (system + history + new query) for the
-  /// AI Sage chat endpoint. Exposed for testing.
-  ///
-  /// The system prompt embeds the full user context (identity, address,
-  /// kundli, recent mentions) so the Sage can answer with full awareness
-  /// of who the user is and what they have mentioned in the conversation.
-  ///
-  /// Language rule: the Sage responds strictly in the app's selected
-  /// language (passed in as a 2-letter code; we translate it to the
-  /// full name so the model does not have to). The user can ask the
-  /// Sage to switch languages mid-conversation; once it switches, it
-  /// keeps that new language for the rest of the chat. The prompt
-  /// makes this contract explicit so the model does not silently
-  /// drift back to English when a user message is in English script.
   static List<Map<String, dynamic>> chatResponseMessages({
     required String query,
     required String userContext,
@@ -467,13 +553,14 @@ class AIService {
     String language,
     List<Map<String, String>> history,
   ) {
-    return _postGroq(
+    return _postGemini(
       messages: chatResponseMessages(
         query: query,
         userContext: userContext,
         language: language,
         history: history,
       ),
+      maxTokens: 2048,
     );
   }
 
@@ -482,7 +569,8 @@ class AIService {
     String? kundliContext,
   }) {
     final langName = languageNameFor(language);
-    final base = "You are a revered Vedic Guru. Speak with deep wisdom, empathy, and authority. NEVER refer to yourself as an AI, machine, or language model. Use a mystical, traditional, and authentic tone. Structure your response with clear sections using Markdown headers (start with ###) and bullet points (start with *). Focus on practical, spiritual, and charitable remedies based on Vedic Astrology. Output language: $langName. Write every section, header, and bullet in $langName.";
+    final base =
+        "You are a revered Vedic Guru. Speak with deep wisdom, empathy, and authority. NEVER refer to yourself as an AI, machine, or language model. Use a mystical, traditional, and authentic tone. Structure your response with clear sections using Markdown headers (start with ###) and bullet points (start with *). Focus on practical, spiritual, and charitable remedies based on Vedic Astrology. Output language: $langName. Write every section, header, and bullet in $langName.";
     if (kundliContext == null || kundliContext.isEmpty) return base;
     return "$base\nPersonalize remedies for this Kundli:\n$kundliContext";
   }
@@ -506,19 +594,37 @@ class AIService {
     String language,
     int days, {
     DateTime? startDate,
+    Map<String, int>? interests,
   }) {
     final dateStr = startDate != null ? startDate.toIso8601String() : "today";
+
+    String interestStrategy = '';
+    if (interests != null && interests.isNotEmpty) {
+      final total = interests.values.fold(0, (a, b) => a + b);
+      if (total > 0) {
+        final topEntries = interests.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        final topStr = topEntries
+            .take(3)
+            .map((e) => '${e.key} (${((e.value / total) * 100).round()}%)')
+            .join(', ');
+        interestStrategy =
+            "\nUser's top interests: $topStr. Weight notification content toward these interests — suggest relevant features based on what they use most.\n";
+      }
+    }
+
     final contextPrompt = zodiac != null
         ? "Target Audience: $zodiac sign. Content Strategy: 50% personalized mini-predictions (e.g., 'Aries: Avoid red today.'), 50% engaging questions or feature prompts (e.g., 'Check your Love Match with...')."
         : "Target Audience: General user. Content Strategy: 100% engaging prompts (e.g., 'See what the stars say today', 'Check family horoscope', 'Find your soulmate').";
 
     final langName = languageNameFor(language);
-    final system = "You are an expert mobile app engagement specialist and astrologer. Output language: $langName. Write every notification string in $langName. $contextPrompt\n"
+    final system =
+        "You are an expert mobile app engagement specialist and astrologer. Output language: $langName. Write every notification string in $langName. $contextPrompt$interestStrategy\n"
         "Generate a JSON object with THREE keys: 'morning' (list of $days strings), 'evening' (list of $days strings), and 'afternoon' (list of objects).\n"
         "Requirements:\n"
         "1. Morning/Evening: List of $days strings each. Short (under 10 words), catchy, actionable, with emojis.\n"
         "2. Morning = Inspiring/Planning. Evening = Reflective/Status.\n"
-        "3. 'afternoon': Generate 3-5 objects for the $days day period. Structure: { 'message': string, 'day_offset': int (0 to ${days-1}), 'hour': int (12-16) }.\n"
+        "3. 'afternoon': Generate 3-5 objects for the $days day period. Structure: { 'message': string, 'day_offset': int (0 to ${days - 1}), 'hour': int (12-16) }.\n"
         "4. Afternoon content: Focus on Festivals, Shubh Muhurat, or specific astrological transits occurring on that specific date (Starting $dateStr). If no festival, use general motivation.\n"
         "5. Return ONLY valid JSON.";
 

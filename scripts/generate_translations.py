@@ -24,7 +24,7 @@ en_data = {
   "remedies": "Remedies",
   "aiChat": "AI Sage",
   "askQuestion": "Ask a question...",
-  "poweredBy": "Powered by Groq AI",
+    "poweredBy": "Powered by Google AI",
   "navHome": "Home",
   "navKundli": "Kundli",
   "navChat": "AI Sage",

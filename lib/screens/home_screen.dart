@@ -7,7 +7,6 @@ import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
-import '../utils/rate_app_launcher.dart';
 import 'login_screen.dart';
 import 'horoscope_detail_screen.dart';
 import 'love_match_screen.dart';
@@ -23,10 +22,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String horoscopeSummary = "Loading daily forecast...";
+  String horoscopeSummary = "";
   Map<String, dynamic>? horoscopeData;
 
-  String quoteText = "The stars incline, but do not bind.";
+  String quoteText = "";
   String quoteAuthor = "";
 
   bool isGuest = false;
@@ -80,46 +79,17 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       _checkDailyUpdates(prefs, forceRefresh);
-      _maybeRequestInAppReview();
     } catch (e) {
       // Handle error safely
     }
   }
 
-  /// Ask the user to rate the app once they have been using it for at least
-  /// 7 days and have performed 3 or more key actions. We only ask once.
   Future<void> _incrementCompletedActions() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final current = prefs.getInt('completed_actions') ?? 0;
       await prefs.setInt('completed_actions', current + 1);
-    } catch (_) {
-      // Non-critical counter; ignore failures.
-    }
-  }
-
-  Future<void> _maybeRequestInAppReview() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool('in_app_review_requested') == true) return;
-
-      final firstOpen = prefs.getInt('first_open_ms');
-      final now = DateTime.now().millisecondsSinceEpoch;
-      if (firstOpen == null) {
-        await prefs.setInt('first_open_ms', now);
-        return;
-      }
-      final ageMs = now - firstOpen;
-      if (ageMs < const Duration(days: 7).inMilliseconds) return;
-
-      final actions = prefs.getInt('completed_actions') ?? 0;
-      if (actions < 3) return;
-
-      await RateAppLauncher.openPlayStoreListing();
-      await prefs.setBool('in_app_review_requested', true);
-    } catch (_) {
-      // InAppReview may not be available on emulators / unsupported devices.
-    }
+    } catch (_) {}
   }
 
   void _checkDailyUpdates(SharedPreferences prefs, bool forceRefresh) async {
@@ -171,6 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     await prefs.setString(lastDateKey, today);
+    if (!mounted) return;
     _loadFromPrefs(prefs, lang);
   }
 
@@ -183,13 +154,13 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = jsonDecode(hJson);
         setState(() {
           horoscopeData = data;
-          horoscopeSummary = data['summary'] ?? "No summary available.";
+          horoscopeSummary = data['summary'] ?? AppLocalizations.of(context)!.homeNoSummary;
           if (isGuest && horoscopeSummary.length > 80) {
              horoscopeSummary = "${horoscopeSummary.substring(0, 80)}...";
           }
         });
       } catch (e) {
-        setState(() => horoscopeSummary = "Forecast unavailable.");
+        setState(() => horoscopeSummary = AppLocalizations.of(context)!.homeForecastUnavailable);
       }
     }
 
@@ -262,8 +233,16 @@ class _HomeScreenState extends State<HomeScreen> {
         // Localize Sign Name
         String localizedSignName = ZodiacUtils.getLocalizedName(context, signName);
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+        return RefreshIndicator(
+          color: AppColors.primaryGold,
+          backgroundColor: AppColors.surfaceColor,
+          onRefresh: () async {
+            final prefs = await SharedPreferences.getInstance();
+            _loadData(forceRefresh: true);
+          },
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -327,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primaryGold.withOpacity(0.1),
+                          color: AppColors.primaryGold.withValues(alpha: 0.1),
                         ),
                         child: Icon(ZodiacUtils.getIcon(signName), color: AppColors.primaryGold, size: 32),
                       ),
@@ -339,7 +318,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text("$localizedSignName ${AppLocalizations.of(context)!.forecast}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 4),
                             Text(
-                              horoscopeSummary,
+                              horoscopeSummary.isEmpty
+                                  ? AppLocalizations.of(context)!.homeLoadingForecast
+                                  : horoscopeSummary,
                               style: const TextStyle(color: Colors.grey, fontSize: 14),
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
@@ -367,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 4,
-                shadowColor: AppColors.primaryGold.withOpacity(0.4),
+                shadowColor: AppColors.primaryGold.withValues(alpha: 0.4),
               ),
               child: Text(AppLocalizations.of(context)!.askAiSageBtn, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
@@ -421,7 +402,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "\"$quoteText\"",
+                        quoteText.isEmpty
+                            ? AppLocalizations.of(context)!.homeDefaultQuote
+                            : '"$quoteText"',
                         style: const TextStyle(color: Colors.white, fontSize: 16, fontStyle: FontStyle.italic),
                       ),
                       if (quoteAuthor.isNotEmpty) ...[
@@ -438,9 +421,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-              const SizedBox(height: 20),
-            ],
-          ),
+                const SizedBox(height: 20),
+             ],
+            ),
+         ),
         );
       }
     );

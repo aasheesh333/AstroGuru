@@ -2,13 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:developer' as developer;
 
-/// Resolves the Groq API key used by [AIService] for direct (client-side)
-/// requests to `api.groq.com`. Resolution order:
-///   1. Firestore doc `groq_api_keys/groq_api_list` — preferred so the key
-///      can be rotated without an app release.
-///   2. `APP_GROQ_API_KEY` / `GROQ_API_KEY` from `assets/.env` (local dev).
-///
-/// A single key is used. Rotation was removed per product decision.
 class KeyManager {
   static final KeyManager _instance = KeyManager._internal();
   factory KeyManager() => _instance;
@@ -23,8 +16,8 @@ class KeyManager {
 
     try {
       final docSnapshot = await FirebaseFirestore.instance
-          .collection('groq_api_keys')
-          .doc('groq_api_list')
+          .collection('gemini_api_keys')
+          .doc('gemini_api_list')
           .get();
       if (docSnapshot.exists && docSnapshot.data() != null) {
         final data = docSnapshot.data()!;
@@ -32,7 +25,7 @@ class KeyManager {
           final s = v?.toString() ?? '';
           if (s.isNotEmpty) {
             _cachedKey = s;
-            developer.log('KeyManager: loaded key from Firestore (len=${s.length}).');
+            developer.log('KeyManager: loaded Gemini key from Firestore (len=${s.length}).');
             return;
           }
         }
@@ -42,10 +35,10 @@ class KeyManager {
     }
 
     if (_cachedKey == null || _cachedKey!.isEmpty) {
-      final local = dotenv.env['APP_GROQ_API_KEY'] ?? dotenv.env['GROQ_API_KEY'] ?? '';
+      final local = dotenv.env['APP_GEMINI_API_KEY'] ?? dotenv.env['GEMINI_API_KEY'] ?? '';
       if (local.isNotEmpty) {
         _cachedKey = local;
-        developer.log('KeyManager: loaded key from .env (len=${local.length}).');
+        developer.log('KeyManager: loaded Gemini key from .env (len=${local.length}).');
       }
     }
   }

@@ -8,6 +8,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
 import '../utils/rate_app_launcher.dart';
@@ -69,6 +70,12 @@ class _ProfileContentState extends State<ProfileContent> {
     await prefs.remove('user_email');
     await prefs.remove('user_name');
 
+    // Clear in-memory UserProvider state so next login starts with a clean slate
+    if (mounted) {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      userProvider.clear();
+    }
+
     try {
       if (Firebase.apps.isNotEmpty) {
         await FirebaseAuth.instance.signOut();
@@ -112,12 +119,12 @@ class _ProfileContentState extends State<ProfileContent> {
     try {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open link.")));
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.linkOpenFailed)));
         }
       }
     } catch (e) {
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open link.")));
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.linkOpenFailed)));
       }
     }
   }
@@ -190,7 +197,7 @@ class _ProfileContentState extends State<ProfileContent> {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.surfaceColor.withOpacity(0.8),
+              color: AppColors.surfaceColor.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -270,7 +277,7 @@ class _ProfileContentState extends State<ProfileContent> {
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
                   icon: Icons.description_outlined,
-                  title: "Terms & Conditions",
+                   title: AppLocalizations.of(context)!.profileTermsConditions,
                   onTap: () => _launch("https://dhanuk.page.gd/AstroPrerna/Terms-and-Conditions.html"),
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
@@ -292,6 +299,12 @@ class _ProfileContentState extends State<ProfileContent> {
                   onTap: () => _launch(
                     "mailto:Aasheeshkatheriya@gmail.com?subject=${AppLocalizations.of(context)!.feedbackSubject}&body=${AppLocalizations.of(context)!.feedbackBody}",
                   ),
+                ),
+                const Divider(color: AppColors.scaffoldBackgroundColor),
+                _buildProfileItem(
+                  icon: Icons.share,
+                  title: AppLocalizations.of(context)!.profileShareApp,
+                  onTap: () => Share.share(AppLocalizations.of(context)!.shareAppText),
                 ),
                 const Divider(color: AppColors.scaffoldBackgroundColor),
                 _buildProfileItem(
@@ -368,8 +381,8 @@ class _ProfileContentState extends State<ProfileContent> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Your personal AI-powered Vedic astrology companion.',
+            Text(
+              l10n.aboutDescription,
               style: TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 16),

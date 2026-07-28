@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../widgets/astro_card.dart';
 import '../widgets/ad_locked_widget.dart';
 import '../logic/kundli_service.dart';
 import '../logic/remedy_service.dart';
 import '../logic/language_provider.dart';
+import '../logic/interest_tracker.dart';
 import '../services/notification_service.dart';
 
 class KundliResultScreen extends StatefulWidget {
@@ -30,7 +32,7 @@ class KundliResultScreen extends StatefulWidget {
 class _KundliResultScreenState extends State<KundliResultScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Map<String, dynamic>? chartData;
-  String remedies = "Loading remedies...";
+  String remedies = "";
   bool isLoading = true;
 
   // Unlock States
@@ -81,6 +83,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
 
     // Trigger Notification Logic
     NotificationService().onKundliGenerated();
+    await InterestTracker.track('kundli');
 
     if (mounted) {
       setState(() {
@@ -111,16 +114,16 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.name}\'s Kundli'),
+        title: Text(AppLocalizations.of(context)!.kundli),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primaryGold,
           labelColor: AppColors.primaryGold,
           unselectedLabelColor: AppColors.textSecondary,
-          tabs: const [
-            Tab(text: 'Chart'),
-            Tab(text: 'Planets'),
-            Tab(text: 'Remedies'), // Changed Dasha to Remedies for better utility
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.kundliChartTab),
+            Tab(text: AppLocalizations.of(context)!.kundliPlanetsTab),
+            Tab(text: AppLocalizations.of(context)!.kundliRemediesTab),
           ],
         ),
       ),
@@ -140,7 +143,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
   Widget _buildLoadingShimmer() {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceColor,
-      highlightColor: AppColors.primaryGold.withOpacity(0.15),
+      highlightColor: AppColors.primaryGold.withValues(alpha: 0.15),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -157,7 +160,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
   }
 
   Widget _buildChartTab() {
-    if (chartData == null) return const Center(child: Text("Error loading chart"));
+    if (chartData == null) return Center(child: Text(AppLocalizations.of(context)!.kundliErrorChart));
 
     final lagna = chartData!['lagna'];
     final planets = chartData!['planets'] as List;
@@ -176,7 +179,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
             children: [
               const SizedBox(height: 24),
               Text(
-                'Lagna Chart',
+                AppLocalizations.of(context)!.kundliLagnaChart,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 24),
@@ -194,7 +197,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
                       painter: _KundliChartPainter(),
                     ),
                     // Simplified: Just showing Text of Ascendant
-                    Center(child: Text("Asc: ${lagna['rashi']}", style: const TextStyle(color: AppColors.primaryGold, fontSize: 24))),
+                    Center(child: Text("${AppLocalizations.of(context)!.kundliAscendantPrefix}: ${lagna['rashi']}", style: const TextStyle(color: AppColors.primaryGold, fontSize: 24))),
                   ],
                 ),
               ),
@@ -227,8 +230,8 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
     final content = _buildPlanetsContent();
     if (!_isPlanetsUnlocked) {
       return AdLockedWidget(
-        title: "Unlock Planets Detail",
-        message: "Watch a short ad to see detailed planetary positions.",
+        title: AppLocalizations.of(context)!.kundliUnlockPlanets,
+        message: AppLocalizations.of(context)!.kundliUnlockPlanetsMsg,
         onUnlock: () => setState(() => _isPlanetsUnlocked = true),
         child: content,
       );
@@ -257,7 +260,7 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
               ),
             ),
             title: Text(planet['name'], style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            subtitle: Text("Rashi: ${planet['rashi']}  |  ${planet['isRetrograde'] ? 'Retrograde' : 'Direct'}", style: const TextStyle(color: Colors.grey)),
+            subtitle: Text("${AppLocalizations.of(context)!.kundliRashiPrefix}: ${planet['rashi']}  |  ${planet['isRetrograde'] ? AppLocalizations.of(context)!.kundliRetrograde : AppLocalizations.of(context)!.kundliDirect}", style: const TextStyle(color: Colors.grey)),
             trailing: Text("${planet['degree'].toStringAsFixed(2)}°", style: const TextStyle(color: AppColors.textSecondary)),
           ),
         );
@@ -269,8 +272,8 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
     final content = _buildRemediesContent();
     if (!_isRemediesUnlocked) {
       return AdLockedWidget(
-        title: "Unlock Vedic Remedies",
-        message: "Watch a short ad to reveal powerful remedies for your Doshas.",
+        title: AppLocalizations.of(context)!.kundliUnlockRemedies,
+        message: AppLocalizations.of(context)!.kundliUnlockRemediesMsg,
         onUnlock: () => setState(() => _isRemediesUnlocked = true),
         child: content,
       );
@@ -284,11 +287,11 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           const AstroCard(
+           AstroCard(
              child: ListTile(
-               leading: Icon(Icons.healing, color: AppColors.primaryGold),
-               title: Text('Dosha Analysis & Remedies', style: TextStyle(color: Colors.white)),
-               subtitle: Text('Based on your chart positions.', style: TextStyle(color: Colors.grey)),
+               leading: const Icon(Icons.healing, color: AppColors.primaryGold),
+               title: Text(AppLocalizations.of(context)!.kundliDoshaAnalysis, style: const TextStyle(color: Colors.white)),
+               subtitle: Text(AppLocalizations.of(context)!.kundliBasedOnChart, style: const TextStyle(color: Colors.grey)),
              ),
            ),
            const SizedBox(height: 16),
@@ -299,6 +302,17 @@ class _KundliResultScreenState extends State<KundliResultScreen> with SingleTick
   }
 
   Widget _buildFormattedRemedies(String text) {
+    if (text.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            AppLocalizations.of(context)!.kundliLoadingRemedies,
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ),
+      );
+    }
     List<Widget> children = [];
     List<String> lines = text.split('\n');
 
@@ -401,7 +415,7 @@ class _KundliChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.primaryGold.withOpacity(0.5)
+      ..color = AppColors.primaryGold.withValues(alpha: 0.5)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 

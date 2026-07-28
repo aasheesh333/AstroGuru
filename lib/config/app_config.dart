@@ -8,10 +8,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// 2. `assets/.env` (used by local dev with
 ///    `flutter run --dart-define-from-file=assets/.env`)
 ///
-/// NEVER put secrets in this file. The Groq API key lives in the
-/// `groq_api_keys/groq_api_list` Firestore doc and is fetched at runtime
+/// NEVER put secrets in this file. The Gemini API key lives in the
+/// `gemini_api_keys/gemini_api_list` Firestore doc and is fetched at runtime
 /// by `KeyManager.getApiKey()`. For local dev it can be overridden via
-/// `APP_GROQ_API_KEY` in `assets/.env`.
+/// `APP_GEMINI_API_KEY` in `assets/.env`.
 class AppConfig {
   static bool _loaded = false;
 

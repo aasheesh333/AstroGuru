@@ -11,6 +11,7 @@ import '../config/app_config.dart';
 import '../theme/app_colors.dart';
 import '../logic/user_session.dart';
 import '../logic/hindu_festivals.dart';
+import '../logic/interest_tracker.dart';
 import 'ai_service.dart';
 
 class NotificationService with WidgetsBindingObserver {
@@ -153,11 +154,13 @@ class NotificationService with WidgetsBindingObserver {
     }
 
     try {
+      final interests = await InterestTracker.getInterests();
       final jsonResponse = await AIService.getNotificationSchedule(
         zodiac,
         language,
         5,
         startDate: DateTime.now(),
+        interests: interests,
       );
       final data = jsonDecode(jsonResponse) as Map<String, dynamic>;
 

@@ -73,7 +73,7 @@ class UserSession {
        final prefs = await SharedPreferences.getInstance();
        dob = prefs.getString('user_dob');
     }
-    return dob ?? DateTime.now().toIso8601String();
+    return dob ?? '';
   }
 
   static Future<String?> getProfileImage() async {

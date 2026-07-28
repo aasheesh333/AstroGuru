@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:share_plus/share_plus.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
+import '../logic/interest_tracker.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
@@ -26,6 +28,13 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _name1Controller = TextEditingController();
   final TextEditingController _name2Controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _name1Controller.dispose();
+    _name2Controller.dispose();
+    super.dispose();
+  }
   String _sign1 = "Aries";
   String _sign2 = "Aries";
   bool _isLoading = false;
@@ -103,6 +112,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
 
       // Trigger Notification Logic
       NotificationService().onLoveMatchGenerated();
+      await InterestTracker.track('love_match');
 
       if (mounted) {
         setState(() {
@@ -113,7 +123,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Analysis failed. Please try again.")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.loveMatchError)));
       }
     }
   }
@@ -166,12 +176,12 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor.withOpacity(0.9),
+        color: AppColors.surfaceColor.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primaryGold.withOpacity(0.3)),
+        border: Border.all(color: AppColors.primaryGold.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -189,9 +199,9 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: AppLocalizations.of(context)!.enterName,
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
               filled: true,
-              fillColor: Colors.black.withOpacity(0.3),
+              fillColor: Colors.black.withValues(alpha: 0.3),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
               errorStyle: const TextStyle(color: Colors.redAccent),
               errorBorder: OutlineInputBorder(
@@ -204,7 +214,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(10),
             ),
             child: DropdownButtonHideUnderline(
@@ -234,7 +244,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
   Widget _buildLoadingShimmer() {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceColor,
-      highlightColor: AppColors.primaryGold.withOpacity(0.2),
+      highlightColor: AppColors.primaryGold.withValues(alpha: 0.2),
       child: Column(
         children: [
           Container(
@@ -261,6 +271,19 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
     );
   }
 
+  void _shareResult() {
+    if (_result == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    final percentage = _result!['score'] ?? 0;
+    final summary = _result!['summary'] ?? '';
+    final analysis = _result!['detailed_analysis'] ?? '';
+    final text = '💕 ${_name1Controller.text.trim()} & ${_name2Controller.text.trim()}\n'
+        '${l10n.matchScore}: $percentage%\n\n'
+        '$summary\n\n$analysis\n\n'
+        '${l10n.shareAppText}';
+    Share.share(text);
+  }
+
   Widget _buildResultView() {
     int score = _result!['score'] ?? 0;
     return Column(
@@ -273,7 +296,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
             border: Border.all(color: score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red), width: 4),
             boxShadow: [
               BoxShadow(
-                color: (score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red)).withOpacity(0.4),
+                color: (score > 80 ? Colors.green : (score > 50 ? AppColors.primaryGold : Colors.red)).withValues(alpha: 0.4),
                 blurRadius: 20,
                 spreadRadius: 5,
               )
@@ -296,7 +319,7 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.surfaceColor.withOpacity(0.8),
+            color: AppColors.surfaceColor.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
@@ -312,7 +335,17 @@ class _LoveMatchScreenState extends State<LoveMatchScreen> {
             _name1Controller.clear();
             _name2Controller.clear();
           }),
-        )
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.share, color: AppColors.primaryGold),
+          label: Text(AppLocalizations.of(context)!.share,
+              style: const TextStyle(color: AppColors.primaryGold)),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.primaryGold),
+          ),
+          onPressed: _shareResult,
+        ),
       ],
     );
   }

@@ -52,6 +52,15 @@ class _KundliInputContentState extends State<KundliInputContent> {
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _placeController.dispose();
+    _dateController.dispose();
+    _timeController.dispose();
+    super.dispose();
+  }
+
   bool isGuest = false;
 
   @override

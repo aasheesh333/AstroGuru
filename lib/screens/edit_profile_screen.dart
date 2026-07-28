@@ -27,6 +27,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController = TextEditingController(); // Added email controller
   final TextEditingController _professionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _dobController.dispose();
+    _emailController.dispose();
+    _professionController.dispose();
+    super.dispose();
+  }
   String? _gender;
   String? _maritalStatus;
   DateTime? _selectedDate;
@@ -446,7 +455,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     prefixIcon: const Icon(Icons.email, color: Colors.grey),
                     suffixIcon: const Icon(Icons.lock, color: Colors.grey, size: 20),
                     filled: true,
-                    fillColor: AppColors.surfaceColor.withOpacity(0.5),
+                    fillColor: AppColors.surfaceColor.withValues(alpha: 0.5),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     helperText: AppLocalizations.of(context)!.emailImmutable,
                     helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),

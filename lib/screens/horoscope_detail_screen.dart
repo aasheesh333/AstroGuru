@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_provider.dart';
+import '../logic/interest_tracker.dart';
 import '../services/ai_service.dart';
 import '../theme/app_colors.dart';
-import '../utils/zodiac_utils.dart'; // Added import
+import '../utils/zodiac_utils.dart';
 
 class HoroscopeDetailScreen extends StatefulWidget {
   final String signName;
@@ -44,6 +46,7 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    InterestTracker.track('horoscope');
 
     // Initialize Daily Data (Passed or Fetch)
     if (widget.data != null) {
@@ -238,14 +241,31 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
   }
 
   Map<String, dynamic> _getErrorData() {
+    final l10n = AppLocalizations.of(context)!;
     return {
-      'summary': "Could not load forecast.",
-      'love': "N/A",
-      'career': "N/A",
-      'health': "N/A",
+      'summary': l10n.horoscopeForecastError,
+      'love': l10n.horoscopeNA,
+      'career': l10n.horoscopeNA,
+      'health': l10n.horoscopeNA,
       'lucky_color': "-",
       'lucky_number': "-"
     };
+  }
+
+  void _shareForecast() {
+    final l10n = AppLocalizations.of(context)!;
+    final String tabName = [l10n.tabDaily, l10n.tabWeekly, l10n.tabMonthly][_tabController.index];
+    final data = [_dailyData, _weeklyData, _monthlyData][_tabController.index];
+    if (data == null) return;
+    final localizedSign = ZodiacUtils.getLocalizedName(context, widget.signName);
+    final text = '$localizedSign — $tabName ${l10n.forecast}\n\n'
+        '⭐ ${data['summary'] ?? ''}\n\n'
+        '💖 ${l10n.metricLove}: ${data['love'] ?? '-'}\n'
+        '💼 ${l10n.metricCareer}: ${data['career'] ?? '-'}\n'
+        '🏥 ${l10n.metricHealth}: ${data['health'] ?? '-'}\n'
+        '🍀 ${l10n.metricLuck}: ${data['lucky_color'] ?? '-'} / ${data['lucky_number'] ?? '-'}\n\n'
+        '${l10n.shareAppText}';
+    Share.share(text);
   }
 
   @override
@@ -266,6 +286,12 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: AppColors.primaryGold),
+            onPressed: _shareForecast,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primaryGold,
@@ -303,7 +329,7 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
 
     if (data == null) {
       // This state might happen briefly before fetch starts or on hard error
-      return const Center(child: Text("Loading...", style: TextStyle(color: Colors.white)));
+      return Center(child: Text(AppLocalizations.of(context)!.horoscopeLoading, style: const TextStyle(color: Colors.white)));
     }
 
     return SingleChildScrollView(
@@ -315,11 +341,11 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.surfaceColor.withOpacity(0.5),
+              color: AppColors.surfaceColor.withValues(alpha: 0.5),
               border: Border.all(color: AppColors.primaryGold, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primaryGold.withOpacity(0.3),
+                  color: AppColors.primaryGold.withValues(alpha: 0.3),
                   blurRadius: 30,
                   spreadRadius: 5,
                 ),
@@ -336,11 +362,11 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
           ),
           const SizedBox(height: 12),
           Text(
-            data['summary'] ?? "Align with the stars.",
+            data['summary'] ?? AppLocalizations.of(context)!.horoscopeAlignFallback,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               height: 1.6,
-              color: Colors.white.withOpacity(0.9)
+              color: Colors.white.withValues(alpha: 0.9)
             ),
           ),
           const SizedBox(height: 30),
@@ -354,10 +380,10 @@ class _HoroscopeDetailScreenState extends State<HoroscopeDetailScreen> with Sing
             mainAxisSpacing: 16,
             childAspectRatio: 1.3,
             children: [
-              _DetailCard(title: AppLocalizations.of(context)!.metricLove, icon: Icons.favorite, content: data['love'] ?? "Good", color: Colors.pinkAccent),
-              _DetailCard(title: AppLocalizations.of(context)!.metricCareer, icon: Icons.work, content: data['career'] ?? "Steady", color: Colors.blueAccent),
-              _DetailCard(title: AppLocalizations.of(context)!.metricHealth, icon: Icons.favorite_border, content: data['health'] ?? "Stable", color: Colors.greenAccent),
-              _DetailCard(title: AppLocalizations.of(context)!.metricLuck, icon: Icons.auto_awesome, content: "${data['lucky_color'] ?? '-'}\n${data['lucky_number'] ?? '-'}", color: Colors.amberAccent),
+              _DetailCard(title: AppLocalizations.of(context)!.metricLove, icon: Icons.favorite, content: data['love'] ?? AppLocalizations.of(context)!.horoscopeNA, color: Colors.pinkAccent),
+              _DetailCard(title: AppLocalizations.of(context)!.metricCareer, icon: Icons.work, content: data['career'] ?? AppLocalizations.of(context)!.horoscopeNA, color: Colors.blueAccent),
+              _DetailCard(title: AppLocalizations.of(context)!.metricHealth, icon: Icons.favorite_border, content: data['health'] ?? AppLocalizations.of(context)!.horoscopeNA, color: Colors.greenAccent),
+              _DetailCard(title: AppLocalizations.of(context)!.metricLuck, icon: Icons.auto_awesome, content: "${data['lucky_color'] ?? AppLocalizations.of(context)!.horoscopeNA}\n${data['lucky_number'] ?? AppLocalizations.of(context)!.horoscopeNA}", color: Colors.amberAccent),
             ],
           ),
           const SizedBox(height: 20),
@@ -408,7 +434,7 @@ class _DetailCard extends StatelessWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Close", style: TextStyle(color: AppColors.primaryGold)),
+                child: Text(AppLocalizations.of(context)!.close, style: const TextStyle(color: AppColors.primaryGold)),
               ),
             ],
           ),
@@ -417,11 +443,11 @@ class _DetailCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceColor.withOpacity(0.6),
+          color: AppColors.surfaceColor.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white10),
           boxShadow: [
-             BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5)),
+             BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5)),
           ]
         ),
         child: Column(

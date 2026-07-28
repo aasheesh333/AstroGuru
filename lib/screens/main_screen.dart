@@ -126,17 +126,27 @@ class _MainScreenState extends State<MainScreen> {
                     const Icon(Icons.notifications),
                     if (count > 0)
                       Positioned(
-                        right: 0,
-                        top: 0,
+                        right: -2,
+                        top: -2,
                         child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: const BoxDecoration(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
                             color: Colors.red,
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.surfaceColor, width: 1),
                           ),
                           constraints: const BoxConstraints(
-                            minWidth: 8,
-                            minHeight: 8,
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            count > 99 ? '99+' : count.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -162,10 +172,37 @@ class _MainScreenState extends State<MainScreen> {
       case 3:
         titleWidget = Text(AppLocalizations.of(context)!.aiChat);
         actions = [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: "Reset History",
-            onPressed: () => _chatKey.currentState?.resetHistory(),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: AppColors.primaryGold),
+            onSelected: (value) {
+              if (value == 'reset') {
+                _chatKey.currentState?.resetHistory();
+              } else if (value == 'export') {
+                _chatKey.currentState?.exportChat();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'export',
+                child: Row(
+                  children: [
+                    const Icon(Icons.share, size: 20),
+                    const SizedBox(width: 12),
+                    Text(AppLocalizations.of(context)!.chatExportHistory),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'reset',
+                child: Row(
+                  children: [
+                    const Icon(Icons.refresh, size: 20),
+                    const SizedBox(width: 12),
+                    Text(AppLocalizations.of(context)!.mainResetHistoryTooltip),
+                  ],
+                ),
+              ),
+            ],
           ),
         ];
         break;

@@ -7,11 +7,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../logic/language_provider.dart';
 import '../logic/user_session.dart';
 import '../logic/user_provider.dart';
+import '../logic/interest_tracker.dart';
 import '../services/ai_service.dart';
 import '../logic/recent_mentions.dart';
 import '../services/ad_service.dart';
@@ -94,6 +98,13 @@ class ChatContentState extends State<ChatContent> {
   // Sending guard (prevents double-send / interleaved responses).
   bool _isSending = false;
 
+  // Streaming state
+  StreamSubscription<String>? _streamSubscription;
+  bool _canRegenerate = false;
+  String _lastUserQuery = '';
+  String _lastUserContext = '';
+  String _lastLang = 'en';
+
   // Sticky language override. Persisted in [UserProvider] /
   // [UserSession] and survives across chats and app restarts. Defaults
   // to null, which means "use the app's selected language from
@@ -127,6 +138,7 @@ class ChatContentState extends State<ChatContent> {
 
   @override
   void dispose() {
+    _streamSubscription?.cancel();
     _controller.removeListener(_checkLength);
     _controller.dispose();
     _scrollController.dispose();
@@ -203,6 +215,7 @@ class ChatContentState extends State<ChatContent> {
 
   void _loadHistory() async {
     final String? historyJson = await UserSession.getString('chat_history'); // Session based
+    if (!mounted) return;
 
     if (historyJson != null) {
       final List<dynamic> decoded = jsonDecode(historyJson);
@@ -212,11 +225,11 @@ class ChatContentState extends State<ChatContent> {
     }
 
     // Add default greeting if empty
-    if (_messages.isEmpty) {
+    if (_messages.isEmpty && mounted) {
       setState(() {
         _messages.add({
           'role': 'sage',
-          'content': "Namaste! I am your AI Sage. Ask me anything about your destiny."
+          'content': AppLocalizations.of(context)!.chatDefaultGreeting
         });
       });
     }
@@ -337,14 +350,6 @@ class ChatContentState extends State<ChatContent> {
     _totalCharsSent += userMsg.length;
     await UserSession.setInt('total_chars_sent', _totalCharsSent);
 
-    setState(() {
-      _isSending = true;
-      _messages.add({'role': 'user', 'content': userMsg});
-      _controller.clear();
-    });
-    _saveHistory();
-    _scrollToBottom();
-
     final appLang = Provider.of<LanguageProvider>(context, listen: false).locale.languageCode;
     final provider = Provider.of<UserProvider>(context, listen: false);
 
@@ -373,18 +378,61 @@ class ChatContentState extends State<ChatContent> {
     }
     final lang = chatLang ?? appLang;
 
-    try {
-      // Pass history (including the user's new message we just added).
-      String response = await AIService.getChatResponse(
-          userMsg, userContext, lang, _messages);
+    setState(() {
+      _isSending = true;
+      _messages.add({'role': 'user', 'content': userMsg});
+      _lastUserQuery = userMsg;
+      _lastUserContext = userContext;
+      _lastLang = lang;
+      _controller.clear();
+    });
+    _saveHistory();
+    _scrollToBottom();
 
-      if (!mounted) return;
+    try {
       setState(() {
-        _messages.add({'role': 'sage', 'content': response});
-        _isSending = false;
+        _messages.add({'role': 'sage', 'content': ''});
+        _canRegenerate = false;
       });
-      _saveHistory();
       _scrollToBottom();
+      await InterestTracker.track('chat');
+      final stream = AIService.getChatResponseStream(
+        query: userMsg,
+        userContext: userContext,
+        language: lang,
+        history: _messages.sublist(0, _messages.length - 1),
+      );
+
+      final StringBuffer buffer = StringBuffer();
+      _streamSubscription = stream.listen(
+        (chunk) {
+          if (!mounted) return;
+          buffer.write(chunk);
+          setState(() {
+            _messages.last = {'role': 'sage', 'content': buffer.toString()};
+          });
+          _scrollToBottom();
+        },
+        onDone: () {
+          if (!mounted) return;
+          setState(() {
+            _isSending = false;
+            _canRegenerate = _messages.isNotEmpty &&
+                _messages.last['role'] == 'sage' &&
+                _messages.last['content']!.isNotEmpty;
+          });
+          _saveHistory();
+        },
+        onError: (e) {
+          if (!mounted) return;
+          final l10n = AppLocalizations.of(context);
+          setState(() {
+            _messages.last = {'role': 'sage', 'content': l10n.chatError};
+            _isSending = false;
+          });
+          _scrollToBottom();
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context);
@@ -394,6 +442,43 @@ class ChatContentState extends State<ChatContent> {
       });
       _scrollToBottom();
     }
+  }
+
+  void _stopStreaming() {
+    _streamSubscription?.cancel();
+    _streamSubscription = null;
+    if (!mounted) return;
+    setState(() {
+      _isSending = false;
+      _canRegenerate = _messages.isNotEmpty &&
+          _messages.last['role'] == 'sage' &&
+          _messages.last['content']!.isNotEmpty;
+    });
+    _saveHistory();
+  }
+
+  void _regenerate() {
+    if (_canRegenerate && _lastUserQuery.isNotEmpty && _messages.length >= 2) {
+      setState(() {
+        _messages.removeLast(); // remove last sage response
+        _messages.removeLast(); // remove last user query (will be re-added by _sendMessage)
+        _canRegenerate = false;
+      });
+      _controller.text = _lastUserQuery;
+      _saveHistory();
+      _sendMessage();
+    }
+  }
+
+  void exportChat() {
+    if (_messages.isEmpty) return;
+    final buffer = StringBuffer();
+    for (final msg in _messages) {
+      final role = msg['role'] == 'user' ? 'You' : 'AI Sage';
+      buffer.writeln('$role: ${msg['content']}');
+      buffer.writeln();
+    }
+    Share.share(buffer.toString());
   }
 
   void _handleStrike(String reason) async {
@@ -549,12 +634,14 @@ class ChatContentState extends State<ChatContent> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () {
-                Navigator.pop(ctx); // Close dialog
-                Navigator.pushAndRemoveUntil(
-                  ctx,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
+                Navigator.pop(ctx);
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
               },
               child: Text(l10n.logoutAndExit, style: const TextStyle(color: Colors.white)),
             )
@@ -570,17 +657,22 @@ class ChatContentState extends State<ChatContent> {
 
       bool available = await _speech.initialize(
         onStatus: (status) {
-           if (status == 'notListening') {
+           if (status == 'notListening' && mounted) {
              setState(() => _isListening = false);
            }
         },
-        onError: (error) => setState(() => _isListening = false),
+        onError: (error) {
+          if (mounted) setState(() => _isListening = false);
+        },
       );
+
+      if (!mounted) return;
 
       if (available) {
         setState(() => _isListening = true);
         _speech.listen(
           onResult: (val) {
+            if (!mounted) return;
             setState(() {
               _controller.text = val.recognizedWords;
               // If final, maybe auto-send? User prefers confirm usually.
@@ -589,7 +681,7 @@ class ChatContentState extends State<ChatContent> {
         );
       }
     } else {
-      setState(() => _isListening = false);
+      if (mounted) setState(() => _isListening = false);
       _speech.stop();
     }
   }
@@ -611,71 +703,120 @@ class ChatContentState extends State<ChatContent> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isSending ? 1 : 0),
+              itemCount: _messages.length,
               itemBuilder: (context, index) {
-                if (_isSending && index == _messages.length) {
-                  return _buildTypingIndicator();
-                }
                 final msg = _messages[index];
                 final isUser = msg['role'] == 'user';
+                final isLastSage = !isUser &&
+                    index == _messages.length - 1 &&
+                    _canRegenerate;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8), // More breathing room
-                  child: Row(
-                    mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                     children: [
-                      if (!isUser) ...[
-                        const SizedBox(width: 4), // Small offset
-                         // Baba Avatar at bottom left of bubble
-                         const Padding(
-                           padding: EdgeInsets.only(bottom: 4),
-                           child: BabaAvatar(size: 32),
-                         ),
-                        const SizedBox(width: 8),
-                      ],
-
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isUser ? AppColors.primaryPurple : AppColors.surfaceColor,
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(20),
-                              topRight: const Radius.circular(20),
-                              bottomLeft: isUser ? const Radius.circular(20) : Radius.zero,
-                              bottomRight: isUser ? Radius.zero : const Radius.circular(20),
+                      Row(
+                        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (!isUser) ...[
+                            const SizedBox(width: 4),
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 4),
+                              child: BabaAvatar(size: 32),
                             ),
-                            border: isUser ? null : Border.all(color: Colors.white10),
-                          ),
-                          child: isUser
-                            ? Text(
-                                msg['content']!,
-                                style: const TextStyle(color: Colors.white, fontSize: 16),
-                              )
-                            : AstroTextParser(text: msg['content']!), // Solves the '#' issue
-                        ),
-                      ),
+                            const SizedBox(width: 8),
+                          ],
 
-                      if (isUser) ...[
-                        const SizedBox(width: 8),
-                        Consumer<UserProvider>(
-                          builder: (context, provider, child) {
-                             final url = provider.profileImageUrl;
-                             final b64 = provider.profileImageBase64;
-                             return CircleAvatar(
-                               radius: 16,
-                               backgroundColor: Colors.white24,
-                               child: _buildUserAvatar(url: url, base64: b64, size: 32),
-                             );
-                          }
-                        ),
-                      ],
+                          Flexible(
+                            child: GestureDetector(
+                              onLongPress: isUser
+                                  ? null
+                                  : () {
+                                      final content = msg['content'] ?? '';
+                                      if (content.isEmpty) return;
+                                      Clipboard.setData(ClipboardData(text: content));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(AppLocalizations.of(context)!.copied),
+                                          duration: const Duration(seconds: 1),
+                                        ),
+                                      );
+                                    },
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: isUser ? AppColors.primaryPurple : AppColors.surfaceColor,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: const Radius.circular(20),
+                                    topRight: const Radius.circular(20),
+                                    bottomLeft: isUser ? const Radius.circular(20) : Radius.zero,
+                                    bottomRight: isUser ? Radius.zero : const Radius.circular(20),
+                                  ),
+                                  border: isUser ? null : Border.all(color: Colors.white10),
+                                ),
+                                child: isUser
+                                    ? Text(
+                                        msg['content']!,
+                                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                                      )
+                                    : AstroTextParser(text: msg['content']!),
+                              ),
+                            ),
+                          ),
+
+                          if (isUser) ...[
+                            const SizedBox(width: 8),
+                            Consumer<UserProvider>(
+                                builder: (context, provider, child) {
+                                  final url = provider.profileImageUrl;
+                                  final b64 = provider.profileImageBase64;
+                                  return CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: Colors.white24,
+                                    child: _buildUserAvatar(url: url, base64: b64, size: 32),
+                                  );
+                                }),
+                          ] else if (isLastSage) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white12),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.refresh, color: AppColors.primaryGold, size: 18),
+                                tooltip: AppLocalizations.of(context)!.chatRegenerate,
+                                onPressed: _regenerate,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                 );
               },
             ),
           ),
+
+          if (_messages.length <= 1 && !_isSending)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildSuggestionChip(AppLocalizations.of(context)!.chatSuggestion1),
+                    _buildSuggestionChip(AppLocalizations.of(context)!.chatSuggestion2),
+                    _buildSuggestionChip(AppLocalizations.of(context)!.chatSuggestion3),
+                    _buildSuggestionChip(AppLocalizations.of(context)!.chatSuggestion4),
+                  ],
+                ),
+              ),
+            ),
 
           // Input Area
           Container(
@@ -706,7 +847,7 @@ class ChatContentState extends State<ChatContent> {
                     controller: _controller,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: "Type your question...",
+                      hintText: AppLocalizations.of(context)!.chatHint,
                       hintStyle: const TextStyle(color: Colors.white38),
                       filled: true,
                       fillColor: AppColors.scaffoldBackgroundColor, // Matches screen bg as requested
@@ -721,24 +862,21 @@ class ChatContentState extends State<ChatContent> {
                 ),
                 const SizedBox(width: 12),
 
-                // Send Icon
+                // Send / Stop Icon
                 Container(
                   decoration: BoxDecoration(
-                    color: (_isTextTooLong || _isSending) ? Colors.grey : AppColors.primaryGold,
+                    color: _isSending
+                        ? Colors.redAccent
+                        : (_isTextTooLong ? Colors.grey : AppColors.primaryGold),
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
                     icon: _isSending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                            ),
-                          )
+                        ? const Icon(Icons.stop, color: Colors.white)
                         : const Icon(Icons.send, color: Colors.black),
-                    onPressed: (_isTextTooLong || _isSending) ? null : _sendMessage,
+                    onPressed: _isSending
+                        ? _stopStreaming
+                        : (_isTextTooLong ? null : _sendMessage),
                   ),
                 ),
               ],
@@ -748,11 +886,28 @@ class ChatContentState extends State<ChatContent> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: Text(
-                "Message too long (${_controller.text.trim().length}/1000)",
+                AppLocalizations.of(context)!.chatMsgTooLong(_controller.text.trim().length),
                 style: const TextStyle(color: Colors.red, fontSize: 12),
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionChip(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Text(label, style: const TextStyle(color: AppColors.primaryGold, fontSize: 13)),
+        backgroundColor: AppColors.surfaceColor,
+        side: const BorderSide(color: AppColors.primaryGold, width: 0.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        onPressed: () {
+          _controller.text = label;
+          _sendMessage();
+        },
       ),
     );
   }
@@ -769,7 +924,7 @@ class ChatContentState extends State<ChatContent> {
           const SizedBox(width: 8),
           Shimmer.fromColors(
             baseColor: AppColors.surfaceColor,
-            highlightColor: AppColors.primaryGold.withOpacity(0.3),
+            highlightColor: AppColors.primaryGold.withValues(alpha: 0.3),
             child: Container(
               width: 64,
               height: 36,

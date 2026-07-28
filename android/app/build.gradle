@@ -37,7 +37,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace appPackageName
-    compileSdk 35
+    compileSdk 36
     ndkVersion "25.1.8937393"
 
     compileOptions {
@@ -57,7 +57,7 @@ android {
     defaultConfig {
         applicationId appPackageName
         minSdkVersion 24
-        targetSdkVersion 35
+        targetSdkVersion 36
         versionCode appVersionCode
         versionName appVersionName
 
@@ -92,5 +92,5 @@ flutter {
 }
 
 dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.2.0'
 }

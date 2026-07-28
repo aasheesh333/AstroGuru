@@ -95,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Firebase Init Failed: $e"),
+            content: Text("${AppLocalizations.of(context)!.firebaseInitFailed}: $e"),
             duration: const Duration(seconds: 5),
           ),
         );
@@ -108,14 +108,14 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     final auth = await _ensureAuthInitialized();
     if (auth == null) {
-      setState(() => _isLoading = false);
+      if (mounted) { setState(() => _isLoading = false); }
       return;
     }
 
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        setState(() => _isLoading = false);
+        if (mounted) { setState(() => _isLoading = false); }
         return;
       }
 
@@ -139,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             // 1. Check Ban
             if (data['banned'] == true) {
-               final reason = data['ban_reason'] ?? "Internal Policy";
+                  final reason = data['ban_reason'] ?? AppLocalizations.of(context)!.internalPolicy;
                await auth.signOut();
                await _googleSignIn.signOut();
                if (mounted) {
@@ -148,21 +148,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   barrierDismissible: false,
                   builder: (context) => AlertDialog(
                     backgroundColor: AppColors.surfaceColor,
-                    title: const Text("Access Denied", style: TextStyle(color: Colors.red)),
+                    title: Text(AppLocalizations.of(context)!.accessDenied, style: const TextStyle(color: Colors.red)),
                     content: Text(
-                      "Username is banned due to internal policy.\nReason: $reason",
+                      "${AppLocalizations.of(context)!.accessDeniedMsg}\n${AppLocalizations.of(context)!.banReason(reason)}",
                       style: const TextStyle(color: Colors.white),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                        child: Text(AppLocalizations.of(context)!.ok, style: const TextStyle(color: AppColors.primaryGold)),
                       ),
                     ],
                   ),
                  );
                }
-               setState(() => _isLoading = false);
+               if (mounted) { setState(() => _isLoading = false); }
                return;
             }
             // 2. Check Deletion
@@ -172,20 +172,20 @@ class _LoginScreenState extends State<LoginScreen> {
                  barrierDismissible: false,
                  builder: (context) => AlertDialog(
                    backgroundColor: AppColors.surfaceColor,
-                   title: const Text("Account Scheduled for Deletion", style: TextStyle(color: Colors.red)),
-                   content: const Text(
-                     "You have previously requested to delete this account. You can regain access or cancel to continue deletion.",
-                     style: TextStyle(color: Colors.white),
-                   ),
-                   actions: [
-                     TextButton(
-                       onPressed: () => Navigator.pop(context, false),
-                       child: const Text("Cancel Login", style: TextStyle(color: Colors.red)),
-                     ),
-                     ElevatedButton(
-                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
-                       onPressed: () => Navigator.pop(context, true),
-                       child: const Text("Regain Access"),
+                    title: Text(AppLocalizations.of(context)!.accountDeletionTitle, style: const TextStyle(color: Colors.red)),
+                    content: Text(
+                      AppLocalizations.of(context)!.accountDeletionBody,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text(AppLocalizations.of(context)!.cancelLogin, style: const TextStyle(color: Colors.red)),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text(AppLocalizations.of(context)!.regainAccess),
                      ),
                    ],
                  ),
@@ -196,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                } else {
                  await auth.signOut();
                  await _googleSignIn.signOut();
-                 setState(() => _isLoading = false);
+                 if (mounted) { setState(() => _isLoading = false); }
                  return;
                }
             }
@@ -230,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
          if (mounted) {
            ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text("Please complete your profile details.")),
+             SnackBar(content: Text(AppLocalizations.of(context)!.profileIncomplete)),
            );
          }
       }
@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                  child: Text(AppLocalizations.of(context)!.ok, style: const TextStyle(color: AppColors.primaryGold)),
                 ),
               ],
             ),
@@ -262,14 +262,14 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       }
-      setState(() => _isLoading = false);
+      if (mounted) { setState(() => _isLoading = false); }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("${AppLocalizations.of(context)!.googleSignInError}: $e")),
         );
       }
-      setState(() => _isLoading = false);
+      if (mounted) { setState(() => _isLoading = false); }
     }
   }
 
@@ -278,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final auth = await _ensureAuthInitialized();
     if (auth == null) {
-      setState(() => _isLoading = false);
+      if (mounted) { setState(() => _isLoading = false); }
       return;
     }
 
@@ -289,9 +289,9 @@ class _LoginScreenState extends State<LoginScreen> {
     // Basic Validation
     if (!_isGoogleAuth && (email.isEmpty || password.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter email and password")),
+        SnackBar(content: Text(AppLocalizations.of(context)!.emailRequired)),
       );
-      setState(() => _isLoading = false);
+      if (mounted) { setState(() => _isLoading = false); }
       return;
     }
 
@@ -300,20 +300,20 @@ class _LoginScreenState extends State<LoginScreen> {
        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email is missing. Please try signing in again.")),
       );
-      setState(() => _isLoading = false);
+      if (mounted) { setState(() => _isLoading = false); }
       return;
     }
 
     if (_isSignUp) {
       if (!_formKey.currentState!.validate()) {
-        setState(() => _isLoading = false);
+        if (mounted) { setState(() => _isLoading = false); }
         return;
       }
       if (_selectedDate == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter your Date of Birth")),
+          SnackBar(content: Text(AppLocalizations.of(context)!.errorDateFuture)),
         );
-        setState(() => _isLoading = false);
+        if (mounted) { setState(() => _isLoading = false); }
         return;
       }
 
@@ -326,21 +326,21 @@ class _LoginScreenState extends State<LoginScreen> {
             context: context,
             builder: (context) => AlertDialog(
               backgroundColor: AppColors.surfaceColor,
-              title: const Text("Age Restriction", style: TextStyle(color: AppColors.deepGold)),
-              content: const Text(
-                "You must be at least 10 years old to use this app.",
+              title: Text(AppLocalizations.of(context)!.ageRestrictionTitle, style: const TextStyle(color: AppColors.deepGold)),
+              content: Text(
+                AppLocalizations.of(context)!.ageRestrictionFull,
                 style: TextStyle(color: Colors.white),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                  child: Text(AppLocalizations.of(context)!.ok, style: const TextStyle(color: AppColors.primaryGold)),
                 ),
               ],
             ),
           );
         }
-        setState(() => _isLoading = false);
+        if (mounted) { setState(() => _isLoading = false); }
         return;
       }
 
@@ -350,21 +350,21 @@ class _LoginScreenState extends State<LoginScreen> {
             context: context,
             builder: (context) => AlertDialog(
               backgroundColor: AppColors.surfaceColor,
-              title: const Text("Invalid Date", style: TextStyle(color: Colors.red)),
-              content: const Text(
-                "Please enter a valid date of birth.",
-                style: TextStyle(color: Colors.white),
+              title: Text(AppLocalizations.of(context)!.invalidDate, style: const TextStyle(color: Colors.red)),
+              content: Text(
+                AppLocalizations.of(context)!.invalidDob,
+                style: const TextStyle(color: Colors.white),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                  child: Text(AppLocalizations.of(context)!.ok, style: const TextStyle(color: AppColors.primaryGold)),
                 ),
               ],
             ),
           );
         }
-        setState(() => _isLoading = false);
+        if (mounted) { setState(() => _isLoading = false); }
         return;
       }
 
@@ -372,9 +372,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!_isGoogleAuth) {
         if (password.length < 6 || !password.contains(RegExp(r'[A-Za-z]')) || !password.contains(RegExp(r'[0-9]'))) {
            ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Password must be at least 6 characters and contain both letters and numbers.")),
+            SnackBar(content: Text(AppLocalizations.of(context)!.passwordComplexity)),
           );
-          setState(() => _isLoading = false);
+          if (mounted) { setState(() => _isLoading = false); }
           return;
         }
       }
@@ -395,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
            if (user == null) {
               // Fatal Error state
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Authentication session lost. Please try again.")),
+                SnackBar(content: Text(AppLocalizations.of(context)!.authSessionLost)),
               );
               setState(() {
                 _isLoading = false;
@@ -455,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 context: context,
                 builder: (context) => AlertDialog(
                   backgroundColor: AppColors.surfaceColor,
-                  title: const Text("Verify Email", style: TextStyle(color: AppColors.deepGold)),
+                  title: Text(AppLocalizations.of(context)!.verifyEmailTitle, style: const TextStyle(color: AppColors.deepGold)),
                   content: Text(
                     "A verification link has been sent to your email. Please verify it and then log in.\n\n${AppLocalizations.of(context)!.checkSpamFolder}",
                     style: const TextStyle(color: Colors.white),
@@ -469,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           _passwordController.clear();
                         });
                       },
-                      child: const Text("OK"),
+                      child: Text(AppLocalizations.of(context)!.ok),
                     ),
                   ],
                 ),
@@ -485,18 +485,20 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         User? user = userCredential.user;
 
-        if (user != null) {
+         if (user != null) {
           if (!user.emailVerified) {
              await user.reload();
-             if (!auth.currentUser!.emailVerified) {
+             final reloadedUser = auth.currentUser;
+             if (reloadedUser == null) return;
+             if (!reloadedUser.emailVerified) {
                if (mounted) {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
                     backgroundColor: AppColors.surfaceColor,
-                    title: const Text("Email Not Verified", style: TextStyle(color: AppColors.deepGold)),
+                    title: Text(AppLocalizations.of(context)!.emailNotVerified, style: const TextStyle(color: AppColors.deepGold)),
                     content: Text(
-                      "Please verify your email address to continue.\n${AppLocalizations.of(context)!.checkSpamFolder}",
+                      AppLocalizations.of(context)!.emailNotVerifiedFullBody + '\n' + AppLocalizations.of(context)!.checkSpamFolder,
                       style: const TextStyle(color: Colors.white),
                     ),
                     actions: [
@@ -506,21 +508,21 @@ class _LoginScreenState extends State<LoginScreen> {
                            await user.sendEmailVerification();
                            if(mounted) {
                              ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(content: Text("Verification link resent.")),
+                               SnackBar(content: Text(AppLocalizations.of(context)!.resetEmailSent)),
                              );
                            }
                         },
-                        child: const Text("Resend Link"),
+                        child: Text(AppLocalizations.of(context)!.resendLink),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("OK"),
+                        child: Text(AppLocalizations.of(context)!.ok),
                       ),
                     ],
                   ),
                 );
                }
-               setState(() => _isLoading = false);
+               if (mounted) { setState(() => _isLoading = false); }
                return;
              }
           }
@@ -532,7 +534,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             // 1. Check Ban
             if (data['banned'] == true) {
-               final reason = data['ban_reason'] ?? "Internal Policy";
+                  final reason = data['ban_reason'] ?? AppLocalizations.of(context)!.internalPolicy;
                await auth.signOut();
                if (mounted) {
                  showDialog(
@@ -540,21 +542,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   barrierDismissible: false,
                   builder: (context) => AlertDialog(
                     backgroundColor: AppColors.surfaceColor,
-                    title: const Text("Access Denied", style: TextStyle(color: Colors.red)),
+                    title: Text(AppLocalizations.of(context)!.accessDenied, style: const TextStyle(color: Colors.red)),
                     content: Text(
-                      "Username is banned due to internal policy.\nReason: $reason",
+                      "${AppLocalizations.of(context)!.accessDeniedMsg}\n${AppLocalizations.of(context)!.banReason(reason)}",
                       style: const TextStyle(color: Colors.white),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                        child: Text(AppLocalizations.of(context)!.ok, style: const TextStyle(color: AppColors.primaryGold)),
                       ),
                     ],
                   ),
                  );
                }
-               setState(() => _isLoading = false);
+               if (mounted) { setState(() => _isLoading = false); }
                return;
             }
 
@@ -565,20 +567,20 @@ class _LoginScreenState extends State<LoginScreen> {
                  barrierDismissible: false,
                  builder: (context) => AlertDialog(
                    backgroundColor: AppColors.surfaceColor,
-                   title: const Text("Account Scheduled for Deletion", style: TextStyle(color: Colors.red)),
-                   content: const Text(
-                     "You have previously requested to delete this account. You can regain access or cancel to continue deletion.",
-                     style: TextStyle(color: Colors.white),
-                   ),
-                   actions: [
-                     TextButton(
-                       onPressed: () => Navigator.pop(context, false),
-                       child: const Text("Cancel Login", style: TextStyle(color: Colors.red)),
-                     ),
-                     ElevatedButton(
-                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
-                       onPressed: () => Navigator.pop(context, true),
-                       child: const Text("Regain Access"),
+                    title: Text(AppLocalizations.of(context)!.accountDeletionTitle, style: const TextStyle(color: Colors.red)),
+                    content: Text(
+                      AppLocalizations.of(context)!.accountDeletionBody,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text(AppLocalizations.of(context)!.cancelLogin, style: const TextStyle(color: Colors.red)),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGold, foregroundColor: Colors.black),
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text(AppLocalizations.of(context)!.regainAccess),
                      ),
                    ],
                  ),
@@ -590,7 +592,7 @@ class _LoginScreenState extends State<LoginScreen> {
                  });
                } else {
                  await auth.signOut();
-                 setState(() => _isLoading = false);
+                 if (mounted) { setState(() => _isLoading = false); }
                  return;
                }
             }
@@ -599,15 +601,15 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } on FirebaseAuthException catch (e) {
-      String message = e.message ?? "Authentication failed";
+      String message = (e.message ?? AppLocalizations.of(context)!.authFailed).toString();
       if (e.code == 'weak-password') {
-        message = 'The password provided is too weak.';
+        message = AppLocalizations.of(context)!.passwordWeak;
       } else if (e.code == 'email-already-in-use') {
-        message = 'The account already exists for that email.';
+        message = AppLocalizations.of(context)!.emailAlreadyExists;
       } else if (e.code == 'user-not-found') {
-        message = 'No user found for that email.';
+        message = AppLocalizations.of(context)!.noUserFound;
       } else if (e.code == 'wrong-password') {
-        message = 'Wrong password provided.';
+        message = AppLocalizations.of(context)!.wrongPasswordMsg;
       }
 
       if (mounted) {
@@ -618,11 +620,11 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
+          SnackBar(content: Text("${AppLocalizations.of(context)!.error}: $e")),
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) if (mounted) { setState(() => _isLoading = false); }
     }
   }
 
@@ -630,7 +632,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter your email to reset password")),
+        SnackBar(content: Text(AppLocalizations.of(context)!.emailRequired)),
       );
       return;
     }
@@ -640,22 +642,22 @@ class _LoginScreenState extends State<LoginScreen> {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Password reset email sent. ${AppLocalizations.of(context)!.checkSpamFolder}")),
+          SnackBar(content: Text("${AppLocalizations.of(context)!.resetEmailSent} ${AppLocalizations.of(context)!.checkSpamFolder}")),
         );
       }
     } on String catch (e) {
-      if (e.contains("Limit Exceeded")) {
+      if (e.contains("Limit")) {
         if (mounted) {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
               backgroundColor: AppColors.surfaceColor,
-              title: const Text("Limit Exceeded", style: TextStyle(color: Colors.red)),
+              title: Text(AppLocalizations.of(context)!.limitExceeded, style: const TextStyle(color: Colors.red)),
               content: Text(e, style: const TextStyle(color: Colors.white)),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("OK", style: TextStyle(color: AppColors.primaryGold)),
+                  child: Text(AppLocalizations.of(context)!.ok, style: const TextStyle(color: AppColors.primaryGold)),
                 ),
               ],
             ),
@@ -666,10 +668,10 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on FirebaseAuthException catch (e) {
       String message = e.message ?? "Error sending reset email";
-      if (e.code == 'user-not-found') message = 'No user found with this email.';
+      if (e.code == 'user-not-found') message = AppLocalizations.of(context)!.noUserResetEmail;
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${AppLocalizations.of(context)!.error}: $e")));
     }
   }
 
@@ -762,7 +764,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           labelText: AppLocalizations.of(context)!.name,
-                          hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                          hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5)),
                           labelStyle: const TextStyle(color: AppColors.textSecondary),
                           prefixIcon: const Icon(Icons.person, color: AppColors.primaryGold),
                           errorStyle: const TextStyle(color: Colors.redAccent),
@@ -789,13 +791,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Date of Birth Input
                       TextFormField(
                         controller: _dobController,
-                        validator: (val) => val == null || val.isEmpty ? "Date of Birth is required" : null,
+                        validator: (val) => val == null || val.isEmpty ? AppLocalizations.of(context)!.dobRequired : null,
                         readOnly: true,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           labelText: AppLocalizations.of(context)!.dateOfBirth,
-                          hintText: 'Select Date',
-                          hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                          hintText: AppLocalizations.of(context)!.selectDate,
+                          hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5)),
                           labelStyle: const TextStyle(color: AppColors.textSecondary),
                           prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primaryGold),
                           enabledBorder: OutlineInputBorder(
@@ -843,14 +845,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Email Input
                     TextFormField(
                       controller: _emailController,
-                      validator: (val) => val == null || val.isEmpty ? "Email is required" : null,
+                      validator: (val) => val == null || val.isEmpty ? AppLocalizations.of(context)!.emailRequired : null,
                       keyboardType: TextInputType.emailAddress,
                       readOnly: _isGoogleAuth, // Read-only if in Google Auth mode
                       style: TextStyle(color: _isGoogleAuth ? Colors.grey : Colors.white),
                       decoration: InputDecoration(
                         labelText: AppLocalizations.of(context)!.emailLabel,
-                        hintText: 'you@example.com',
-                        hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                        hintText: AppLocalizations.of(context)!.emailHint,
+                        hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5)),
                         labelStyle: const TextStyle(color: AppColors.textSecondary),
                         prefixIcon: const Icon(Icons.email, color: AppColors.primaryGold),
                         errorStyle: const TextStyle(color: Colors.redAccent),
@@ -882,7 +884,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _passwordController,
-                        validator: (val) => val == null || val.isEmpty ? "Password is required" : null,
+                        validator: (val) => val == null || val.isEmpty ? AppLocalizations.of(context)!.passwordRequired : null,
                         obscureText: true,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -991,7 +993,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       child: Text(
                         _isGoogleAuth
-                           ? "Cancel"
+                           ? AppLocalizations.of(context)!.cancel
                            : (_isSignUp ? AppLocalizations.of(context)!.alreadyHaveAccount : AppLocalizations.of(context)!.dontHaveAccount),
                         style: const TextStyle(color: AppColors.primaryGold),
                       ),

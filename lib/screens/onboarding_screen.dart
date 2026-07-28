@@ -14,6 +14,12 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
   int _currentPage = 0;
 
   @override
@@ -59,7 +65,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             height: 250,
                             width: 250,
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceColor.withOpacity(0.5),
+                              color: AppColors.surfaceColor.withValues(alpha: 0.5),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(

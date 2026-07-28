@@ -24,41 +24,63 @@ flutter test --no-pub
 
 - `lib/main.dart` — app entry; wires Firebase, providers (`LanguageProvider`, `UserProvider`), and services
 - `lib/config/app_config.dart` — env resolution; see "Env & secrets" below
-- `lib/logic/` — pure Dart: `KundliService`, `StaticCities`, `KeyManager`, validators, `love_match_logic`
+- `lib/logic/` — pure Dart: `KundliService`, `StaticCities`, `KeyManager`, `InterestTracker`, validators, `love_match_logic`
 - `lib/services/` — `AdService`, `NotificationService`, `AIService`
 - `lib/screens/` — UI; one file per screen
-- `lib/widgets/` — reusable (`AdLockedWidget`, `AstroCard`, `GradientButton`, …)
+- `lib/widgets/` — reusable (`AdLockedWidget`, `AstroCard`, `GradientButton`, `AstroTextParser`, `BabaAvatar`)
 - `lib/theme/app_colors.dart` — the **only** place for color tokens
-- `lib/l10n/app_en.arb` — English template; 12 sibling ARB files
-- `functions/` — Firebase Cloud Functions (Node 20, TypeScript); `src/index.ts` `groqProxy` is the AI gateway
+- `lib/l10n/app_en.arb` — English template; 12 sibling ARB files (all must have identical keys)
 - `scripts/create_env.sh` — CI helper that materializes `assets/.env`, `android/app/google-services.json`, and the keystore from GitHub secrets
 - `firebase-debug.log` — transient; safe to delete, gets regenerated on the next `firebase` command
 
 ## Hard constraints (would break the app if violated)
 
-- **Groq API key never ships in the APK.** All AI calls go through the `groqProxy` Cloud Function. The key lives in the Firestore doc `groq_api_keys/groq_api_list` (single key, no rotation; update manually when needed — Groq suspends accounts that rotate). `lib/logic/key_manager.dart` only checks presence; it does not read `.env` for the key.
+- **Gemini API key never ships in the APK.** All AI calls go through `AIService` which uses the `x-goog-api-key` header. The key lives in the Firestore doc `gemini_api_keys/gemini_api_list` (single key, no rotation). `lib/logic/key_manager.dart` fetches the key from Firestore and caches it for the session. Local dev can override via `APP_GEMINI_API_KEY` in `assets/.env`.
 - **`assets/.env` is never bundled in release.** It is in `.gitignore`. CI passes values via `--dart-define` and re-creates the file from secrets during the build step only. Do not remove it from `.gitignore` and do not reference it as a Flutter asset.
 - **No `Color(0xFF...)` literals** in feature code. Add or reuse a token in `lib/theme/app_colors.dart`.
-- **No hardcoded English** in `lib/screens/` or `lib/widgets/`. Add the key to `lib/l10n/app_en.arb` first, mirror it into the other 12 ARB files, then run `flutter gen-l10n`. Use `AppLocalizations.of(context)!.yourKey`.
+- **No `withOpacity()`** — use `withValues(alpha: ...)` instead (Flutter 3.27+ safe).
+- **No hardcoded English** in `lib/screens/` or `lib/widgets/`. Add the key to `lib/l10n/app_en.arb` first, mirror it into the other 12 ARB files, then run `flutter gen-l10n`. Use `AppLocalizations.of(context)!.yourKey`. All ARB keys must be `camelCase`.
 - **Per-user SharedPreferences namespacing.** Prefix every key with the user id (`uid_…`) so logout/login does not leak data across accounts.
 - **Profile images** live at `users/{uid}/avatar.jpg` in Firebase Storage. Base64 in SharedPreferences is a legacy fallback that is lazy-migrated to Storage on next sign-in; new code should always use the download URL.
 - **Android security flags** are set in `android/app/src/main/AndroidManifest.xml` (`usesCleartextTraffic="false"`, `allowBackup="false"`, `dataExtractionRules`, `network_security_config.xml`). Do not relax them.
 
+## AI System (Google Gemini)
+
+`AIService` calls the Gemini 2.5 Flash-Lite API (`gemini-2.5-flash-lite`) directly from the client with the key fetched from Firestore by `KeyManager`.
+
+- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent` (non-streaming) and `:streamGenerateContent?alt=sse` (streaming).
+- **Auth**: `x-goog-api-key` header (not Bearer token).
+- **Message format conversion** happens inside `_postGemini` / `_buildGeminiBody`:
+  - `role: "system"` → `systemInstruction.parts[0].text`
+  - `role: "user"` → `contents[].role: "user"`
+  - `role: "assistant"` → `contents[].role: "model"`
+  - `max_tokens` → `generationConfig.maxOutputTokens`
+  - `temperature` → `generationConfig.temperature`
+  - `response_format: {type: "json_object"}` → `generationConfig.responseMimeType: "application/json"`
+- **Thinking budget**: JSON-mode calls use `thinkingConfig.thinkingBudget: 512`; chat calls use `0` (disabled for fast streaming).
+- **Streaming chat** via `getChatResponseStream()`: SSE parsing of `data:` lines yields text chunks. The chat screen subscribes and updates the UI incrementally.
+- **Prompt builders** (`dailyHoroscopeSystemPrompt`, `chatResponseMessages`, etc.) return strings / message-lists in the **internal format** (system/user/assistant roles). Callers do not need to speak Gemini format — conversion is internal.
+
+## Interest-based Notifications
+
+`InterestTracker` records per-feature usage counts (horoscope, kundli, chat, love_match, remedies) in SharedPreferences and syncs them to Firestore (`users/{uid}.interests`) hourly. `NotificationService.bootstrapDynamic` reads these interests and passes them to `AIService.getNotificationSchedule` which weights AI-generated notification content toward the user's top interests. This is a fully free, server-side approach using Firestore + existing local notification scheduling.
+
 ## Env & secrets
 
-`AppConfig` resolves each value as: `--dart-define=KEY=value` (CI) → `assets/.env` (local dev). For local work, copy `assets/.env.example` to `assets/.env` and fill in the public AdMob / OneSignal / Firebase values. If `.env` is missing the app falls back to test ad unit IDs in debug mode and skips OneSignal. A `APP_GROQ_API_KEY` in `assets/.env` is **not** bundled in release builds (it exists only to let local dev exercise `AIService` without a Firestore round-trip).
+`AppConfig` resolves each value as: `--dart-define=KEY=value` (CI) → `assets/.env` (local dev). For local work, copy `assets/.env.example` to `assets/.env` and fill in the public AdMob / OneSignal / Firebase values. If `.env` is missing the app falls back to test ad unit IDs in debug mode and skips OneSignal. A `APP_GEMINI_API_KEY` in `assets/.env` is **not** bundled in release builds.
 
 CI invokes `scripts/create_env.sh`, which also writes `android/app/google-services.json` from `FIREBASE_JSON_BASE64` / `APP_FIREBASE_JSON_BASE64`, and decodes the keystore + `android/key.properties` from `KEYSTORE_*` / `APP_KEYSTORE_*` secrets. The `create_env.sh` script is the single source of truth for the secret → file mapping; keep it in sync with `.github/workflows/build.yml` step "Configure Keystore" if you change either.
 
-## Cloud Functions & Firebase
+## Android Build
 
-```bash
-cd functions && npm install && npm run build
-firebase deploy --only functions
-firebase deploy --only storage
-```
+- `compileSdk 36` / `targetSdk 36` / `minSdk 24`
+- AGP `8.7.3` / Kotlin `2.0.21` / Gradle `8.11.1`
+- `ext.flutter` block in root `android/build.gradle` must match app `build.gradle` for plugin compat
+- `desugar_jdk_libs: 2.2.0` for API 36 support
 
-Firebase project: `astroprerna-7ee7c` (alias in `.firebaserc`). The Cloud Functions API must be enabled on the project, and the deployer account needs `cloudfunctions.functions.list` and `run.services.list` (see `firebase-debug.log` for an example of the failure when these are missing).
+## Firebase
+
+Firebase project: `astroprerna-7ee7c` (alias in `.firebaserc`). Cloud Functions are not deployed. API keys and user data live in Firestore collections (`gemini_api_keys`, `users`, `password_resets`).
 
 ## Conventions
 
@@ -66,16 +88,19 @@ Firebase project: `astroprerna-7ee7c` (alias in `.firebaserc`). The Cloud Functi
 - Routing: named routes on `MaterialApp` in `main.dart`. Add new top-level routes there; sub-screens use `Navigator.push` with `MaterialPageRoute`.
 - Ads: `AdService` rejects test ad unit IDs in release mode and throws on missing config — never catch-and-ignore a `AdService` throw. Only the rewarded / interstitial flows are wired (for `AdLockedWidget`); banner ads are intentionally not used.
 - Fonts: `google_fonts` package; do not bundle font files in `assets/`.
-- Tests: `mocktail` for mocking. The existing tests are in `test/` (`widget_test.dart`, `edit_profile_layout_test.dart`, `static_cities_test.dart`, `love_match_logic_test.dart`). Add new tests next to the unit under test, mirroring the existing style.
+- Tests: `mocktail` for mocking. The existing tests are in `test/` (`widget_test.dart`, `edit_profile_layout_test.dart`, `static_cities_test.dart`, `love_match_logic_test.dart`, `ai_service_prompts_test.dart`, `ai_service_language_test.dart`). Add new tests next to the unit under test, mirroring the existing style.
+- Share: use `share_plus` package for sharing content. The "Share App" item is in the profile screen.
 
 ## Common tasks
 
-- **Add a localized string:** `app_en.arb` → other 12 ARBs → `flutter gen-l10n` → reference via `AppLocalizations.of(context)!.keyName`.
+- **Add a localized string:** `app_en.arb` → other 12 ARBs → `flutter gen-l10n` → reference via `AppLocalizations.of(context)!.yourKey`. All keys must be `camelCase`.
 - **Add a color:** edit `lib/theme/app_colors.dart`; reference the new constant elsewhere.
 - **Regenerate launcher icons:** `dart run flutter_launcher_icons` (config in `pubspec.yaml`).
-- **Bump `compileSdk` / `targetSdk` / `minSdk`:** `android/app/build.gradle`. Bump the matching `compileSdkVersion`/`minSdkVersion` in any plugin `build.gradle` files too.
+- **Bump `compileSdk` / `targetSdk` / `minSdk`:** `android/app/build.gradle`. Bump the matching `compileSdkVersion`/`minSdkVersion` in `android/build.gradle` `ext.flutter` block too.
+- **Rotate Gemini key:** update the Firestore doc `gemini_api_keys/gemini_api_list` via Firebase Console. No code changes needed. The KeyManager re-fetches on next cold start.
 
 ## Out of scope
 
-- Firebase Crashlytics and Analytics — intentionally deferred. Uncaught errors are logged via `dart:developer` `log` (visible in `adb logcat` under the `AstroPrerna` logger name); a global `FlutterError.onError` and `PlatformDispatcher.onError` are installed in `main.dart`. Do not add `firebase_crashlytics` / `firebase_analytics` without first resolving the `firebase_core` / `firebase_storage` major-version conflict noted in `CHANGELOG.md`.
+- Firebase Crashlytics and Analytics — intentionally deferred. Uncaught errors are logged via `dart:developer` `log` (visible in `adb logcat` under the `AstroPrerna` logger name); a global `FlutterError.onError` and `PlatformDispatcher.onError` are installed in `main.dart`.
 - iOS — no `ios/` directory exists and CI does not build it.
+- In-app review auto-trigger — moved to manual "Rate App" in profile screen only.

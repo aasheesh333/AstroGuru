@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../services/notification_service.dart';
 
@@ -85,8 +86,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Notifications",
+        title: Text(
+          AppLocalizations.of(context)!.notificationTitle,
           style: TextStyle(
             color: Colors.white,
             fontFamily: 'Poppins',
@@ -118,13 +119,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primaryGold.withOpacity(0.1),
+              color: AppColors.primaryGold.withValues(alpha: 0.1),
             ),
             child: const Icon(Icons.notifications_off_outlined, size: 48, color: AppColors.primaryGold),
           ),
           const SizedBox(height: 16),
-          const Text(
-            "No notifications yet",
+          Text(
+            AppLocalizations.of(context)!.noNotifications,
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -132,8 +133,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            "We'll let you know when the stars align!",
+          Text(
+            AppLocalizations.of(context)!.noNotificationsSubtitle,
             style: TextStyle(color: Colors.grey, fontSize: 14),
           ),
         ],
@@ -150,12 +151,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     // Visual Styling for Read vs Unread
     Color bgColor = isRead
-        ? Colors.white.withOpacity(0.05) // Slight grey/transparent for read
+        ? Colors.white.withValues(alpha: 0.05) // Slight grey/transparent for read
         : AppColors.surfaceColor; // Darker surface for unread (highlighted)
 
     Color borderColor = isRead
         ? Colors.transparent
-        : (isImportant ? AppColors.primaryGold : Colors.purpleAccent.withOpacity(0.5));
+        : (isImportant ? AppColors.primaryGold : Colors.purpleAccent.withValues(alpha: 0.5));
 
     Color textColor = isRead ? Colors.grey : Colors.white;
     FontWeight titleWeight = isRead ? FontWeight.normal : FontWeight.bold;
@@ -183,7 +184,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   height: 50,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isRead ? Colors.grey.withOpacity(0.1) : (isImportant ? AppColors.primaryGold.withOpacity(0.2) : Colors.purple.withOpacity(0.2)),
+                    color: isRead ? Colors.grey.withValues(alpha: 0.1) : (isImportant ? AppColors.primaryGold.withValues(alpha: 0.2) : Colors.purple.withValues(alpha: 0.2)),
                     image: imageUrl != null
                       ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover)
                       : const DecorationImage(image: AssetImage('assets/images/logo.png'), fit: BoxFit.cover),
@@ -198,7 +199,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        notif['title'] ?? "Notification",
+                        notif['title'] ?? AppLocalizations.of(context)!.notificationFallback,
                         style: TextStyle(
                           color: textColor,
                           fontWeight: titleWeight,
@@ -209,7 +210,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       const SizedBox(height: 6),
                       Text(
                         notif['body'] ?? "",
-                        style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 14),
+                        style: TextStyle(color: textColor.withValues(alpha: 0.8), fontSize: 14),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),

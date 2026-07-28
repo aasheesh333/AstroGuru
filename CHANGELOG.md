@@ -7,6 +7,121 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-07-28
+
+### Changed
+- **AI engine rewritten from Groq (Llama 3.3 70B) to Google Gemini 2.5
+  Flash-Lite**, called from the client via `x-goog-api-key`. Firestore
+  document moved from `groq_api_keys/groq_api_list` to
+  `gemini_api_keys/gemini_api_list`. `KeyManager` caches for the session;
+  local dev can override via `APP_GEMINI_API_KEY` in `assets/.env`.
+- **Streaming chat**: AI Sage responses now stream token-by-token using
+  Gemini's `streamGenerateContent?alt=sse` endpoint. The chat screen
+  subscribes and updates the message bubble incrementally. A Stop
+  button cancels the stream; a Regenerate button re-sends the last
+  user query. Thinking budget is disabled (0) for low-latency chat.
+- **Android SDK bumped to API 36**: `compileSdk 36`, `targetSdk
+  36`, AGP `8.7.3`, Kotlin `2.0.21`, Gradle `8.11.1`,
+  `desugar_jdk_libs: 2.2.0`. `ext.flutter` block in root
+  `android/build.gradle` updated to match.
+- **Interest-based notification personalization**: `InterestTracker`
+  records per-feature usage counts (horoscope, kundli, chat, love
+  match, remedies) in SharedPreferences and syncs to Firestore
+  `users/{uid}.interests` hourly. `NotificationService.bootstrapDynamic`
+  passes these interests to `AIService.getNotificationSchedule` so
+  AI-generated morning/evening/afternoon notifications skew toward the
+  user's top features. Fully free, server-side via Firestore + local
+  scheduling.
+- **Share buttons added** to Horoscope detail screen (AppBar icon)
+  and Love Match result view (outlined button). Both use `share_plus`.
+- **"Share App" menu item** added to the Profile screen, sharing
+  the `shareAppText` localized string.
+- **"Rate App"** remains in the Profile screen only. The 7-day +
+  3-action auto-trigger has been removed from the home screen to
+  respect Play Store policy and avoid surprise prompts.
+- **Localized `poweredBy`** string across all 13 ARB files changed from
+  "Powered by Groq AI" to "Powered by Google AI".
+- **38 `withOpacity()` calls** replaced with `withValues(alpha: ...)`
+  ahead of the Flutter 3.27 deprecation (remaining sites beyond the 33
+  already fixed in the previous pass).
+- **Duplicate `"retry"` ARB key** removed; non-English ARB files
+  now contain the same keys as `app_en.arb` so `flutter gen-l10n`
+  succeeds.
+
+### Added
+- `lib/logic/interest_tracker.dart` — singleton that tracks per-feature
+  usage, stores counts in SharedPreferences, and syncs to Firestore
+  on an hourly cadence. Provides `getInterests()` for the notification
+  flow and `getInterestsSummary()` for prompt injection.
+- `lib/services/ai_service.dart` — new `getChatResponseStream()` method
+  returns a `Stream<String>` from Gemini's SSE streaming endpoint. JSON
+  mode, thinking budget, and message format conversion are all handled
+  internally by `_buildGeminiBody` / `_extractGeminiText`.
+- ~40 new ARB keys added across all 13 locale files covering chat UI
+  (hint, greetings, suggestions, stop, regenerate, export), Kundli
+  tabs, horoscope loading/error states, notification permission dialog,
+  profile share, and more.
+- `share_plus: ^10.1.2` added to `pubspec.yaml`.
+- Long-press on AI Sage responses copies the message to the clipboard
+  with a SnackBar confirming success.
+
+### Fixed
+- Hardcoded English strings in `profile_screen.dart` ("Terms &
+  Conditions"), `chat_screen.dart` (hint text, default greeting, length
+  warning), `horoscope_detail_screen.dart` (loading, forecast error,
+  "N/A", "Close"), `love_match_screen.dart` (analysis failure), and
+  `main_screen.dart` (reset history tooltip) are now routed through
+  `AppLocalizations`.
+- `home_screen.dart` no longer imports `rate_app_launcher.dart` (was
+  unused after removing `_maybeRequestInAppReview`).
+- Typing indicator in chat removed — the streaming bubble now serves
+  the same purpose (empty sage message fills in as chunks arrive).
+
+### Fixed
+- **Compile error: `profileShare` l10n key missing** — changed to `profileShareApp`,
+  matching the ARB key. Dart compilation would otherwise fail.
+- **Compile error: `l10n` used before declaration** in `horoscope_detail_screen.dart`
+  `_shareForecast()`. Moved `final l10n = ...` above first referencing line.
+- **Release crash: `proguard-rules.pro` missing** — created at
+  `android/app/proguard-rules.pro` with keep-rules for Firebase, AdMob,
+  OneSignal, local notifications, cached images, speech-to-text, and
+  `url_launcher`. With `minifyEnabled true`, these classes were being
+  stripped, causing runtime crashes in release builds.
+- **`@chatMsgTooLong` @-annotation** added to all 12 non-template ARB files
+  so placeholder metadata is consistently defined across locales.
+- **Memory leak: `StreamSubscription` never cancelled in chat `dispose()`** —
+  `_streamSubscription?.cancel()` now runs in `dispose()`. Without this,
+  streaming AI responses would continue emitting after the chat screen
+  is popped, triggering `setState() called after dispose()` crashes.
+- **`setState() called after dispose()` crashes** — added `if (!mounted) return;`
+  guards after every async `await` in `chat_screen._loadHistory()`,
+  `home_screen._fetchNewData()`, and wrapped all 18 `setState(() =>
+  _isLoading = false)` sites in `login_screen.dart` with `if (mounted)`.
+- **Speech recognition callbacks** (`onStatus`, `onError`, `onResult`) now
+  check `if (mounted)` before `setState`. Without this, navigating away
+  from chat while the microphone was active crashed on the next speech event.
+- **Ban dialog navigation with invalidated context** — `Navigator.pop(ctx)`
+  followed by `Navigator.pushAndRemoveUntil(ctx, ...)` used the dialog's
+  disposed BuildContext. Changed to use the outer widget `context`.
+- **Force unwrap on `auth.currentUser!`** — replaced with null-safe check
+  using `auth.currentUser` with an early return, preventing crash when
+  Firebase session is null after `user.reload()`.
+- **Memory leak: 9 controllers never disposed** across `edit_profile_screen`
+  (4), `love_match_screen` (2), `kundli_input_screen` (4), and
+  `onboarding_screen` (1). Added `dispose()` overrides for each state.
+- **`getUserDob` silently corrupting zodiac** — removed today's-date default
+  when DOB is unset, now returns empty string. Prevents assigning a
+  random sign to new users based solely on current calendar date.
+- **Notification badge now shows unread count number** (was a tiny 8px red
+  dot virtually invisible on dark theme). Capped at "99+" for overflow.
+- Added `APP_GEMINI_API_KEY` to `assets/.env.example` so local dev can
+  override the Firestore-fetched key.
+
+### Security
+- Same posture as before: Gemini API key fetched from Firestore at
+  runtime, never bundled in the APK. The Firestore document path
+  changed but the retrieval model is identical.
+
 ### Fixed
 - Automatic daily notifications not firing on cold start: the schedule was
   only triggered from `MainScreen`'s post-frame callback via
@@ -171,4 +286,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The 0.x series shipped under the `AstroGuru` package name and was
 internal-only.
 
-[Unreleased]: https://github.com/dhanuk/astroguru/compare/main...HEAD
+[Unreleased]: https://github.com/dhanuk/astroguru/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/dhanuk/astroguru/compare/v1.0.0...v1.0.1

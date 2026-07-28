@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.9.24'
+    ext.kotlin_version = '2.0.21'
     repositories {
         google()
         mavenCentral()
@@ -26,12 +26,11 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
-// Define global Flutter properties for legacy plugins
 ext {
     flutter = [
-        compileSdkVersion: 34,
-        minSdkVersion: 23,
-        targetSdkVersion: 34,
+        compileSdkVersion: 36,
+        minSdkVersion: 24,
+        targetSdkVersion: 36,
         ndkVersion: "25.1.8937393"
     ]
 }

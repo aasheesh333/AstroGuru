@@ -21,7 +21,7 @@
   "remedies": "उपाय",
   "aiChat": "एआई ऋषि",
   "askQuestion": "प्रश्न पूछें...",
-  "poweredBy": "Groq AI द्वारा संचालित",
+  "poweredBy": "Powered by Google AI",
   "navHome": "होम",
   "navKundli": "कुंडली",
   "navChat": "एआई ऋषि",
@@ -76,144 +76,243 @@
   "ageRestrictionMsg": "आपकी आयु कम से कम 10 वर्ष होनी चाहिए।",
   "loginRequiredTitle": "लॉगिन आवश्यक",
   "loginRequiredMsg": "इस सुविधा को अनलॉक करने के लिए कृपया लॉग इन करें।",
-  "loginNow": "अभी लॉग इन करें"
-  ,"navHoroscope": "राशिफल"
-  ,"homeSubtitle": "आज सितारे आपके लिए क्या लेकर आए हैं?"
-  ,"rateApp": "ऐप को रेट करें"
-  ,"privacyPolicy": "गोपनीयता नीति"
-  ,"helpSupport": "मदद और समर्थन"
-  ,"languageSettings": "भाषा सेटिंग्स"
-  ,"loginToUnlock": "पूरी सुविधाएं अनलॉक करने के लिए लॉग इन करें"
-  ,"languageChanged": "भाषा बदल दी गई"
-  ,"restartMsg": "परिवर्तनों को पूरी तरह से प्रभावी होने के लिए कृपया ऐप को फिर से शुरू करें।"
-  ,"loginSubtitle": "अपने ईमेल से लॉग इन करें"
-  ,"signUpSubtitle": "सभी सुविधाओं को अनलॉक करने के लिए साइन अप करें"
-  ,"alreadyHaveAccount": "क्या आपके पास पहले से एक खाता है? लॉग इन करें"
-  ,"dontHaveAccount": "क्या आपका खाता नहीं है? साइन अप करें"
-  ,"onboardingTitle1": "एक टैप में दैनिक राशिफल"
-  ,"onboardingDesc1": "अपनी राशि के आधार पर सटीक दैनिक भविष्यवाणियां प्राप्त करें।"
-  ,"onboardingTitle2": "एआई-संचालित ज्योतिष चैट"
-  ,"onboardingDesc2": "हमारे एआई ऋषि से अपने भविष्य और जीवन पथ के बारे में कुछ भी पूछें।"
-  ,"onboardingTitle3": "तुरंत अपनी कुंडली बनाएं"
-  ,"onboardingDesc3": "दशा और उपायों के साथ विस्तृत कुंडली निर्माण।"
-  ,"next": "अगला"
-  ,"getStarted": "शुरू करें"
-  ,"enterDetailsSubtitle": "सटीक विवरण सटीक भविष्यवाणियां सुनिश्चित करते हैं। "
-  ,"notificationDailyTitle": "दैनिक राशिफल तैयार है"
-  ,"notificationDailyBody": "देखें आज सितारे आपके लिए क्या लेकर आए हैं!"
-  ,"errorNameRequired": "Name is required"
-  ,"errorNameInvalidChars": "Use only letters (A-Z or Indian scripts). No numbers/symbols."
-  ,"errorNameTooShort": "Name too short (min 3 chars)."
-  ,"errorNameTooLong": "Name too long (max 100 chars)."
-  ,"errorNameMaxWords": "Max 4 words allowed."
-  ,"errorNameRepeatedChars": "Invalid name format (repeated characters)."
-  ,"errorNameFake": "Please enter a valid real name."
-  ,"errorLocationRequired": "Location is required"
-  ,"errorLocationInvalidChars": "Use only letters (A-Z or Indian scripts). No numbers/symbols."
-  ,"errorLocationTooShort": "Location too short (min 3 chars)."
-  ,"errorLocationTooLong": "Location too long (max 100 chars)."
-  ,"errorLocationFake": "Please enter a valid location."
-  ,"errorLocationUnknown": "Please enter a recognized Indian city/district."
-  ,"errorDateFuture": "Date cannot be in the future"
-  ,"errorDateRecent": "Date must be at least 3 months in the past"
-  ,"rateLimitError": "Update limit reached. Try again later."
-  ,"profileUpdated": "Profile updated successfully."
-  ,"softDeleteMsg": "Account scheduled for deletion in 24 hours."
-  ,"loveCompatibility": "Love Compatibility"
-  ,"you": "You"
-  ,"partner": "Partner"
-  ,"analyzeMatch": "Analyze Match"
-  ,"analyzeAnother": "Analyze Another"
-  ,"matchScore": "Match"
-  ,"enterName": "Enter Name"
-  ,"checkSpamFolder": "Check spam or promotional tab."
-  ,"continueWithGoogle": "Continue with Google"
-  ,"googleSignInError": "Google Sign-In failed"
-  ,"accountExistsWithDifferentCredential": "An account already exists with the same email address. Please sign in using your password or original provider."
-  ,"emailImmutable": "Email cannot be changed."
-  ,"watchAdToUnlock": "Watch Ad to Unlock"
-  ,"adLoadFailed": "Failed to load ad. Please try again later."
-  ,"textTooLong": "Message too long (max 1000 chars)."
-  ,"banLimitReached": "You have been temporarily blocked from chat."
-  ,"banLimitReason": "Repeatedly posting prohibited content."
-  ,"voiceNotAvailable": "Voice input is not available on this device."
-  ,"voicePermissionDenied": "Microphone permission denied."
-  ,"voiceError": "Voice recognition error. Please try again."
-  ,"chatError": "Couldn't reach the AI Sage. Please try again."
-  ,"msgCopied": "Message copied"
-  ,"rateLimitHits": "Daily message limit reached. Try again tomorrow."
-  ,"mustBeLoggedIn": "You must be logged in to do that."
-  ,"deleteAccountTitle": "Delete Account?"
-  ,"deleteAccountBody": "Your account will be scheduled for permanent deletion in 24 hours. You can cancel by logging in again."
-  ,"deleteAccountConfirm": "Delete"
-  ,"profileImageUpdated": "Profile photo updated."
-  ,"languageUpdated": "Language updated."
-  ,"passwordsDoNotMatch": "Passwords do not match."
-  ,"passwordTooShort": "Password must be at least 6 characters."
-  ,"weakPassword": "Please choose a stronger password."
-  ,"emailInUse": "This email is already registered."
-  ,"invalidEmail": "Please enter a valid email address."
-  ,"userNotFound": "No account found with that email."
-  ,"wrongPassword": "Incorrect password."
-  ,"tooManyRequests": "Too many attempts. Try again later."
-  ,"networkError": "Network error. Check your connection."
-  ,"signInFailed": "Sign in failed. Please try again."
-  ,"signUpFailed": "Sign up failed. Please try again."
-  ,"resetEmailSent": "Password reset email sent."
-  ,"resetEmailFailed": "Could not send reset email. Try again later."
-  ,"kundliReady": "Kundli generated."
-  ,"kundliFailed": "Could not generate Kundli. Try again."
-  ,"loveMatchReady": "Match analysis complete."
-  ,"loveMatchFailed": "Could not analyze match. Try again."
-  ,"share": "Share"
-  ,"copied": "Copied"
-  ,"retry": "Retry"
-  ,"yes": "Yes"
-  ,"no": "No"
-  ,"close": "Close"
-  ,"continueGuest": "Continue as Guest"
-  ,"delete": "Delete"
-  ,"back": "Back"
-  ,"notNow": "Not Now"
-  ,"permissionsTitle": "Permissions Required"
-  ,"permissionsBody": "To use all features please grant the requested permissions in Settings."
-  ,"openSettings": "Open Settings"
-  ,"updateAvailable": "Update available"
-  ,"updateAvailableBody": "A new version of AstroPrerna is available. Please update for the best experience."
-  ,"update": "Update"
-  ,"later": "Later"
-  ,"welcomeToAstroPrerna": "Welcome to AstroPrerna"
-  ,"rateLimitBanner": "Too many actions. Please wait a moment and try again."
-  ,"feedbackThanks": "Thanks! We'll ask you again later."
-  ,"openStoreFailed": "Could not open the rating dialog."
-  ,"linkOpenFailed": "Could not open the link."
-  ,"preparingKundli": "Preparing your Kundli..."
-  ,"sageTyping": "Sage is typing..."
-  ,"analyzingMatch": "Reading the stars..."
-  ,"firstTimeHere": "First time here? Tap a button above to get started."
-  ,"feedbackSubject": "AstroPrerna Feedback"
-  ,"feedbackBody": "Hi AstroPrerna team,%0A%0A"
-  ,"reportBug": "Report a Bug"
-  ,"sendFeedback": "Send Feedback"
-  ,"about": "About"
-  ,"appVersion": "Version {version} ({build})"
-  ,"@appVersion": {"placeholders": {"version": {"type": "String"},"build": {"type": "String"}}},
-"accessDenied": "Access Denied",
-"accountBanned": "Account Suspended",
-"attemptsLeftBeforeBan": "Attempts left before suspension: {count}",
-"banContactSupport": "Contact support if you believe this is a mistake.",
-"banReason": "Reason: {reason}",
-"historyTooLong": "Your chat history is too long. Please start a new conversation.",
-"iUnderstand": "I Understand",
-"limitExtended": "Limit Extended",
-"logoutAndExit": "Log Out and Exit",
-"onboardingDesc": "Your personal AI-powered Vedic astrology companion",
-"onboardingTitle": "Welcome to AstroPrerna",
-"reset": "Reset",
-"resetHistoryMsg": "This will clear all your chat messages. Are you sure?",
-"resetHistoryTitle": "Reset Chat History",
-"usageLimitBody": "You have reached the daily free limit. Watch a short ad to extend your limit.",
-"usageLimitReached": "Daily Limit Reached",
-"warning": "Warning",
-"watchAd": "Watch Ad"
+  "loginNow": "अभी लॉग इन करें",
+  "navHoroscope": "राशिफल",
+  "homeSubtitle": "आज सितारे आपके लिए क्या लेकर आए हैं?",
+  "rateApp": "ऐप को रेट करें",
+  "privacyPolicy": "गोपनीयता नीति",
+  "helpSupport": "मदद और समर्थन",
+  "languageSettings": "भाषा सेटिंग्स",
+  "loginToUnlock": "पूरी सुविधाएं अनलॉक करने के लिए लॉग इन करें",
+  "languageChanged": "भाषा बदल दी गई",
+  "restartMsg": "परिवर्तनों को पूरी तरह से प्रभावी होने के लिए कृपया ऐप को फिर से शुरू करें।",
+  "loginSubtitle": "अपने ईमेल से लॉग इन करें",
+  "signUpSubtitle": "सभी सुविधाओं को अनलॉक करने के लिए साइन अप करें",
+  "alreadyHaveAccount": "क्या आपके पास पहले से एक खाता है? लॉग इन करें",
+  "dontHaveAccount": "क्या आपका खाता नहीं है? साइन अप करें",
+  "onboardingTitle1": "एक टैप में दैनिक राशिफल",
+  "onboardingDesc1": "अपनी राशि के आधार पर सटीक दैनिक भविष्यवाणियां प्राप्त करें।",
+  "onboardingTitle2": "एआई-संचालित ज्योतिष चैट",
+  "onboardingDesc2": "हमारे एआई ऋषि से अपने भविष्य और जीवन पथ के बारे में कुछ भी पूछें।",
+  "onboardingTitle3": "तुरंत अपनी कुंडली बनाएं",
+  "onboardingDesc3": "दशा और उपायों के साथ विस्तृत कुंडली निर्माण।",
+  "next": "अगला",
+  "getStarted": "शुरू करें",
+  "enterDetailsSubtitle": "सटीक विवरण सटीक भविष्यवाणियां सुनिश्चित करते हैं। ",
+  "notificationDailyTitle": "दैनिक राशिफल तैयार है",
+  "notificationDailyBody": "देखें आज सितारे आपके लिए क्या लेकर आए हैं!",
+  "errorNameRequired": "Name is required",
+  "errorNameInvalidChars": "Use only letters (A-Z or Indian scripts). No numbers/symbols.",
+  "errorNameTooShort": "Name too short (min 3 chars).",
+  "errorNameTooLong": "Name too long (max 100 chars).",
+  "errorNameMaxWords": "Max 4 words allowed.",
+  "errorNameRepeatedChars": "Invalid name format (repeated characters).",
+  "errorNameFake": "Please enter a valid real name.",
+  "errorLocationRequired": "Location is required",
+  "errorLocationInvalidChars": "Use only letters (A-Z or Indian scripts). No numbers/symbols.",
+  "errorLocationTooShort": "Location too short (min 3 chars).",
+  "errorLocationTooLong": "Location too long (max 100 chars).",
+  "errorLocationFake": "Please enter a valid location.",
+  "errorLocationUnknown": "Please enter a recognized Indian city/district.",
+  "errorDateFuture": "Date cannot be in the future",
+  "errorDateRecent": "Date must be at least 3 months in the past",
+  "rateLimitError": "Update limit reached. Try again later.",
+  "profileUpdated": "Profile updated successfully.",
+  "softDeleteMsg": "Account scheduled for deletion in 24 hours.",
+  "loveCompatibility": "Love Compatibility",
+  "you": "You",
+  "partner": "Partner",
+  "analyzeMatch": "Analyze Match",
+  "analyzeAnother": "Analyze Another",
+  "matchScore": "Match",
+  "enterName": "Enter Name",
+  "checkSpamFolder": "Check spam or promotional tab.",
+  "continueWithGoogle": "Continue with Google",
+  "googleSignInError": "Google Sign-In failed",
+  "accountExistsWithDifferentCredential": "An account already exists with the same email address. Please sign in using your password or original provider.",
+  "emailImmutable": "Email cannot be changed.",
+  "watchAdToUnlock": "Watch Ad to Unlock",
+  "adLoadFailed": "Failed to load ad. Please try again later.",
+  "textTooLong": "Message too long (max 1000 chars).",
+  "banLimitReached": "You have been temporarily blocked from chat.",
+  "banLimitReason": "Repeatedly posting prohibited content.",
+  "voiceNotAvailable": "Voice input is not available on this device.",
+  "voicePermissionDenied": "Microphone permission denied.",
+  "voiceError": "Voice recognition error. Please try again.",
+  "chatError": "Couldn't reach the AI Sage. Please try again.",
+  "msgCopied": "Message copied",
+  "rateLimitHits": "Daily message limit reached. Try again tomorrow.",
+  "mustBeLoggedIn": "You must be logged in to do that.",
+  "deleteAccountTitle": "Delete Account?",
+  "deleteAccountBody": "Your account will be scheduled for permanent deletion in 24 hours. You can cancel by logging in again.",
+  "deleteAccountConfirm": "Delete",
+  "profileImageUpdated": "Profile photo updated.",
+  "languageUpdated": "Language updated.",
+  "passwordsDoNotMatch": "Passwords do not match.",
+  "passwordTooShort": "Password must be at least 6 characters.",
+  "weakPassword": "Please choose a stronger password.",
+  "emailInUse": "This email is already registered.",
+  "invalidEmail": "Please enter a valid email address.",
+  "userNotFound": "No account found with that email.",
+  "wrongPassword": "Incorrect password.",
+  "tooManyRequests": "Too many attempts. Try again later.",
+  "networkError": "Network error. Check your connection.",
+  "signInFailed": "Sign in failed. Please try again.",
+  "signUpFailed": "Sign up failed. Please try again.",
+  "resetEmailSent": "Password reset email sent.",
+  "resetEmailFailed": "Could not send reset email. Try again later.",
+  "kundliReady": "Kundli generated.",
+  "kundliFailed": "Could not generate Kundli. Try again.",
+  "loveMatchReady": "Match analysis complete.",
+  "loveMatchFailed": "Could not analyze match. Try again.",
+  "share": "Share",
+  "copied": "Copied",
+  "retry": "Retry",
+  "yes": "Yes",
+  "no": "No",
+  "close": "Close",
+  "continueGuest": "Continue as Guest",
+  "delete": "Delete",
+  "back": "Back",
+  "notNow": "Not Now",
+  "permissionsTitle": "Permissions Required",
+  "permissionsBody": "To use all features please grant the requested permissions in Settings.",
+  "openSettings": "Open Settings",
+  "updateAvailable": "Update available",
+  "updateAvailableBody": "A new version of AstroPrerna is available. Please update for the best experience.",
+  "update": "Update",
+  "later": "Later",
+  "welcomeToAstroPrerna": "Welcome to AstroPrerna",
+  "rateLimitBanner": "Too many actions. Please wait a moment and try again.",
+  "feedbackThanks": "Thanks! We'll ask you again later.",
+  "openStoreFailed": "Could not open the rating dialog.",
+  "linkOpenFailed": "Could not open the link.",
+  "preparingKundli": "Preparing your Kundli...",
+  "sageTyping": "Sage is typing...",
+  "analyzingMatch": "Reading the stars...",
+  "firstTimeHere": "First time here? Tap a button above to get started.",
+  "feedbackSubject": "AstroPrerna Feedback",
+  "feedbackBody": "Hi AstroPrerna team,%0A%0A",
+  "reportBug": "Report a Bug",
+  "sendFeedback": "Send Feedback",
+  "about": "About",
+  "appVersion": "Version {version} ({build})",
+  "@appVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "String"
+      }
+    }
+  },
+  "accessDenied": "Access Denied",
+  "accountBanned": "Account Suspended",
+  "attemptsLeftBeforeBan": "Attempts left before suspension: {count}",
+  "banContactSupport": "Contact support if you believe this is a mistake.",
+  "banReason": "Reason: {reason}",
+  "historyTooLong": "Your chat history is too long. Please start a new conversation.",
+  "iUnderstand": "I Understand",
+  "limitExtended": "Limit Extended",
+  "logoutAndExit": "Log Out and Exit",
+  "onboardingDesc": "Your personal AI-powered Vedic astrology companion",
+  "onboardingTitle": "Welcome to AstroPrerna",
+  "reset": "Reset",
+  "resetHistoryMsg": "This will clear all your chat messages. Are you sure?",
+  "resetHistoryTitle": "Reset Chat History",
+  "usageLimitBody": "You have reached the daily free limit. Watch a short ad to extend your limit.",
+  "usageLimitReached": "Daily Limit Reached",
+  "warning": "Warning",
+  "watchAd": "Watch Ad",
+  "chatHint": "Type your question...",
+  "chatMsgTooLong": "Message too long ({count}/1000)",
+  "chatDefaultGreeting": "Namaste! I am your AI Sage. Ask me anything about your destiny.",
+  "homeLoadingForecast": "Loading daily forecast...",
+  "homeDefaultQuote": "The stars incline, but do not bind.",
+  "homeForecastUnavailable": "Forecast unavailable.",
+  "horoscopeLoading": "Loading...",
+  "horoscopeForecastError": "Could not load forecast.",
+  "horoscopeNA": "N/A",
+  "loveMatchError": "Analysis failed. Please try again.",
+  "mainResetHistoryTooltip": "Reset History",
+  "profileTermsConditions": "Terms & Conditions",
+  "kundliLoadingRemedies": "Loading remedies...",
+  "kundliChartTab": "Chart",
+  "kundliPlanetsTab": "Planets",
+  "kundliRemediesTab": "Remedies",
+  "kundliLagnaChart": "Lagna Chart",
+  "kundliAscendantPrefix": "Asc",
+  "kundliRashiPrefix": "Rashi",
+  "kundliRetrograde": "Retrograde",
+  "kundliDirect": "Direct",
+  "kundliUnlockPlanets": "Unlock Planets Detail",
+  "kundliUnlockPlanetsMsg": "Watch a short ad to see detailed planetary positions.",
+  "kundliUnlockRemedies": "Unlock Vedic Remedies",
+  "kundliUnlockRemediesMsg": "Watch a short ad to reveal powerful remedies for your Doshas.",
+  "kundliDoshaAnalysis": "Dosha Analysis & Remedies",
+  "kundliBasedOnChart": "Based on your chart positions.",
+  "kundliErrorChart": "Error loading chart",
+  "notificationStayConnected": "Stay Connected",
+  "notificationPermissionBody": "Notifications are important to receive your daily horoscope, important astrological alerts, and guidance.",
+  "notificationNotNow": "Not Now",
+  "notificationYesEnable": "Yes, Enable",
+  "chatStop": "Stop",
+  "chatRegenerate": "Regenerate response",
+  "profileShareApp": "Share App",
+  "shareAppText": "Check out AstroPrerna — your personal AI-powered Vedic astrology companion!",
+  "chatExportHistory": "Export Chat",
+  "chatSuggestion1": "How's my career today?",
+  "chatSuggestion2": "Any remedies for me?",
+  "chatSuggestion3": "Tell me about my love life",
+  "chatSuggestion4": "What does my Kundli say?",
+  "notificationTitle": "Notifications",
+  "noNotifications": "No notifications yet",
+  "noNotificationsSubtitle": "We'll let you know when the stars align!",
+  "notificationFallback": "Notification",
+  "aboutDescription": "Your personal AI-powered Vedic astrology companion.",
+  "homeNoSummary": "No summary available.",
+  "horoscopeAlignFallback": "Align with the stars.",
+  "invalidDate": "Invalid Date",
+  "invalidDob": "Please enter a valid date of birth.",
+  "passwordComplexity": "Password must be at least 6 characters and contain both letters and numbers.",
+  "verifyEmailTitle": "Verify Email",
+  "verifyEmailBody": "A verification link has been sent to your email. Please verify and then log in.",
+  "emailNotVerified": "Email Not Verified",
+  "emailNotVerifiedBody": "Please verify your email address to continue.",
+  "resendLink": "Resend Link",
+  "accessDeniedMsg": "Username is banned due to internal policy.",
+  "accountDeletionTitle": "Account Scheduled for Deletion",
+  "accountDeletionBody": "You have previously requested to delete this account. You can regain access or cancel to continue deletion.",
+  "cancelLogin": "Cancel Login",
+  "regainAccess": "Regain Access",
+  "limitExceeded": "Limit Exceeded",
+  "authFailed": "Authentication failed",
+  "authSessionLost": "Authentication session lost. Please try again.",
+  "passwordWeak": "The password provided is too weak.",
+  "emailAlreadyExists": "The account already exists for that email.",
+  "noUserFound": "No user found for that email.",
+  "wrongPasswordMsg": "Wrong password provided.",
+  "noUserResetEmail": "No user found with this email.",
+  "resetEmailSentFull": "Password reset email sent.",
+  "pleaseCompleteProfile": "Please complete your profile details.",
+  "dobRequired": "Date of Birth is required",
+  "selectDate": "Select Date",
+  "emailRequired": "Email is required",
+  "emailHint": "you@example.com",
+  "passwordRequired": "Password is required",
+  "internalPolicy": "Internal Policy",
+  "firebaseInitFailed": "Firebase Init Failed",
+  "profileIncomplete": "Please complete your profile details.",
+  "verifyEmailFullBody": "A verification link has been sent to your email. Please verify it and then log in.",
+  "emailNotVerifiedFullBody": "Please verify your email address to continue.",
+  "ageRestrictionFull": "You must be at least 10 years old to use this app.",
+  "passwordResetLimitBody": "You have reached the maximum number of password reset attempts.",
+  "@chatMsgTooLong": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
