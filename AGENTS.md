@@ -1,6 +1,6 @@
 # AGENTS.md
 
-AstroPrerna — Flutter 3.24.5 / Dart `>=3.4.0 <4.0.0`. **Android-only**: there is no `ios/` directory and no iOS build job in CI. Do not add iOS-only plugins or assume Cupertino paths.
+AstroPrerna — Flutter 3.29.3 / Dart `>=3.6.0 <4.0.0`. **Android-only**: there is no `ios/` directory and no iOS build job in CI. Do not add iOS-only plugins or assume Cupertino paths.
 
 ## Quick start
 
