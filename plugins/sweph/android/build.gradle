@@ -59,7 +59,7 @@ android {
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_STL=c++_static"
-                cFlags ""
+                cFlags "-D_FILE_OFFSET_BITS=64"
                 cppFlags ""
             }
         }
