@@ -77,6 +77,14 @@
   typedef __int64 off_t64;
   #define FSEEK _fseeki64
   #define FTELL _ftelli64
+#elif defined(__ANDROID__)
+  /* Android's stdio.h does not declare fseeko/ftello for API < 24 unless
+     _FILE_OFFSET_BITS=64 is set AND __ANDROID_API__ >= 21.  Use fseek/ftell
+     instead — on 64-bit ABIs (arm64-v8a, x86_64) `long` is 64-bit, and on
+     32-bit ABIs (armeabi-v7a, x86) the JPL ephemeris files are < 2 GB. */
+  typedef long off_t64;
+  #define FSEEK fseek
+  #define FTELL ftell
 #else
   typedef off_t off_t64;
   #define FSEEK fseeko
