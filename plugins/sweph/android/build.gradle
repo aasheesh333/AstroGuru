@@ -63,8 +63,5 @@ android {
                 cppFlags ""
             }
         }
-        ndk {
-            ldFlags "-Wl,-z,max-page-size=16384", "-Wl,-z,common-page-size=16384"
-        }
     }
 }
