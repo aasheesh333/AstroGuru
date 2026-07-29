@@ -51,7 +51,7 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 21
 
         // 16 KB page-size alignment flags required by Play Console for target SDK 36.
         // These linker flags tell the NDK r27 linker to align PT_LOAD segments
