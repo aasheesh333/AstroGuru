@@ -119,23 +119,37 @@ android {
 // 32-bit) tolerates p_align values larger than the actual page size used at
 // runtime, so this in-place patch is runtime-safe.
 tasks.register('patchSweph16KbAlignment') {
+    // The merged native libs dir is produced by `mergeReleaseNativeLibs`,
+    // which runs at EXECUTION time, not configuration time. Declaring it as
+    // `inputs.dir(...)` here would fail Gradle's input validation because the
+    // directory does not exist yet. We instead resolve the path lazily inside
+    // `doLast` and skip silently if no libsweph.so is found (e.g. when the
+    // task runs in a context that doesn't produce native libs).
     def mergedDir = layout.buildDirectory.dir("intermediates/merged_native_libs/release/out/lib")
     def patchScript = rootProject.file('../scripts/patch_elf_page_size.py')
-    inputs.dir(mergedDir)
-    outputs.dir(mergedDir)
     doLast {
         if (!patchScript.exists()) {
             logger.warn("patchSweph16KbAlignment: patch script not found at ${patchScript}; skipping")
             return
         }
-        mergedDir.get().asFile.eachFileRecurse { f ->
+        def dir = mergedDir.get().asFile
+        if (!dir.exists()) {
+            logger.lifecycle("patchSweph16KbAlignment: ${dir} does not exist; nothing to patch")
+            return
+        }
+        def patched = 0
+        dir.eachFileRecurse { f ->
             if (f.name == 'libsweph.so') {
                 logger.lifecycle("Patching 16 KB p_align for ${f}")
                 project.exec {
                     executable 'python3'
                     args patchScript.absolutePath, f.absolutePath
                 }
+                patched++
             }
+        }
+        if (patched == 0) {
+            logger.lifecycle("patchSweph16KbAlignment: no libsweph.so found under ${dir}; nothing to patch")
         }
     }
 }
@@ -149,7 +163,6 @@ afterEvaluate {
         finalizedBy 'patchSweph16KbAlignment'
     }
 }
-
 flutter {
     source '../..'
 }
