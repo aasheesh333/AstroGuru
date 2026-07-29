@@ -85,6 +85,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    // Ensure native libraries are stored uncompressed in the AAB so that AGP
+    // can zip-align them on 16 KB boundaries (required for target SDK 36).
+    // Combined with `android.bundle.enable16KbPageSize=true` in gradle.properties,
+    // this satisfies Play Console's "16 KB memory page sizes" check.
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
 }
 
 flutter {

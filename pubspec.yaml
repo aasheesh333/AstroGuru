@@ -15,7 +15,8 @@ dependencies:
   permission_handler: ^11.3.1
   google_fonts: ^6.1.0
   cupertino_icons: ^1.0.6
-  sweph: ^2.10.3+18
+  sweph:
+    path: plugins/sweph
   shared_preferences: ^2.5.3
   crypto: ^3.0.3
   intl: ^0.19.0
