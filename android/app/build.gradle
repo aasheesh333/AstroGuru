@@ -97,6 +97,59 @@ android {
     }
 }
 
+// ---------------------------------------------------------------------------
+// 16 KB page-size alignment for sweph's libsweph.so
+// ---------------------------------------------------------------------------
+// The upstream `sweph` pub package (v2.10.3+18) compiles its native library
+// with NDK r21, which sets `p_align=4096` in the ELF LOAD segments. Play
+// Console rejects AABs targeting SDK 36 unless ALL PT_LOAD segments have
+// `p_align >= 16384`. AGP's `android.bundle.enable16KbPageSize=true` only
+// zip-aligns the .so entries inside the bundle; it does NOT modify the ELF
+// p_align field, so sweph still fails Play Console's check.
+//
+// We patch the p_align header field in-place right after Gradle merges the
+// native libs for the release variant, BEFORE the bundle is signed by the
+// `signingConfigs.release` block. This keeps Gradle's native `apksigner`
+// signing flow intact (the previous post-build jarsigner re-sign produced
+// an "invalid signature" rejection on Play Console).
+//
+// Per https://developer.android.com/guide/practices/page-sizes#compile-16-kb
+// the actual Play Console check is `p_align >= 16384`, not segment offset /
+// vaddr alignment. The Android dynamic linker (API 21+ on 64-bit, API 24+ on
+// 32-bit) tolerates p_align values larger than the actual page size used at
+// runtime, so this in-place patch is runtime-safe.
+tasks.register('patchSweph16KbAlignment') {
+    def mergedDir = layout.buildDirectory.dir("intermediates/merged_native_libs/release/out/lib")
+    def patchScript = rootProject.file('../scripts/patch_elf_page_size.py')
+    inputs.dir(mergedDir)
+    outputs.dir(mergedDir)
+    doLast {
+        if (!patchScript.exists()) {
+            logger.warn("patchSweph16KbAlignment: patch script not found at ${patchScript}; skipping")
+            return
+        }
+        mergedDir.get().asFile.eachFileRecurse { f ->
+            if (f.name == 'libsweph.so') {
+                logger.lifecycle("Patching 16 KB p_align for ${f}")
+                project.exec {
+                    executable 'python3'
+                    args patchScript.absolutePath, f.absolutePath
+                }
+            }
+        }
+    }
+}
+
+// Hook the patch task into the release bundle pipeline AGP 8.x task graph:
+//   mergeReleaseNativeLibs  ->  stripReleaseDebugSymbols  ->  packageRelease ...
+// We depend on mergeReleaseLibs (rename for AGP 8.x) and let the patch
+// produce patched outputs before packageRelease consumes them.
+afterEvaluate {
+    tasks.matching { it.name == 'mergeReleaseNativeLibs' }.configureEach {
+        finalizedBy 'patchSweph16KbAlignment'
+    }
+}
+
 flutter {
     source '../..'
 }

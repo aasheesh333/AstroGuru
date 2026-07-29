@@ -130,41 +130,26 @@ jobs:
           --dart-define=APP_ONESIGNAL_APP_ID=${{ secrets.ONESIGNAL_APP_ID }} \
           --dart-define=APP_ONESIGNAL_API_KEY=${{ secrets.ONESIGNAL_API_KEY }}
 
-    - name: Patch libsweph.so for 16 KB page-size alignment
-      # The upstream sweph pub package (v2.10.3+18) compiles its native
-      # library with NDK r21, which sets p_align=4096 in the ELF LOAD
-      # segments.  Play Console rejects AABs targeting SDK 36 unless all
-      # PT_LOAD segments have p_align >= 16384.  Rather than fork sweph
-      # (which broke the chat runtime via universal_ffi), we patch the
-      # p_align header field in-place inside the already-built AAB and
-      # re-sign it with the upload keystore.
-      # Per https://developer.android.com/guide/practices/page-sizes#compile-16-kb
-      # the actual Play Console check is `p_align >= 16384`, not segment
-      # offset/vaddr alignment.  The Android dynamic linker (API 21+ on
-      # 64-bit, API 24+ on 32-bit) tolerates p_align values larger than
-      # the actual page size used at runtime, so this is safe.
-      env:
-        KEYSTORE_PATH: ${{ github.workspace }}/android/upload-keystore.jks
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    - name: Verify 16 KB p_align of libsweph.so in AAB
+      # `android.bundle.enable16KbPageSize=true` in gradle.properties only
+      # zip-aligns the .so entries inside the bundle; the sweph native lib
+      # also needs its ELF `p_align` header field patched to >= 16384. This
+      # is done by the `patchSweph16KbAlignment` Gradle task in app/build.gradle,
+      # which runs after mergeReleaseNativeLibs and BEFORE Gradle signs the
+      # AAB with the `signingConfigs.release` keystore. This keeps Gradle's
+      # native apksigner signing flow intact (a post-build jarsigner re-sign
+      # produced "invalid signature" rejection on Play Console).
+      #
+      # This step just verifies the patched bundle passes Play Console's
+      # check (`p_align >= 16384` for all PT_LOAD segments) and fails CI
+      # early if it doesn't.
       run: |
         set -e
         AAB="build/app/outputs/bundle/release/app-release.aab"
         TMP="$(mktemp -d)"
 
-        # Read key alias (default to "mykey" — same as Configure Keystore step)
-        KEY_ALIAS_VAL="$KEY_ALIAS"
-        if [ -z "$KEY_ALIAS_VAL" ]; then KEY_ALIAS_VAL="mykey"; fi
-
-        echo "Extracting AAB..."
+        echo "Extracting AAB to verify libsweph.so alignment..."
         unzip -q "$AAB" -d "$TMP/aab"
-
-        echo "Patching libsweph.so in each ABI..."
-        python3 scripts/patch_elf_page_size.py "$TMP/aab/base/lib/arm64-v8a/libsweph.so" \
-                                                 "$TMP/aab/base/lib/armeabi-v7a/libsweph.so" \
-                                                 "$TMP/aab/base/lib/x86/libsweph.so" \
-                                                 "$TMP/aab/base/lib/x86_64/libsweph.so"
 
         echo "Checking alignment..."
         python3 scripts/check_elf_alignment.py "$TMP/aab/base/lib/arm64-v8a/libsweph.so" \
@@ -172,31 +157,7 @@ jobs:
                                               "$TMP/aab/base/lib/x86/libsweph.so" \
                                               "$TMP/aab/base/lib/x86_64/libsweph.so"
 
-        echo "Re-zipping AAB..."
-        cd "$TMP/aab"
-        zip -q -r -X "$TMP/patched.aab" .
-        cd - > /dev/null
-
-        # Strip previous signature (zip's --delete on the freshly zipped file;
-        # the patched.aab was created from a working copy, not the original, so
-        # META-INF entries need to be removed from the freshly-created zip)
-        (cd "$TMP/aab" && zip -q -d "$TMP/patched.aab" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' 'META-INF/*SF' 'META-INF/*RSA' 'META-INF/*DSA' 2>/dev/null) || true
-
-        echo "Re-signing AAB (alias=$KEY_ALIAS_VAL)..."
-        jarsigner -keystore "$KEYSTORE_PATH" \
-                  -storepass "$KEYSTORE_PASSWORD" \
-                  -keypass "$KEY_PASSWORD" \
-                  -signedjar "$TMP/signed.aab" \
-                  "$TMP/patched.aab" \
-                  "$KEY_ALIAS_VAL"
-        
-        echo "Verifying signature..."
-        jarsigner -verify -verbose -certs "$TMP/signed.aab" | tail -5
-        
-        echo "Replacing AAB with signed+patched version..."
-        mv "$TMP/signed.aab" "$AAB"
         rm -rf "$TMP"
-        
         echo "Final AAB size: $(stat -c%s "$AAB") bytes"
 
     - name: Verify artifacts exist
