@@ -152,37 +152,43 @@ jobs:
         set -e
         AAB="build/app/outputs/bundle/release/app-release.aab"
         TMP="$(mktemp -d)"
+
+        # Read key alias (default to "mykey" — same as Configure Keystore step)
+        KEY_ALIAS_VAL="$KEY_ALIAS"
+        if [ -z "$KEY_ALIAS_VAL" ]; then KEY_ALIAS_VAL="mykey"; fi
+
         echo "Extracting AAB..."
         unzip -q "$AAB" -d "$TMP/aab"
-        
+
         echo "Patching libsweph.so in each ABI..."
         python3 scripts/patch_elf_page_size.py "$TMP/aab/base/lib/arm64-v8a/libsweph.so" \
                                                  "$TMP/aab/base/lib/armeabi-v7a/libsweph.so" \
                                                  "$TMP/aab/base/lib/x86/libsweph.so" \
                                                  "$TMP/aab/base/lib/x86_64/libsweph.so"
-        
+
         echo "Checking alignment..."
         python3 scripts/check_elf_alignment.py "$TMP/aab/base/lib/arm64-v8a/libsweph.so" \
                                               "$TMP/aab/base/lib/armeabi-v7a/libsweph.so" \
                                               "$TMP/aab/base/lib/x86/libsweph.so" \
                                               "$TMP/aab/base/lib/x86_64/libsweph.so"
-        
+
         echo "Re-zipping AAB..."
-        # bunzip2 is required for AAB output, but `zip` handles both equally
         cd "$TMP/aab"
         zip -q -r -X "$TMP/patched.aab" .
         cd - > /dev/null
-        
-        echo "Re-signing AAB..."
-        # Update the v2/v3 signing blocks (jarsigner handles v1; apksigner handles v2/v3)
-        # Delete the old signature first
-        (cd "$TMP/aab" && zip -q -d "$TMP/patched.aab" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' 2>/dev/null) || true
+
+        # Strip previous signature (zip's --delete on the freshly zipped file;
+        # the patched.aab was created from a working copy, not the original, so
+        # META-INF entries need to be removed from the freshly-created zip)
+        (cd "$TMP/aab" && zip -q -d "$TMP/patched.aab" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' 'META-INF/*SF' 'META-INF/*RSA' 'META-INF/*DSA' 2>/dev/null) || true
+
+        echo "Re-signing AAB (alias=$KEY_ALIAS_VAL)..."
         jarsigner -keystore "$KEYSTORE_PATH" \
                   -storepass "$KEYSTORE_PASSWORD" \
                   -keypass "$KEY_PASSWORD" \
                   -signedjar "$TMP/signed.aab" \
                   "$TMP/patched.aab" \
-                  "$KEY_ALIAS"
+                  "$KEY_ALIAS_VAL"
         
         echo "Verifying signature..."
         jarsigner -verify -verbose -certs "$TMP/signed.aab" | tail -5
