@@ -39,20 +39,19 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
-    - name: Patch libsweph.so 16 KB p_align in pub cache
-      # The upstream `sweph` pub package (v2.10.3+18) ships prebuilt .so
-      # files somewhere in its pub-cache tree with `p_align=4096` (compiled
-      # with NDK r21). Play Console rejects AABs targeting SDK 36 unless ALL
-      # PT_LOAD segments have `p_align >= 16384`. We patch every libsweph.so
-      # found under the sweph plugin's pub-cache dir BEFORE any Gradle build
-      # runs, so Gradle's `mergeReleaseNativeLibs` picks up the already-aligned
-      # files and the bundle is signed natively by `signingConfigs.release` +
-      # apksigner (no jarsigner re-sign needed).
+    - name: Patch sweph CMakeLists.txt to emit 16 KB page alignment
+      # The upstream `sweph` pub package (v2.10.3+18) compiles libsweph.so
+      # from C source via CMake + NDK r21. The default linker flags produce
+      # `p_align=4096` for PT_LOAD segments, which Play Console rejects on
+      # AABs targeting SDK 36 (it requires `p_align >= 16384` for all PT_LOAD
+      # segments per https://developer.android.com/guide/practices/page-sizes).
       #
-      # Per https://developer.android.com/guide/practices/page-sizes#compile-16-kb
-      # the actual Play Console check is `p_align >= 16384`. The Android
-      # dynamic linker tolerates p_align values larger than the actual page
-      # size, so this is runtime-safe.
+      # We append `-Wl,-z,max-page-size=16384` to the sweph target's linker
+      # flags in the pub-cache copy of native/CMakeLists.txt BEFORE Gradle
+      # builds it. NDK r21's lld (LLVM 9) supports this flag. Gradle's native
+      # apksigner then signs the resulting AAB normally — no post-build
+      # re-sign needed. Runtime-safe: the Linux loader tolerates p_align
+      # larger than the actual page size.
       run: |
         set -e
         PUB_CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
@@ -61,23 +60,29 @@ jobs:
           echo "::error::sweph plugin not found in pub cache"
           exit 1
         fi
-        echo "sweph plugin dir: $SWEPH_DIR"
-        echo "All .so files under sweph plugin dir:"
-        find "$SWEPH_DIR" -name '*.so' | head -50
-        echo "All files under sweph plugin's android/ dir:"
-        find "$SWEPH_DIR" -path '*/android/*' -type f | head -50
-
-        COUNT=0
-        find "$SWEPH_DIR" -name 'libsweph.so' -print0 | while IFS= read -r -d '' f; do
-          echo "Patching $f"
-          python3 scripts/patch_elf_page_size.py "$f"
-          python3 scripts/check_elf_alignment.py "$f"
-          COUNT=$((COUNT+1))
-        done
-
-        if [ "$COUNT" -eq 0 ]; then
-          echo "::warning::no libsweph.so found under $SWEPH_DIR — sweph may extract .so files at Gradle build time"
+        CMAKE_FILE="$SWEPH_DIR/native/CMakeLists.txt"
+        if [ ! -f "$CMAKE_FILE" ]; then
+          echo "::error::$CMAKE_FILE not found"
+          exit 1
         fi
+
+        # Idempotent: only append if not already patched.
+        if grep -q "max-page-size=16384" "$CMAKE_FILE"; then
+          echo "Already patched: $CMAKE_FILE"
+        else
+          echo "Patching $CMAKE_FILE"
+          cat >> "$CMAKE_FILE" <<'EOF'
+
+        # 16 KB page size alignment (Play Console requirement for SDK 36).
+        # See https://developer.android.com/guide/practices/page-sizes
+        target_link_options(sweph PRIVATE
+            "-Wl,-z,max-page-size=16384"
+            "-Wl,-z,common-page-size=16384")
+        EOF
+        fi
+
+        echo "--- Patched CMakeLists.txt tail ---"
+        tail -15 "$CMAKE_FILE"
 
     - name: Generate localizations
       run: flutter gen-l10n
@@ -171,10 +176,10 @@ jobs:
           --dart-define=APP_ONESIGNAL_API_KEY=${{ secrets.ONESIGNAL_API_KEY }}
 
     - name: Verify 16 KB p_align of libsweph.so in AAB
-      # Verifies that the pub-cache patch step (above) actually flowed through
-      # into the AAB built by Gradle. Fails CI if any libsweph.so inside the
-      # bundle has a PT_LOAD segment with `p_align < 16384`, which Play Console
-      # would reject.
+      # Verifies that the CMakeLists.txt patch (linker flag
+      # `-Wl,-z,max-page-size=16384`) flowed through into the AAB built by
+      # Gradle. Fails CI if any libsweph.so inside the bundle has a PT_LOAD
+      # segment with `p_align < 16384`, which Play Console would reject.
       run: |
         set -e
         AAB="build/app/outputs/bundle/release/app-release.aab"
