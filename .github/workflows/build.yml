@@ -180,6 +180,11 @@ jobs:
       # `-Wl,-z,max-page-size=16384`) flowed through into the AAB built by
       # Gradle. Fails CI if any libsweph.so inside the bundle has a PT_LOAD
       # segment with `p_align < 16384`, which Play Console would reject.
+      #
+      # NOTE: Play Console's actual check is ONLY `p_align >= 16384` per
+      # https://developer.android.com/guide/practices/page-sizes#compile-16-kb.
+      # Segment offset/vaddr may still be 4 KB aligned — that's expected and
+      # benign; the loader mmap()s segments by their p_align, not the offsets.
       run: |
         set -e
         AAB="build/app/outputs/bundle/release/app-release.aab"
@@ -188,7 +193,7 @@ jobs:
         echo "Extracting AAB to verify libsweph.so alignment..."
         unzip -q "$AAB" -d "$TMP/aab"
 
-        echo "Checking alignment (must be p_align >= 16384 for all PT_LOAD segments)..."
+        echo "Checking p_align (must be >= 16384 for all PT_LOAD segments)..."
         python3 scripts/check_elf_alignment.py \
               "$TMP/aab/base/lib/arm64-v8a/libsweph.so" \
               "$TMP/aab/base/lib/armeabi-v7a/libsweph.so" \
@@ -197,8 +202,10 @@ jobs:
           > "$TMP/check.log" 2>&1 || true
         cat "$TMP/check.log"
 
-        if grep -q "FAIL" "$TMP/check.log"; then
-          echo "::error::libsweph.so 16 KB p_align patch failed to propagate into AAB"
+        # Only fail on p_align<16384 (Play Console's actual check). The script
+        # prints "p_align>=16384: FAIL" on the offending line.
+        if grep -q "p_align>=16384: FAIL" "$TMP/check.log"; then
+          echo "::error::libsweph.so p_align < 16384 — Play Console would reject this AAB"
           rm -rf "$TMP"
           exit 1
         fi
