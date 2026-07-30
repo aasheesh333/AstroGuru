@@ -39,6 +39,34 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
+    - name: Patch libsweph.so 16 KB p_align in pub cache
+      # The upstream `sweph` pub package (v2.10.3+18) ships prebuilt .so
+      # files with `p_align=4096` (compiled with NDK r21). Play Console
+      # rejects AABs targeting SDK 36 unless ALL PT_LOAD segments have
+      # `p_align >= 16384`. We patch the .so files in the pub cache BEFORE
+      # any Gradle build runs, so Gradle's `mergeReleaseNativeLibs` picks up
+      # the already-aligned files and the bundle is signed natively by
+      # `signingConfigs.release` + apksigner (no jarsigner re-sign needed).
+      #
+      # Per https://developer.android.com/guide/practices/page-sizes#compile-16-kb
+      # the actual Play Console check is `p_align >= 16384`. The Android
+      # dynamic linker tolerates p_align values larger than the actual page
+      # size, so this is runtime-safe.
+      run: |
+        set -e
+        PUB_CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
+        SWEPH_DIR="$(ls -d "$PUB_CACHE/hosted/pub.dev/sweph-"*/ 2>/dev/null || true)"
+        if [ -z "$SWEPH_DIR" ]; then
+          echo "sweph plugin not found in pub cache; skipping patch"
+          exit 0
+        fi
+        echo "Patching libsweph.so in $SWEPH_DIR"
+        find "$SWEPH_DIR" -name 'libsweph.so' -print0 | while IFS= read -r -d '' f; do
+          echo "Patching $f"
+          python3 scripts/patch_elf_page_size.py "$f"
+          python3 scripts/check_elf_alignment.py "$f"
+        done
+
     - name: Generate localizations
       run: flutter gen-l10n
 
@@ -131,18 +159,10 @@ jobs:
           --dart-define=APP_ONESIGNAL_API_KEY=${{ secrets.ONESIGNAL_API_KEY }}
 
     - name: Verify 16 KB p_align of libsweph.so in AAB
-      # `android.bundle.enable16KbPageSize=true` in gradle.properties only
-      # zip-aligns the .so entries inside the bundle; the sweph native lib
-      # also needs its ELF `p_align` header field patched to >= 16384. This
-      # is done by the `patchSweph16KbAlignment` Gradle task in app/build.gradle,
-      # which runs after mergeReleaseNativeLibs and BEFORE Gradle signs the
-      # AAB with the `signingConfigs.release` keystore. This keeps Gradle's
-      # native apksigner signing flow intact (a post-build jarsigner re-sign
-      # produced "invalid signature" rejection on Play Console).
-      #
-      # This step just verifies the patched bundle passes Play Console's
-      # check (`p_align >= 16384` for all PT_LOAD segments) and fails CI
-      # early if it doesn't.
+      # Verifies that the pub-cache patch step (above) actually flowed through
+      # into the AAB built by Gradle. Fails CI if any libsweph.so inside the
+      # bundle has a PT_LOAD segment with `p_align < 16384`, which Play Console
+      # would reject.
       run: |
         set -e
         AAB="build/app/outputs/bundle/release/app-release.aab"
@@ -151,11 +171,20 @@ jobs:
         echo "Extracting AAB to verify libsweph.so alignment..."
         unzip -q "$AAB" -d "$TMP/aab"
 
-        echo "Checking alignment..."
-        python3 scripts/check_elf_alignment.py "$TMP/aab/base/lib/arm64-v8a/libsweph.so" \
-                                              "$TMP/aab/base/lib/armeabi-v7a/libsweph.so" \
-                                              "$TMP/aab/base/lib/x86/libsweph.so" \
-                                              "$TMP/aab/base/lib/x86_64/libsweph.so"
+        echo "Checking alignment (must be p_align >= 16384 for all PT_LOAD segments)..."
+        python3 scripts/check_elf_alignment.py \
+              "$TMP/aab/base/lib/arm64-v8a/libsweph.so" \
+              "$TMP/aab/base/lib/armeabi-v7a/libsweph.so" \
+              "$TMP/aab/base/lib/x86/libsweph.so" \
+              "$TMP/aab/base/lib/x86_64/libsweph.so" \
+          > "$TMP/check.log" 2>&1 || true
+        cat "$TMP/check.log"
+
+        if grep -q "FAIL" "$TMP/check.log"; then
+          echo "::error::libsweph.so 16 KB p_align patch failed to propagate into AAB"
+          rm -rf "$TMP"
+          exit 1
+        fi
 
         rm -rf "$TMP"
         echo "Final AAB size: $(stat -c%s "$AAB") bytes"
