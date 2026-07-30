@@ -41,12 +41,13 @@ jobs:
 
     - name: Patch libsweph.so 16 KB p_align in pub cache
       # The upstream `sweph` pub package (v2.10.3+18) ships prebuilt .so
-      # files with `p_align=4096` (compiled with NDK r21). Play Console
-      # rejects AABs targeting SDK 36 unless ALL PT_LOAD segments have
-      # `p_align >= 16384`. We patch the .so files in the pub cache BEFORE
-      # any Gradle build runs, so Gradle's `mergeReleaseNativeLibs` picks up
-      # the already-aligned files and the bundle is signed natively by
-      # `signingConfigs.release` + apksigner (no jarsigner re-sign needed).
+      # files somewhere in its pub-cache tree with `p_align=4096` (compiled
+      # with NDK r21). Play Console rejects AABs targeting SDK 36 unless ALL
+      # PT_LOAD segments have `p_align >= 16384`. We patch every libsweph.so
+      # found under the sweph plugin's pub-cache dir BEFORE any Gradle build
+      # runs, so Gradle's `mergeReleaseNativeLibs` picks up the already-aligned
+      # files and the bundle is signed natively by `signingConfigs.release` +
+      # apksigner (no jarsigner re-sign needed).
       #
       # Per https://developer.android.com/guide/practices/page-sizes#compile-16-kb
       # the actual Play Console check is `p_align >= 16384`. The Android
@@ -57,15 +58,26 @@ jobs:
         PUB_CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
         SWEPH_DIR="$(ls -d "$PUB_CACHE/hosted/pub.dev/sweph-"*/ 2>/dev/null || true)"
         if [ -z "$SWEPH_DIR" ]; then
-          echo "sweph plugin not found in pub cache; skipping patch"
-          exit 0
+          echo "::error::sweph plugin not found in pub cache"
+          exit 1
         fi
-        echo "Patching libsweph.so in $SWEPH_DIR"
+        echo "sweph plugin dir: $SWEPH_DIR"
+        echo "All .so files under sweph plugin dir:"
+        find "$SWEPH_DIR" -name '*.so' | head -50
+        echo "All files under sweph plugin's android/ dir:"
+        find "$SWEPH_DIR" -path '*/android/*' -type f | head -50
+
+        COUNT=0
         find "$SWEPH_DIR" -name 'libsweph.so' -print0 | while IFS= read -r -d '' f; do
           echo "Patching $f"
           python3 scripts/patch_elf_page_size.py "$f"
           python3 scripts/check_elf_alignment.py "$f"
+          COUNT=$((COUNT+1))
         done
+
+        if [ "$COUNT" -eq 0 ]; then
+          echo "::warning::no libsweph.so found under $SWEPH_DIR — sweph may extract .so files at Gradle build time"
+        fi
 
     - name: Generate localizations
       run: flutter gen-l10n
