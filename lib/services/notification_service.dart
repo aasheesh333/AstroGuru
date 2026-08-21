@@ -58,7 +58,7 @@ class NotificationService with WidgetsBindingObserver {
   bool _initialized = false;
   final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
 
-  Future<void> init() async {
+  Future<void> init({bool gmsAvailable = true}) async {
     await _updateUnreadCount();
 
     if (_initialized) return;
@@ -84,8 +84,11 @@ class NotificationService with WidgetsBindingObserver {
       },
     );
 
+    // OneSignal is FCM-backed and requires Google Play Services. On non-GMS
+    // devices (OPPO outside Google's ecosystem, CN-market phones) initializing
+    // it surfaces a "Google Play services required" system prompt — skip it.
     final String oneSignalAppId = AppConfig.oneSignalAppId;
-    if (oneSignalAppId.isNotEmpty) {
+    if (gmsAvailable && oneSignalAppId.isNotEmpty) {
       OneSignal.initialize(oneSignalAppId);
 
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {

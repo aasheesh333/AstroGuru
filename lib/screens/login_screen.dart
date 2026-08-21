@@ -17,6 +17,7 @@ import '../logic/user_session.dart';
 import '../logic/language_provider.dart';
 import '../widgets/baba_avatar.dart';
 import '../utils/validators.dart';
+import '../utils/gms_availability.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,9 +43,27 @@ class _LoginScreenState extends State<LoginScreen> {
   User? _pendingGoogleUser;
   String? _pendingGooglePhotoUrl;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email'],
-  );
+  // Lazily constructed so we never even build the GoogleSignIn plugin on
+  // devices without GMS (it binds Play services at construction).
+  GoogleSignIn? _googleSignInInstance;
+  GoogleSignIn get _googleSignIn =>
+      _googleSignInInstance ??= GoogleSignIn(scopes: ['email']);
+
+  // Whether Google Play Services is usable on this device. When false the
+  // "Continue with Google" button is hidden entirely.
+  bool _gmsAvailable = GmsAvailability.isAvailableSync;
+
+  @override
+  void initState() {
+    super.initState();
+    // Refresh the GMS flag once the startup check completes (main() already
+    // awaited it, so this resolves immediately with the cached value).
+    GmsAvailability.isAvailable().then((v) {
+      if (mounted && v != _gmsAvailable) {
+        setState(() => _gmsAvailable = v);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -105,6 +124,20 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    // Hard guard — on non-GMS devices Google Sign-In cannot work and would
+    // surface the system "Google Play services required" prompt.
+    if (!GmsAvailability.isAvailableSync) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google Sign-In is not available on this device.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     final auth = await _ensureAuthInitialized();
     if (auth == null) {
@@ -951,8 +984,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                     ),
 
-                    // Google Sign-In Button (Hide if already in Google completion mode)
-                    if (!_isGoogleAuth) ...[
+                    // Google Sign-In Button (Hide if already in Google completion mode,
+                    // or if the device has no Google Play Services — OPPO/realme/
+                    // OnePlus outside Google's ecosystem — where it cannot work)
+                    if (!_isGoogleAuth && _gmsAvailable) ...[
                       const SizedBox(height: 16),
                       OutlinedButton.icon(
                         onPressed: _isLoading ? null : _handleGoogleSignIn,

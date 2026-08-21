@@ -117,4 +117,6 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    // Needed for GoogleApiAvailability GMS check (OPPO non-GMS devices)
+    implementation 'com.google.android.gms:play-services-basement:18.5.0'
 }

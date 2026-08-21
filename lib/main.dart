@@ -15,6 +15,7 @@ import 'logic/key_manager.dart'; // Import KeyManager
 import 'services/notification_service.dart';
 import 'services/ad_service.dart';
 import 'theme/app_colors.dart';
+import 'utils/gms_availability.dart';
 import 'screens/splash_screen.dart';
 import 'screens/kundli_input_screen.dart';
 import 'screens/chat_screen.dart';
@@ -26,6 +27,14 @@ void main() async {
 
   // Load env (--dart-define first, then dotenv fallback for local dev)
   await AppConfig.load();
+
+  // Detect Google Play Services availability once. Devices without GMS
+  // (OPPO/realme/OnePlus outside the Google ecosystem, all CN-market phones)
+  // must skip AdMob, OneSignal/FCM and Google Sign-In, otherwise the system
+  // shows a "This app requires Google Play services" prompt that store
+  // reviewers flag as "Mandatory Download from GP".
+  final bool gmsAvailable = await GmsAvailability.isAvailable();
+  developer.log('GMS available: $gmsAvailable', name: 'AstroPrerna');
 
   // Initialize Firebase
   try {
@@ -74,19 +83,25 @@ void main() async {
     developer.log("Error initializing KeyManager: $e");
   }
 
-  // AdMob
-  try {
-    await AdService().initialize();
-  } catch (e) {
-    developer.log("Error initializing AdMob: $e");
+  // AdMob — requires GMS. Skipping on non-GMS devices avoids the system
+  // "Google Play services required" prompt and the OPPO rejection.
+  if (gmsAvailable) {
+    try {
+      await AdService().initialize();
+    } catch (e) {
+      developer.log("Error initializing AdMob: $e");
+    }
+  } else {
+    developer.log("Skipping AdMob init — GMS not available", name: 'AstroPrerna');
   }
 
   // Notification Service (Handles OneSignal + Local)
   // Static notification scheduling (daily/festival/re-engagement) is deferred
   // to MainScreen where AppLocalizations is available, so notifications use
   // the user's selected language.
+  // OneSignal/FCM also requires GMS; the service itself gates that part.
   try {
-    await NotificationService().init();
+    await NotificationService().init(gmsAvailable: gmsAvailable);
   } catch (e) {
     developer.log("Error initializing NotificationService: $e");
   }
